@@ -2,13 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Vivoor Design System - HSL tokens + gradients + motion */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Brand palette (HSL) */
+    --brand-cyan: 190 100% 50%; /* #00D4FF */
+    --brand-iris: 252 100% 68%; /* #7C5CFF */
+    --brand-pink: 329 86% 70%; /* #F472B6 */
+    --brand-mint: 172 100% 48%; /* #00F5D4 */
+
+    /* Surfaces - Light (Pearl) */
+    --background: 218 44% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -17,7 +22,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: var(--brand-iris);
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -34,35 +39,39 @@ All colors MUST be HSL.
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: var(--brand-iris);
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
+    /* Sidebar (kept for shadcn) */
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Gradient tokens (identical across themes) */
+    --grad-primary: linear-gradient(135deg, hsl(var(--brand-cyan)) 0%, hsl(var(--brand-iris)) 50%, hsl(var(--brand-pink)) 100%);
+    --grad-soft: radial-gradient(1200px 800px at 20% 10%, hsl(var(--brand-cyan) / 0.13) 0%, transparent 60%),
+                 radial-gradient(1000px 700px at 80% 30%, hsl(var(--brand-iris) / 0.12) 0%, transparent 60%),
+                 radial-gradient(900px 600px at 50% 80%, hsl(var(--brand-pink) / 0.10) 0%, transparent 60%);
+
+    /* On-gradient readable foreground */
+    --on-gradient: 0 0% 100%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
+  [data-theme="dark"], .dark {
+    /* Dark (Midnight) */
+    --background: 225 49% 8%; /* #0B1020 */
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 225 49% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 225 49% 10%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 40% 98%;
@@ -82,7 +91,8 @@ All colors MUST be HSL.
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: var(--brand-cyan);
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -95,11 +105,42 @@ All colors MUST be HSL.
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+}
 
-  body {
-    @apply bg-background text-foreground;
-  }
+/* Utilities and signature visuals */
+@layer utilities {
+  .bg-grad-primary { background-image: var(--grad-primary); }
+  .text-gradient { background-image: var(--grad-primary); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .gradient-border { background: linear-gradient(#0000, #0000) padding-box, var(--grad-primary) border-box; border: 1px solid transparent; }
+  .glass { background: hsl(var(--background) / 0.6); backdrop-filter: blur(10px); border: 1px solid hsl(var(--border) / 0.5); }
+  .hairline-gradient { border-image: var(--grad-primary) 1; border-bottom: 1px solid transparent; }
+  .story-link { position: relative; }
+  .story-link::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 100%; height: 2px; background-image: var(--grad-primary); transform: scaleX(0); transform-origin: right; transition: transform .3s ease; }
+  .story-link:hover::after { transform: scaleX(1); transform-origin: left; }
+}
+
+/* Aurora background with reduced motion support */
+.aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--grad-soft); filter: saturate(1.05); }
+.aurora::before, .aurora::after { content: ""; position: absolute; inset: -20%; background: var(--grad-primary); opacity: 0.18; filter: blur(80px); mix-blend-mode: screen; }
+.aurora::before { animation: auroraMoveX 28s linear infinite; }
+.aurora::after { animation: auroraMoveY 32s linear infinite; }
+
+.grain { position: fixed; inset: 0; pointer-events: none; z-index: -1; background-image: radial-gradient(hsl(var(--foreground)/0.06) 1px, transparent 1px); background-size: 2px 2px; opacity: 0.06; }
+
+@keyframes auroraMoveX {
+  0% { transform: translate3d(-10%, -5%, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(10%, 5%, 0) rotate(15deg) scale(1.1); }
+  100% { transform: translate3d(-10%, -5%, 0) rotate(0deg) scale(1); }
+}
+@keyframes auroraMoveY {
+  0% { transform: translate3d(8%, -8%, 0) rotate(0deg) scale(1.05); }
+  50% { transform: translate3d(-8%, 8%, 0) rotate(-12deg) scale(1); }
+  100% { transform: translate3d(8%, -8%, 0) rotate(0deg) scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before, .aurora::after { animation: none; }
+  .grain { opacity: 0.035; }
 }
