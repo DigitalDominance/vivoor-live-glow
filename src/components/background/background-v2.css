@@ -1,0 +1,63 @@
+/* Background V2 styles (rings + particles + clipped aurora) */
+.v2-bg-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* keep neutral canvas from theme; content surfaces handle contrast */
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(120vmin, 1200px);
+  height: min(120vmin, 1200px);
+  transform: translate(-50%, -50%);
+  opacity: 0.18;
+  filter: blur(0.2px);
+}
+
+.ring-1 { animation: v2-orbit-slow 36s linear infinite; }
+.ring-2 { animation: v2-orbit-med  24s linear infinite reverse; }
+
+/* Aurora puffs using brand soft gradient, clipped to partial viewport */
+.aurora-puff {
+  position: absolute;
+  inset: auto;
+  width: min(60vw, 700px);
+  height: min(40vh, 420px);
+  background: var(--grad-soft);
+  filter: blur(22px) saturate(120%);
+  opacity: 0.18;
+  border-radius: 40% 60% 50% 50% / 60% 40% 60% 40%;
+  animation: v2-float 28s ease-in-out infinite;
+}
+.puff-a { top: 8%; left: 6%; clip-path: inset(0 60% 60% 0 round 24px); }
+.puff-b { bottom: 6%; right: 8%; clip-path: inset(40% 0 0 60% round 24px); animation-duration: 34s; }
+
+/* Particles */
+.particle {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, hsl(var(--brand-cyan)/0.8), transparent 55%), radial-gradient(circle at 70% 70%, hsl(var(--brand-iris)/0.7), transparent 60%);
+  box-shadow: 0 0 0 1px hsl(var(--foreground)/0.06), 0 4px 18px -6px hsl(var(--brand-iris)/0.35);
+}
+.particle-1 { animation: v2-drift-a 48s linear infinite; }
+.particle-2 { animation: v2-drift-b 56s linear infinite; }
+.particle-3 { animation: v2-drift-c 60s linear infinite; }
+
+/* Keyframes */
+@keyframes v2-orbit-slow { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes v2-orbit-med  { from { transform: translate(-50%, -50%) rotate(0deg) scale(0.98); } to { transform: translate(-50%, -50%) rotate(-360deg) scale(1.02); } }
+@keyframes v2-float { 0% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.03); } 100% { transform: translateY(0) scale(1); } }
+@keyframes v2-drift-a { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(10px,-8px,0); } 100% { transform: translate3d(0,0,0); } }
+@keyframes v2-drift-b { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(-12px,6px,0); } 100% { transform: translate3d(0,0,0); } }
+@keyframes v2-drift-c { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(8px,10px,0); } 100% { transform: translate3d(0,0,0); } }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ring-1, .ring-2, .particle-1, .particle-2, .particle-3, .aurora-puff { animation: none !important; }
+  .ring { opacity: 0.14; }
+  .aurora-puff { opacity: 0.12; }
+}

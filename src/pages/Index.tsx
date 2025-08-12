@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Zap, Repeat, Scissors, Play, Radio, Circle } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
   <motion.div
@@ -60,6 +61,11 @@ const CreatorCard = ({ name, live }: { name: string; live?: boolean }) => (
 const Index = () => {
   return (
     <main id="top">
+      <Helmet>
+        <title>Vivoor — Go live in seconds. Replay forever.</title>
+        <meta name="description" content="Built on Kaspa. Stream live with instant replays and one‑tap clips." />
+        <link rel="canonical" href="/" />
+      </Helmet>
       {/* Hero */}
       <section className="container mx-auto px-4 pt-12 md:pt-20">
         <div className="grid md:grid-cols-2 items-center gap-10">
@@ -83,6 +89,13 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Kaspa highlight */}
+      <section className="container mx-auto px-4 mt-10">
+        <div className="rounded-xl border border-border p-4 bg-card/60 backdrop-blur-md text-center">
+          <p className="text-sm font-medium">Built on <span className="text-gradient font-semibold">Kaspa</span> — the first live streaming platform on Kaspa.</p>
+        </div>
+      </section>
+
       {/* Feature Trio */}
       <section id="features" className="container mx-auto px-4 mt-16">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -97,7 +110,7 @@ const Index = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Creator Showcase</h2>
         </div>
-        <div className="overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 pl-4">
+        <div className="overflow-x-auto custom-scrollbar snap-x snap-mandatory pb-2 -mx-4 pl-4">
           <div className="flex w-max">
             {Array.from({ length: 10 }).map((_, i) => (
               <CreatorCard key={i} name={`@creator_${i + 1}`} live={i % 3 === 0} />

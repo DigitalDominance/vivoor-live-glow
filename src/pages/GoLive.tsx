@@ -1,0 +1,93 @@
+import React from "react";
+import { Helmet } from "react-helmet-async";
+import { Button } from "@/components/ui/button";
+import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import ProfileModal from "@/components/modals/ProfileModal";
+import { users } from "@/mock/data";
+
+const GoLive: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [profileOpen, setProfileOpen] = React.useState(false);
+  const example = users['u1'];
+
+  const [live, setLive] = React.useState(false);
+  const [title, setTitle] = React.useState('My awesome stream');
+  const [category, setCategory] = React.useState('IRL');
+  const [elapsed, setElapsed] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!live) return;
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [live]);
+
+  return (
+    <main className="container mx-auto px-4 py-6">
+      <Helmet>
+        <title>Go Live — Vivoor</title>
+        <meta name="description" content="Set up your stream and go live on Vivoor. Mock-only studio with preview and health badges." />
+        <link rel="canonical" href="/go-live" />
+      </Helmet>
+
+      <h1 className="sr-only">Go Live</h1>
+
+      {!live ? (
+        <section className="max-w-3xl mx-auto glass rounded-xl p-5">
+          <div className="text-lg font-semibold">Stream setup</div>
+          <div className="grid gap-3 mt-4">
+            <label className="text-sm">Title</label>
+            <input className="rounded-md bg-background px-3 py-2 text-sm border border-border" value={title} onChange={(e)=>setTitle(e.target.value)} />
+            <label className="text-sm mt-2">Category</label>
+            <select className="rounded-md bg-background border border-border px-3 py-2" value={category} onChange={(e)=>setCategory(e.target.value)}>
+              {['IRL','Music','Gaming','Talk','Sports','Crypto','Tech'].map(c=> <option key={c} value={c}>{c}</option>)}
+            </select>
+            <label className="text-sm mt-2">Thumbnail (mock)</label>
+            <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
+            <div className="flex justify-end mt-4"><Button variant="hero" onClick={()=>setLive(true)}>Start Stream</Button></div>
+          </div>
+        </section>
+      ) : (
+        <section className="grid lg:grid-cols-3 gap-4 items-start">
+          <div className="lg:col-span-2">
+            <PlayerPlaceholder />
+            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="px-2 py-0.5 rounded-full bg-grad-primary text-[hsl(var(--on-gradient))]">LIVE</span>
+              <span>Elapsed: {new Date(elapsed*1000).toISOString().substring(11,19)}</span>
+              <span className="ml-auto">Viewers: 0 (mock)</span>
+              <Button variant="destructive" size="sm" onClick={()=>setLive(false)}>End Stream</Button>
+            </div>
+            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm text-muted-foreground">
+              Ingest URL: rtmp://live.vivoor/mock • Stream Key: pk_live_••••••••••
+            </div>
+          </div>
+          <div className="lg:col-span-1 space-y-4">
+            <div className="rounded-xl border border-border p-3 bg-card/60 backdrop-blur-md">
+              <div className="font-medium">Profile</div>
+              <div className="flex items-center gap-3 mt-2">
+                <div className="size-10 rounded-full p-[2px] bg-grad-primary"><div className="size-full rounded-full bg-background"/></div>
+                <div>
+                  <div>{example.displayName}</div>
+                  <button className="text-xs text-muted-foreground hover:text-foreground story-link" onClick={()=>setProfileOpen(true)}>@{example.handle}</button>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">Followers: {example.followers.toLocaleString()} • Following: {example.following.toLocaleString()}</div>
+              <div className="mt-3"><Button variant="secondary" disabled>Tip in KAS (viewers tip you)</Button></div>
+            </div>
+            <div className="rounded-xl border border-border p-3 bg-card/60 backdrop-blur-md">
+              <div className="font-medium">Stream Health</div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-1 rounded-full bg-background border border-border">Excellent</span>
+                <span className="px-2 py-1 rounded-full bg-background border border-border">Low latency</span>
+                <span className="px-2 py-1 rounded-full bg-background border border-border">Stable</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={isLoggedIn} onRequireLogin={()=>{}} onGoToChannel={()=>{}} />
+    </main>
+  );
+};
+
+export default GoLive;
