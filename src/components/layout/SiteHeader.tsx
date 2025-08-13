@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import WalletConnectModal from "@/components/modals/WalletConnectModal";
+import UsernameModal from "@/components/modals/UsernameModal";
+import { useWallet } from "@/context/WalletContext";
+import MyProfileModal from "@/components/modals/MyProfileModal";
 
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link to={to} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover-scale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
@@ -35,7 +40,25 @@ const SiteHeader = () => {
   }, []);
 
   const path = location.pathname;
+  const { identity, profile, ensureUsername } = useWallet();
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [usernameOpen, setUsernameOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    if (identity) {
+      const r = ensureUsername();
+      if (r.needsUsername) setUsernameOpen(true);
+    }
+  }, [identity, ensureUsername]);
+
   const cta = path === "/" ? { label: "Start Now", to: "/app" } : path === "/app" ? { label: "Go Live", to: "/go-live" } : { label: "App", to: "/app" };
+
+  const displayName = useMemo(() => {
+    if (profile?.username) return `@${profile.username}`;
+    if (identity?.id) return `${identity.id.slice(0, 8)}…`;
+    return "Login";
+  }, [profile?.username, identity?.id]);
 
   return (
     <header className={`${scrolled ? "bg-background/95 border-b border-border/60" : "backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60"} sticky top-0 z-40`}>
@@ -49,9 +72,28 @@ const SiteHeader = () => {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="gradientOutline" className="hidden sm:inline-flex" onClick={() => navigate(cta.to)}>
-            {cta.label}
-          </Button>
+          {!identity ? (
+            <Button
+              variant="gradientOutline"
+              className="hidden sm:inline-flex"
+              onClick={() => (path === "/app" ? setWalletOpen(true) : navigate(cta.to))}
+            >
+              {path === "/app" ? "Login" : cta.label}
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="gradientOutline" className="hidden sm:inline-flex z-[60]" aria-label="Account menu">
+                  {displayName}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[70]">
+                <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setProfileOpen(true)}>Profile</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/recordings")}>My Recordings</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="glass" size="icon" className="md:hidden" aria-label="Open menu">
@@ -64,12 +106,25 @@ const SiteHeader = () => {
                 <Link to="/app" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">App</Link>
                 <a href="/#pricing" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Pricing</a>
                 <a href="/#faq" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">FAQ</a>
-                <Button variant="gradientOutline" className="mt-2" onClick={() => navigate(cta.to)}>{cta.label}</Button>
+                {!identity ? (
+                  <Button variant="gradientOutline" className="mt-2" onClick={() => (path === "/app" ? setWalletOpen(true) : navigate(cta.to))}>
+                    {path === "/app" ? "Login" : cta.label}
+                  </Button>
+                ) : (
+                  <div className="mt-2 grid gap-2">
+                    <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
+                    <Button variant="secondary" onClick={() => setProfileOpen(true)}>Profile</Button>
+                    <Button variant="ghost" onClick={() => navigate("/recordings")}>My Recordings</Button>
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>
         </div>
       </nav>
+      <WalletConnectModal open={walletOpen} onOpenChange={setWalletOpen} />
+      <UsernameModal open={usernameOpen} onOpenChange={setUsernameOpen} />
+      <MyProfileModal open={profileOpen} onOpenChange={setProfileOpen} onEditUsername={() => { setProfileOpen(false); setUsernameOpen(true); }} />
     </header>
   );
 };

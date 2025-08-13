@@ -13,32 +13,37 @@ import { ThemeProvider } from "@/theme/ThemeProvider";
 import AppDirectory from "@/pages/AppDirectory";
 import Watch from "@/pages/Watch";
 import GoLive from "@/pages/GoLive";
+import Recordings from "@/pages/Recordings";
 import "@/styles/global-extras.css";
+import { WalletProvider } from "@/context/WalletContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <HelmetProvider>
-        <TooltipProvider>
-          <BackgroundV2 />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <SiteHeader />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/app" element={<AppDirectory />} />
-              <Route path="/watch/:id" element={<Watch />} />
-              <Route path="/go-live" element={<GoLive />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <SiteFooter />
-          </BrowserRouter>
-        </TooltipProvider>
-      </HelmetProvider>
+      <WalletProvider>
+        <HelmetProvider>
+          <TooltipProvider>
+            <BackgroundV2 />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <SiteHeader />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/app" element={<AppDirectory />} />
+                <Route path="/watch/:id" element={<Watch />} />
+                <Route path="/go-live" element={<GoLive />} />
+                <Route path="/recordings" element={<Recordings />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <SiteFooter />
+            </BrowserRouter>
+          </TooltipProvider>
+        </HelmetProvider>
+      </WalletProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
