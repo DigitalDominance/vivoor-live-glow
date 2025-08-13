@@ -14,6 +14,8 @@ import AppDirectory from "@/pages/AppDirectory";
 import Watch from "@/pages/Watch";
 import GoLive from "@/pages/GoLive";
 import Recordings from "@/pages/Recordings";
+import Vod from "@/pages/Vod";
+import Clip from "@/pages/Clip";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 
@@ -36,6 +38,8 @@ const App = () => (
                 <Route path="/watch/:id" element={<Watch />} />
                 <Route path="/go-live" element={<GoLive />} />
                 <Route path="/recordings" element={<Recordings />} />
+                <Route path="/vod/:id" element={<Vod />} />
+                <Route path="/clip/:id" element={<Clip />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -171,18 +171,25 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing (placeholder) */}
-      <section id="pricing" className="container mx-auto px-4 mt-16">
-        <h2 className="font-semibold mb-4">Pricing</h2>
+      {/* Instant Tips */}
+      <section id="instant-tips" className="container mx-auto px-4 mt-16">
+        <h2 className="font-semibold mb-4">Instant Tips on Kaspa</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {['Starter', 'Creator', 'Studio'].map((tier, i) => (
-            <div key={tier} className="glass rounded-xl p-6">
-              <div className="text-sm text-muted-foreground">{tier}</div>
-              <div className="mt-2 text-2xl font-bold">${(i + 1) * 5}/mo</div>
-              <p className="text-sm text-muted-foreground mt-2">Beautiful placeholder pricing copy.</p>
-              <Button className="mt-4" variant={i === 1 ? 'hero' : 'gradientOutline'}>Choose</Button>
-            </div>
-          ))}
+          <div className="glass rounded-xl p-6">
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Zap className="size-4 text-[hsl(var(--brand-pink))]" /> Near‑instant</div>
+            <div className="mt-2 text-lg font-bold">Tips settle in seconds</div>
+            <p className="text-sm text-muted-foreground mt-2">Kaspa’s blockDAG confirms fast — creators see KAS almost immediately.</p>
+          </div>
+          <div className="glass rounded-xl p-6">
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Circle className="size-4 text-[hsl(var(--brand-iris))]" /> Low fee</div>
+            <div className="mt-2 text-lg font-bold">Only 5% platform fee</div>
+            <p className="text-sm text-muted-foreground mt-2">We take just 5% — far less than major streaming platforms.</p>
+          </div>
+          <div className="glass rounded-xl p-6">
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Repeat className="size-4 text-[hsl(var(--brand-cyan))]" /> Transparent</div>
+            <div className="mt-2 text-lg font-bold">On‑chain and simple</div>
+            <p className="text-sm text-muted-foreground mt-2">No middlemen, no hidden cuts. Direct, on‑chain tipping in KAS.</p>
+          </div>
         </div>
       </section>
 
