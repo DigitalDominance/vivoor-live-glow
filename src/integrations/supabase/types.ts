@@ -177,7 +177,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_kaspa_address: {
+        Args: { _id: string }
+        Returns: string
+      }
+      get_public_profile: {
+        Args: { _id: string }
+        Returns: {
+          id: string
+          display_name: string
+          handle: string
+          avatar_url: string
+          bio: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

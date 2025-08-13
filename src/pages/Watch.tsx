@@ -25,6 +25,7 @@ const Watch: React.FC = () => {
 
   const [dbStream, setDbStream] = React.useState<any | null>(null);
   const [dbProfile, setDbProfile] = React.useState<any | null>(null);
+  const [kaspaAddress, setKaspaAddress] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -32,8 +33,18 @@ const Watch: React.FC = () => {
       const { data: s } = await supabase.from('streams').select('*').eq('id', id).maybeSingle();
       if (s) {
         setDbStream(s);
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', s.user_id).maybeSingle();
-        setDbProfile(p || null);
+        const { data: p } = await supabase.rpc('get_public_profile', { _id: s.user_id });
+        const pub = Array.isArray(p) ? (p[0] || null) : (p || null);
+        setDbProfile(pub);
+
+        const { data: auth } = await supabase.auth.getUser();
+        setIsLoggedIn(!!auth.user);
+        if (auth.user) {
+          const { data: addr } = await supabase.rpc('get_kaspa_address', { _id: s.user_id });
+          setKaspaAddress(addr || null);
+        } else {
+          setKaspaAddress(null);
+        }
       }
     })();
   }, [id]);
@@ -108,7 +119,7 @@ const Watch: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={dbProfile?.kaspa_address || null} />
+      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={kaspaAddress} />
       {computedProfile && (
         <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${active.id}`)} />
       )}
