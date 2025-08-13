@@ -451,7 +451,7 @@ const GoLive: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground mt-2">Kaspa: {kaspaAddress || 'Not connected'}</div>
+              
               <div className="mt-3"><Button variant="secondary" onClick={()=>setTipOpen(true)} disabled={!kaspaAddress}>Tip in KAS</Button></div>
             </div>
             <div className="rounded-xl border border-border p-3 bg-card/60 backdrop-blur-md">
