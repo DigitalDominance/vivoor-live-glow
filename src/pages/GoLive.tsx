@@ -4,19 +4,23 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import ProfileModal from "@/components/modals/ProfileModal";
-import { users } from "@/mock/data";
+import TipModal from "@/components/modals/TipModal";
 import { useWallet } from "@/context/WalletContext";
 import { getStartDaa, setStartDaa, clearStartDaa } from "@/lib/streamLocal";
 import { fetchAddressFullTxs } from "@/lib/kaspaApi";
 import { useKaspaTipScanner } from "@/hooks/useKaspaTipScanner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 const GoLive: React.FC = () => {
   const { identity } = useWallet();
   const kaspaAddress = React.useMemo(() => (identity?.id?.startsWith('kaspa:') ? identity.id : null), [identity?.id]);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const example = users['u1'];
+  const [profile, setProfile] = React.useState<any | null>(null);
+  const [tipOpen, setTipOpen] = React.useState(false);
+  const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
+  const [streamKey, setStreamKey] = React.useState<string | null>(null);
+  const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
   const [live, setLive] = React.useState(false);
@@ -25,6 +29,23 @@ const GoLive: React.FC = () => {
   const [elapsed, setElapsed] = React.useState(0);
   const [startDaa, setStartDaaState] = React.useState<number | null>(null);
   const [dbStreamId, setDbStreamId] = React.useState<string | null>(null);
+
+  // Load current user's profile for display
+  React.useEffect(() => {
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user) {
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', auth.user.id)
+          .maybeSingle();
+        setProfile(p || null);
+      } else {
+        setProfile(null);
+      }
+    })();
+  }, []);
 
   React.useEffect(() => {
     if (live && kaspaAddress) {
@@ -53,12 +74,23 @@ const GoLive: React.FC = () => {
       setStartDaaState(maxDaa);
       setLive(true);
 
-      // Persist profile wallet and create a stream if authenticated
+      // Persist profile wallet
       const { data: auth } = await supabase.auth.getUser();
       if (auth.user) {
         await supabase.from('profiles').upsert({ id: auth.user.id, kaspa_address: kaspaAddress }).select('id');
+      }
+
+      // Create Livepeer stream via Edge Function
+      const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
+      if (lpErr || !lp) throw new Error(lpErr?.message || 'Failed to create stream');
+
+      setIngestUrl(lp.ingestUrl || null);
+      setStreamKey(lp.streamKey || null);
+      setPlaybackUrl(lp.playbackUrl || null);
+
+      if (auth.user) {
         const ins = await supabase.from('streams')
-          .insert({ user_id: auth.user.id, title, category, is_live: true })
+          .insert({ user_id: auth.user.id, title, category, is_live: true, playback_url: lp.playbackUrl || null })
           .select('id')
           .maybeSingle();
         if (!ins.error && ins.data) setDbStreamId(ins.data.id);
@@ -66,15 +98,22 @@ const GoLive: React.FC = () => {
 
       toast.success("Stream started. Kaspa tips scanning enabled.");
     } catch (e:any) {
-      toast.error(e?.message || "Failed to set baseline DAA");
+      toast.error(e?.message || "Failed to start stream");
+      setLive(false);
     }
-  }, [kaspaAddress]);
+  }, [kaspaAddress, title, category]);
 
-  const handleEnd = React.useCallback(() => {
+  const handleEnd = React.useCallback(async () => {
     setLive(false);
     if (kaspaAddress) clearStartDaa(kaspaAddress);
     setStartDaaState(null);
-  }, [kaspaAddress]);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user && dbStreamId) {
+        await supabase.from('streams').update({ is_live: false }).eq('id', dbStreamId).eq('user_id', auth.user.id);
+      }
+    } catch {}
+  }, [kaspaAddress, dbStreamId]);
 
   useKaspaTipScanner({
     address: kaspaAddress,
@@ -122,22 +161,37 @@ const GoLive: React.FC = () => {
               <span className="ml-auto">Viewers: 0 (mock)</span>
               <Button variant="destructive" size="sm" onClick={handleEnd}>End Stream</Button>
             </div>
-            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm text-muted-foreground">
-              Ingest URL: rtmp://live.vivoor/mock • Stream Key: pk_live_••••••••••
+            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-muted-foreground font-medium">Ingest URL:</span>
+                <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{ingestUrl ?? '—'}</code>
+                <Button variant="ghost" size="sm" onClick={() => ingestUrl && navigator.clipboard.writeText(ingestUrl).then(()=>toast.success('Copied ingest URL'))}>Copy</Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap mt-2">
+                <span className="text-muted-foreground font-medium">Stream Key:</span>
+                <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{streamKey ? '••••••••••' : '—'}</code>
+                <Button variant="ghost" size="sm" onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(()=>toast.success('Copied stream key'))}>Copy</Button>
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">Use these in OBS or Streamlabs. Playback is linked automatically.</div>
             </div>
           </div>
           <div className="lg:col-span-1 space-y-4">
             <div className="rounded-xl border border-border p-3 bg-card/60 backdrop-blur-md">
               <div className="font-medium">Profile</div>
               <div className="flex items-center gap-3 mt-2">
-                <div className="size-10 rounded-full p-[2px] bg-grad-primary"><div className="size-full rounded-full bg-background"/></div>
+                <Avatar className="size-10">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt="Profile avatar" />
+                  <AvatarFallback>{(profile?.display_name || profile?.handle || 'U').slice(0,1).toUpperCase()}</AvatarFallback>
+                </Avatar>
                 <div>
-                  <div>{example.displayName}</div>
-                  <button className="text-xs text-muted-foreground hover:text-foreground story-link" onClick={()=>setProfileOpen(true)}>@{example.handle}</button>
+                  <div>{profile?.display_name || profile?.handle || 'Creator'}</div>
+                  <button className="text-xs text-muted-foreground hover:text-foreground story-link" onClick={()=>setProfileOpen(true)}>
+                    @{profile?.handle || (profile?.display_name ? profile.display_name.toLowerCase().replace(/\s+/g, '_') : 'you')}
+                  </button>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground mt-2">Followers: {example.followers.toLocaleString()} • Following: {example.following.toLocaleString()}</div>
-              <div className="mt-3"><Button variant="secondary" disabled>Tip in KAS (viewers tip you)</Button></div>
+              <div className="text-xs text-muted-foreground mt-2">Kaspa: {kaspaAddress || 'Not connected'}</div>
+              <div className="mt-3"><Button variant="secondary" onClick={()=>setTipOpen(true)} disabled={!kaspaAddress}>Tip in KAS</Button></div>
             </div>
             <div className="rounded-xl border border-border p-3 bg-card/60 backdrop-blur-md">
               <div className="font-medium">Stream Health</div>
@@ -151,7 +205,8 @@ const GoLive: React.FC = () => {
         </section>
       )}
 
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={!!identity} onRequireLogin={()=>{}} onGoToChannel={()=>{ if (dbStreamId) navigate(`/watch/${dbStreamId}`); }} />
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={profile ? { id: profile.id, displayName: profile.display_name || profile.handle || 'Creator', handle: profile.handle || (profile.display_name || 'you').toLowerCase().replace(/\s+/g,'_'), bio: profile.bio || '', followers: 0, following: 0, tags: [] } : undefined} isLoggedIn={!!identity} onRequireLogin={()=>{}} onGoToChannel={()=>{ if (dbStreamId) navigate(`/watch/${dbStreamId}`); }} />
+      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={!!identity} onRequireLogin={()=>{}} toAddress={kaspaAddress} />
     </main>
   );
 };
