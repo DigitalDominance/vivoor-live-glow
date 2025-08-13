@@ -13,6 +13,7 @@ import { useKaspaTipScanner } from "@/hooks/useKaspaTipScanner";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 const GoLive: React.FC = () => {
   const { identity } = useWallet();
   const kaspaAddress = React.useMemo(() => (identity?.id?.startsWith('kaspa:') ? identity.id : null), [identity?.id]);
@@ -31,6 +32,7 @@ const GoLive: React.FC = () => {
   const [startDaa, setStartDaaState] = React.useState<number | null>(null);
   const [dbStreamId, setDbStreamId] = React.useState<string | null>(null);
   const [previewReady, setPreviewReady] = React.useState(false);
+  const [debugInfo, setDebugInfo] = React.useState<string>('');
 
   // Load current user's profile for display
   React.useEffect(() => {
@@ -66,14 +68,35 @@ const GoLive: React.FC = () => {
 
   const generateStreamDetails = React.useCallback(async () => {
     try {
+      console.log('Generating stream details...');
+      setDebugInfo('Creating Livepeer stream...');
+      
       const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
-      if (lpErr || !lp) throw new Error(lpErr?.message || 'Failed to create stream');
+      
+      console.log('Livepeer response:', lp);
+      console.log('Livepeer error:', lpErr);
+      
+      if (lpErr || !lp) {
+        setDebugInfo(`Error: ${lpErr?.message || 'Failed to create stream'}`);
+        throw new Error(lpErr?.message || 'Failed to create stream');
+      }
+      
       setIngestUrl(lp.ingestUrl || null);
       setStreamKey(lp.streamKey || null);
       setPlaybackUrl(lp.playbackUrl || null);
+      
+      console.log('Stream details set:', {
+        ingestUrl: lp.ingestUrl,
+        streamKey: lp.streamKey ? '***' : null,
+        playbackUrl: lp.playbackUrl
+      });
+      
+      setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
       toast.success('RTMP details ready');
       return lp as { ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
+      console.error('Stream generation error:', e);
+      setDebugInfo(`Error: ${e?.message || 'Failed to create stream'}`);
       toast.error(e?.message || 'Failed to create stream');
       throw e;
     }
@@ -89,21 +112,68 @@ const GoLive: React.FC = () => {
     }
   }, [ingestUrl, streamKey, playbackUrl, generateStreamDetails]);
 
-  // Probe HLS readiness and show a helpful message until segments are available
+  // Enhanced HLS readiness probe with better debugging
   React.useEffect(() => {
-    if (!playbackUrl) { setPreviewReady(false); return; }
+    if (!playbackUrl) { 
+      setPreviewReady(false); 
+      setDebugInfo('No playback URL available');
+      return; 
+    }
+    
     let cancelled = false;
     const controller = new AbortController();
+    let checkCount = 0;
+    
     const check = async () => {
+      if (cancelled) return;
+      checkCount++;
+      
       try {
-        const res = await fetch(playbackUrl, { cache: 'no-store', signal: controller.signal });
-        if (!cancelled && res.ok) setPreviewReady(true);
-      } catch {}
+        console.log(`HLS check #${checkCount} for ${playbackUrl}`);
+        setDebugInfo(`Checking HLS stream... (attempt ${checkCount})`);
+        
+        const res = await fetch(playbackUrl, { 
+          cache: 'no-store', 
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/vnd.apple.mpegurl, application/x-mpegurl, */*'
+          }
+        });
+        
+        console.log(`HLS response status: ${res.status}`);
+        
+        if (!cancelled && res.ok) {
+          const text = await res.text();
+          console.log('HLS playlist content:', text.substring(0, 200));
+          
+          // Check if playlist has actual segments
+          if (text.includes('.ts') || text.includes('#EXTINF')) {
+            setPreviewReady(true);
+            setDebugInfo('Stream ready! HLS segments found.');
+          } else {
+            setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
+          }
+        } else {
+          setDebugInfo(`Stream not ready (HTTP ${res.status}, attempt ${checkCount})`);
+        }
+      } catch (error: any) {
+        if (!cancelled && error.name !== 'AbortError') {
+          console.warn('HLS check error:', error);
+          setDebugInfo(`Checking stream... (${error.message}, attempt ${checkCount})`);
+        }
+      }
     };
+    
     setPreviewReady(false);
-    const id = setInterval(check, 4000);
-    check();
-    return () => { cancelled = true; clearInterval(id); controller.abort(); };
+    setDebugInfo('Starting stream checks...');
+    const id = setInterval(check, 3000); // Check every 3 seconds
+    check(); // Initial check
+    
+    return () => { 
+      cancelled = true; 
+      clearInterval(id); 
+      controller.abort(); 
+    };
   }, [playbackUrl]);
 
   const handleStart = React.useCallback(async () => {
@@ -208,24 +278,41 @@ const GoLive: React.FC = () => {
                   <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{streamKey ? '••••••••••' : '—'}</code>
                   <Button variant="ghost" size="sm" onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(()=>toast.success('Copied stream key'))}>Copy</Button>
                 </div>
-                <div className="text-xs text-muted-foreground mt-2">Use these in OBS or Streamlabs. Playback appears once you start streaming in OBS.</div>
+
+                {/* Debug info */}
+                {debugInfo && (
+                  <div className="mt-2 p-2 rounded bg-muted/20 border border-border text-xs text-muted-foreground">
+                    <strong>Debug:</strong> {debugInfo}
+                  </div>
+                )}
+
+                <div className="text-xs text-muted-foreground mt-2">Use these in OBS or Streamlabs. Preview appears once you start streaming in OBS.</div>
 
                 <div className="mt-4 grid gap-2">
                   <div className="font-medium">OBS setup</div>
                   <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
                     <li>Settings → Stream → Service: Custom...</li>
-                    <li>Server: paste the Ingest URL</li>
-                    <li>Stream Key: paste the Stream Key</li>
-                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 3500–5000 (720p60), 6000–8000 (1080p60), 9000–12000 (1440p60), 14000–20000 (2160p60), Keyframe Interval: 2s</li>
-                  <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
+                    <li>Server: paste the Ingest URL above</li>
+                    <li>Stream Key: paste the Stream Key above</li>
+                    <li>Output → Encoder: x264 or NVENC H.264</li>
+                    <li>Bitrate: 3500–6000 Kbps (1080p60), 8000–12000 Kbps (1440p60), 15000–25000 Kbps (2160p60)</li>
+                    <li>Keyframe Interval: 2 seconds</li>
+                    <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720</li>
+                    <li>FPS: 30 or 60 (60fps recommended for smooth playback)</li>
                   </ul>
                 </div>
 
                 {playbackUrl && (
                   <div className="mt-4">
+                    <div className="font-medium mb-2">Live Preview</div>
                     <HlsPlayer src={playbackUrl} autoPlay />
                     {!previewReady && (
-                      <div className="text-xs text-muted-foreground mt-2">Waiting for stream signal… start streaming in OBS; preview appears in 10–30s.</div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {debugInfo || "Waiting for stream signal... Start streaming in OBS with the exact settings above. Preview appears in 10–60 seconds."}
+                      </div>
+                    )}
+                    {previewReady && (
+                      <div className="text-xs text-green-600 mt-2">✓ Stream is live and ready!</div>
                     )}
                   </div>
                 )}
@@ -262,7 +349,7 @@ const GoLive: React.FC = () => {
                   <li>Settings → Stream → Service: Custom...</li>
                   <li>Server: paste the Ingest URL</li>
                   <li>Stream Key: paste the Stream Key</li>
-                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 3500–5000 (720p60), 6000–8000 (1080p60), 9000–12000 (1440p60), 14000–20000 (2160p60), Keyframe Interval: 2s</li>
+                  <li>Output → Encoder: x264 or NVENC H.264, Bitrate: 3500–6000 Kbps (1080p60), 8000–12000 Kbps (1440p60), 15000–25000 Kbps (2160p60), Keyframe Interval: 2s</li>
                   <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
                 </ul>
               </div>
