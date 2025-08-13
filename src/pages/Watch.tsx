@@ -7,6 +7,7 @@ import ProfileModal from "@/components/modals/ProfileModal";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStreamById, streams, users } from "@/mock/data";
+import { supabase } from "@/integrations/supabase/client";
 import { Volume2, Play, Settings } from "lucide-react";
 import { StreamCard } from "@/components/streams/StreamCard";
 
@@ -22,26 +23,53 @@ const Watch: React.FC = () => {
 
   const onRequireLogin = () => setLoginOpen(true);
 
+  const [dbStream, setDbStream] = React.useState<any | null>(null);
+  const [dbProfile, setDbProfile] = React.useState<any | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      if (!id) return;
+      const { data: s } = await supabase.from('streams').select('*').eq('id', id).maybeSingle();
+      if (s) {
+        setDbStream(s);
+        const { data: p } = await supabase.from('profiles').select('*').eq('id', s.user_id).maybeSingle();
+        setDbProfile(p || null);
+      }
+    })();
+  }, [id]);
+
   const messages: ChatMessage[] = Array.from({ length: 12 }).map((_, i) => ({
     id: String(i), user: i % 3 === 0 ? 'mod' : 'viewer', text: 'Sample message ' + (i + 1), time: 'now'
   }));
 
-  if (!stream) return (
+  if (!stream && !dbStream) return (
     <main className="container mx-auto px-4 py-8">
       <div className="text-center">Stream not found.</div>
     </main>
   );
 
-  const profile = users[stream.userId];
+  const active = dbStream || stream;
+  const computedProfile = dbProfile
+    ? {
+        id: dbProfile.id,
+        handle: dbProfile.handle || (dbProfile.display_name || 'creator').toLowerCase().replace(/\s+/g, '_'),
+        displayName: dbProfile.display_name || dbProfile.handle || 'Creator',
+        bio: dbProfile.bio || '',
+        followers: 0,
+        following: 0,
+        tags: [] as string[],
+      }
+    : (stream ? users[stream.userId] : undefined);
+  const username = dbProfile?.handle || (active?.username || 'creator');
 
-  const suggested = streams.filter((s) => s.id !== stream.id).slice(0, 6);
+  const suggested = streams.filter((s) => s.id !== (active?.id || '')).slice(0, 6);
 
   return (
     <main className="container mx-auto px-4 py-6">
       <Helmet>
-        <title>{stream.title} — Watch on Vivoor</title>
-        <meta name="description" content={`Watch ${stream.title} by @${stream.username} on Vivoor.`} />
-        <link rel="canonical" href={`/watch/${stream.id}`} />
+        <title>{active.title} — Watch on Vivoor</title>
+        <meta name="description" content={`Watch ${active.title} by @${username} on Vivoor.`} />
+        <link rel="canonical" href={`/watch/${active.id}`} />
       </Helmet>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
@@ -58,9 +86,9 @@ const Watch: React.FC = () => {
           </div>
 
           <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
-            <div className="text-sm text-muted-foreground">{stream.category} • {stream.viewers} viewers</div>
-            <div className="font-medium">{stream.title}</div>
-            <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>@{stream.username}</button>
+            <div className="text-sm text-muted-foreground">{active.category} • {active.viewers ?? 0} viewers</div>
+            <div className="font-medium">{active.title}</div>
+            <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>@{username}</button>
           </div>
 
           <div className="mt-6">
@@ -80,9 +108,9 @@ const Watch: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} />
-      {profile && (
-        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={profile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${stream.id}`)} />
+      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={dbProfile?.kaspa_address || null} />
+      {computedProfile && (
+        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${active.id}`)} />
       )}
     </main>
   );

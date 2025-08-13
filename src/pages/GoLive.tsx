@@ -1,5 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import ProfileModal from "@/components/modals/ProfileModal";
@@ -9,18 +10,21 @@ import { getStartDaa, setStartDaa, clearStartDaa } from "@/lib/streamLocal";
 import { fetchAddressFullTxs } from "@/lib/kaspaApi";
 import { useKaspaTipScanner } from "@/hooks/useKaspaTipScanner";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const GoLive: React.FC = () => {
   const { identity } = useWallet();
   const kaspaAddress = React.useMemo(() => (identity?.id?.startsWith('kaspa:') ? identity.id : null), [identity?.id]);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const example = users['u1'];
+  const navigate = useNavigate();
 
   const [live, setLive] = React.useState(false);
   const [title, setTitle] = React.useState('My awesome stream');
   const [category, setCategory] = React.useState('IRL');
   const [elapsed, setElapsed] = React.useState(0);
   const [startDaa, setStartDaaState] = React.useState<number | null>(null);
+  const [dbStreamId, setDbStreamId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (live && kaspaAddress) {
@@ -48,6 +52,18 @@ const GoLive: React.FC = () => {
       setStartDaa(kaspaAddress, maxDaa);
       setStartDaaState(maxDaa);
       setLive(true);
+
+      // Persist profile wallet and create a stream if authenticated
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user) {
+        await supabase.from('profiles').upsert({ id: auth.user.id, kaspa_address: kaspaAddress }).select('id');
+        const ins = await supabase.from('streams')
+          .insert({ user_id: auth.user.id, title, category, is_live: true })
+          .select('id')
+          .maybeSingle();
+        if (!ins.error && ins.data) setDbStreamId(ins.data.id);
+      }
+
       toast.success("Stream started. Kaspa tips scanning enabled.");
     } catch (e:any) {
       toast.error(e?.message || "Failed to set baseline DAA");
@@ -135,7 +151,7 @@ const GoLive: React.FC = () => {
         </section>
       )}
 
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={!!identity} onRequireLogin={()=>{}} onGoToChannel={()=>{}} />
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={!!identity} onRequireLogin={()=>{}} onGoToChannel={()=>{ if (dbStreamId) navigate(`/watch/${dbStreamId}`); }} />
     </main>
   );
 };

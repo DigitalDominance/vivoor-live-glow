@@ -55,6 +55,81 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          handle: string | null
+          id: string
+          kaspa_address: string | null
+          last_avatar_change: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          handle?: string | null
+          id: string
+          kaspa_address?: string | null
+          last_avatar_change?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          handle?: string | null
+          id?: string
+          kaspa_address?: string | null
+          last_avatar_change?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      streams: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_live: boolean
+          started_at: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          viewers: number
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_live?: boolean
+          started_at?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          viewers?: number
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_live?: boolean
+          started_at?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          viewers?: number
+        }
+        Relationships: []
+      }
       vods: {
         Row: {
           category: string | null
