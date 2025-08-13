@@ -30,6 +30,7 @@ const GoLive: React.FC = () => {
   const [elapsed, setElapsed] = React.useState(0);
   const [startDaa, setStartDaaState] = React.useState<number | null>(null);
   const [dbStreamId, setDbStreamId] = React.useState<string | null>(null);
+  const [previewReady, setPreviewReady] = React.useState(false);
 
   // Load current user's profile for display
   React.useEffect(() => {
@@ -77,6 +78,33 @@ const GoLive: React.FC = () => {
       throw e;
     }
   }, [title]);
+
+  // Auto-generate RTMP details on first load
+  const autoInitRef = React.useRef(false);
+  React.useEffect(() => {
+    if (autoInitRef.current) return;
+    autoInitRef.current = true;
+    if (!ingestUrl || !streamKey || !playbackUrl) {
+      generateStreamDetails().catch(() => {});
+    }
+  }, [ingestUrl, streamKey, playbackUrl, generateStreamDetails]);
+
+  // Probe HLS readiness and show a helpful message until segments are available
+  React.useEffect(() => {
+    if (!playbackUrl) { setPreviewReady(false); return; }
+    let cancelled = false;
+    const controller = new AbortController();
+    const check = async () => {
+      try {
+        const res = await fetch(playbackUrl, { cache: 'no-store', signal: controller.signal });
+        if (!cancelled && res.ok) setPreviewReady(true);
+      } catch {}
+    };
+    setPreviewReady(false);
+    const id = setInterval(check, 4000);
+    check();
+    return () => { cancelled = true; clearInterval(id); controller.abort(); };
+  }, [playbackUrl]);
 
   const handleStart = React.useCallback(async () => {
     if (!kaspaAddress) {
@@ -164,7 +192,7 @@ const GoLive: React.FC = () => {
             <label className="text-sm mt-2">Thumbnail (mock)</label>
             <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
             <div className="flex items-center justify-between mt-4 gap-2">
-              <Button variant="secondary" onClick={generateStreamDetails} disabled={!title}>Generate RTMP</Button>
+              <Button variant="secondary" onClick={generateStreamDetails} disabled={!title}>Regenerate RTMP</Button>
               <Button variant="hero" onClick={handleStart} disabled={!kaspaAddress}>Start Stream</Button>
             </div>
 
@@ -188,14 +216,17 @@ const GoLive: React.FC = () => {
                     <li>Settings → Stream → Service: Custom...</li>
                     <li>Server: paste the Ingest URL</li>
                     <li>Stream Key: paste the Stream Key</li>
-                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 6000–8000 (1080p60), 9000–12000 (1440p60), Keyframe Interval: 2s</li>
-                  <li>Video → Base/Output: 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
+                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 3500–5000 (720p60), 6000–8000 (1080p60), 9000–12000 (1440p60), 14000–20000 (2160p60), Keyframe Interval: 2s</li>
+                  <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
                   </ul>
                 </div>
 
                 {playbackUrl && (
                   <div className="mt-4">
-                    <HlsPlayer src={playbackUrl} />
+                    <HlsPlayer src={playbackUrl} autoPlay />
+                    {!previewReady && (
+                      <div className="text-xs text-muted-foreground mt-2">Waiting for stream signal… start streaming in OBS; preview appears in 10–30s.</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -205,7 +236,7 @@ const GoLive: React.FC = () => {
       ) : (
         <section className="grid lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2">
-            {playbackUrl ? (<HlsPlayer src={playbackUrl} />) : (<PlayerPlaceholder />)}
+            {playbackUrl ? (<HlsPlayer src={playbackUrl} autoPlay />) : (<PlayerPlaceholder />)}
             <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
               <span className="px-2 py-0.5 rounded-full bg-grad-primary text-[hsl(var(--on-gradient))]">LIVE</span>
               <span>Elapsed: {new Date(elapsed*1000).toISOString().substring(11,19)}</span>
@@ -231,8 +262,8 @@ const GoLive: React.FC = () => {
                   <li>Settings → Stream → Service: Custom...</li>
                   <li>Server: paste the Ingest URL</li>
                   <li>Stream Key: paste the Stream Key</li>
-                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 6000–8000 (1080p60), 9000–12000 (1440p60), Keyframe Interval: 2s</li>
-                  <li>Video → Base/Output: 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
+                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 3500–5000 (720p60), 6000–8000 (1080p60), 9000–12000 (1440p60), 14000–20000 (2160p60), Keyframe Interval: 2s</li>
+                  <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
                 </ul>
               </div>
 
