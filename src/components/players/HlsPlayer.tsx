@@ -18,33 +18,50 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     const video = videoRef.current;
     if (!video) return;
 
+    console.log('🎬 HlsPlayer: Initializing with src:', src);
     setLoading(true);
     setError(null);
 
     let hls: Hls | null = null;
 
-    const onLoadStart = () => setLoading(true);
+    const onLoadStart = () => {
+      console.log('🎬 Video: loadstart event');
+      setLoading(true);
+    };
     const onCanPlay = () => {
+      console.log('🎬 Video: canplay event');
       setLoading(false);
       if (autoPlay) {
         video.play().catch((err) => {
-          console.warn('Autoplay failed:', err);
+          console.warn('🎬 Autoplay failed:', err);
           setError('Click to play');
         });
       }
     };
-    const onError = () => {
+    const onError = (e: any) => {
+      console.error('🎬 Video error:', e, video.error);
       setLoading(false);
       setError('Stream unavailable');
+    };
+    const onWaiting = () => {
+      console.log('🎬 Video: waiting for data');
+    };
+    const onPlaying = () => {
+      console.log('🎬 Video: playing started');
+      setError(null);
     };
 
     video.addEventListener('loadstart', onLoadStart);
     video.addEventListener('canplay', onCanPlay);
     video.addEventListener('error', onError);
+    video.addEventListener('waiting', onWaiting);
+    video.addEventListener('playing', onPlaying);
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      console.log('🎬 Using native HLS support');
       video.src = src;
     } else if (Hls.isSupported()) {
+      console.log('🎬 Using HLS.js library');
       hls = new Hls({ 
         enableWorker: true, 
         lowLatencyMode: true,
@@ -53,15 +70,25 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       });
       
       hls.on(Hls.Events.ERROR, (event, data) => {
-        console.warn('HLS error:', data);
+        console.error('🎬 HLS error:', event, data);
         if (data.fatal) {
           setError('Stream error - refresh to retry');
         }
       });
       
+      hls.on(Hls.Events.MANIFEST_LOADED, () => {
+        console.log('🎬 HLS: Manifest loaded');
+      });
+      
+      hls.on(Hls.Events.LEVEL_LOADED, () => {
+        console.log('🎬 HLS: Level loaded');
+      });
+      
+      console.log('🎬 Loading HLS source:', src);
       hls.loadSource(src);
       hls.attachMedia(video);
     } else {
+      console.log('🎬 Using fallback direct source');
       video.src = src;
     }
 
@@ -69,6 +96,8 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       video.removeEventListener('loadstart', onLoadStart);
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('error', onError);
+      video.removeEventListener('waiting', onWaiting);
+      video.removeEventListener('playing', onPlaying);
       if (hls) {
         hls.destroy();
       }
