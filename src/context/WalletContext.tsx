@@ -1,0 +1,157 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import * as kastle from "@forbole/kastle-sdk";
+
+// Simple local storage helpers
+const LS_KEYS = {
+  PROFILE_BY_ID: "vivoor.profile.byId", // map of id -> { username, avatarUrl, lastUsernameChange }
+  LAST_PROVIDER: "vivoor.wallet.provider", // 'kasware' | 'kastle'
+} as const;
+
+type WalletProviderName = "kasware" | "kastle";
+
+export type WalletIdentity = {
+  provider: WalletProviderName;
+  id: string; // kasware address (kaspa:...) OR kastle publicKey base64
+};
+
+export type ProfileRecord = {
+  username: string;
+  avatarUrl?: string;
+  lastUsernameChange?: string; // ISO date
+};
+
+function readProfiles(): Record<string, ProfileRecord> {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEYS.PROFILE_BY_ID) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function writeProfiles(map: Record<string, ProfileRecord>) {
+  localStorage.setItem(LS_KEYS.PROFILE_BY_ID, JSON.stringify(map));
+}
+
+export type WalletState = {
+  identity: WalletIdentity | null;
+  profile: ProfileRecord | null;
+  connecting: boolean;
+  // Actions
+  connectKasware: () => Promise<void>;
+  connectKastle: () => Promise<void>;
+  disconnect: () => void;
+  ensureUsername: () => { needsUsername: boolean; lastChange?: string };
+  saveUsername: (username: string) => void;
+};
+
+const WalletContext = createContext<WalletState | null>(null);
+
+export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [identity, setIdentity] = useState<WalletIdentity | null>(null);
+  const [profile, setProfile] = useState<ProfileRecord | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  // Restore last session (best-effort)
+  useEffect(() => {
+    const last = localStorage.getItem(LS_KEYS.LAST_PROVIDER) as WalletProviderName | null;
+    if (!last) return;
+    // Only re-check passive session without prompting
+    if (last === "kasware" && typeof window !== "undefined" && (window as any).kasware) {
+      (window as any).kasware
+        .getAccounts()
+        .then((acc: string[]) => {
+          if (Array.isArray(acc) && acc[0]) {
+            const id = acc[0];
+            setIdentity({ provider: "kasware", id });
+            const map = readProfiles();
+            setProfile(map[id] || null);
+          }
+        })
+        .catch(() => {});
+    }
+    if (last === "kastle") {
+      // Kastle doesn't expose passive session reliably; we will do nothing here.
+    }
+  }, []);
+
+  const connectKasware = useCallback(async () => {
+    const w = (window as any).kasware;
+    if (!w) throw new Error("Kasware wallet not detected");
+    setConnecting(true);
+    try {
+      const accounts: string[] = await w.requestAccounts();
+      const addr = accounts?.[0];
+      if (!addr) throw new Error("No Kasware account returned");
+      const ident: WalletIdentity = { provider: "kasware", id: addr };
+      setIdentity(ident);
+      localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
+      const map = readProfiles();
+      setProfile(map[ident.id] || null);
+    } finally {
+      setConnecting(false);
+    }
+  }, []);
+
+  const connectKastle = useCallback(async () => {
+    setConnecting(true);
+    try {
+      const installed = await kastle.isWalletInstalled();
+      if (!installed) throw new Error("Kastle wallet not detected");
+      await kastle.switchNetwork("mainnet");
+      const ok = await kastle.connect();
+      if (!ok) throw new Error("Kastle connect rejected");
+      const pub = await kastle.getPublicKey();
+      if (!pub) throw new Error("Kastle public key unavailable");
+      const ident: WalletIdentity = { provider: "kastle", id: String(pub) };
+      setIdentity(ident);
+      localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kastle");
+      const map = readProfiles();
+      setProfile(map[ident.id] || null);
+    } finally {
+      setConnecting(false);
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    setIdentity(null);
+    setProfile(null);
+  }, []);
+
+  const ensureUsername = useCallback(() => {
+    if (!identity) return { needsUsername: false as const };
+    const map = readProfiles();
+    const rec = map[identity.id];
+    if (!rec?.username) return { needsUsername: true as const };
+    return { needsUsername: false as const, lastChange: rec.lastUsernameChange };
+  }, [identity]);
+
+  const saveUsername = useCallback(
+    (username: string) => {
+      if (!identity) return;
+      const map = readProfiles();
+      const nowIso = new Date().toISOString();
+      const rec: ProfileRecord = {
+        username,
+        avatarUrl: map[identity.id]?.avatarUrl,
+        lastUsernameChange: nowIso,
+      };
+      map[identity.id] = rec;
+      writeProfiles(map);
+      setProfile(rec);
+    },
+    [identity]
+  );
+
+  const value = useMemo<WalletState>(
+    () => ({ identity, profile, connecting, connectKasware, connectKastle, disconnect, ensureUsername, saveUsername }),
+    [identity, profile, connecting, connectKasware, connectKastle, disconnect, ensureUsername, saveUsername]
+  );
+
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+};
+
+export const useWallet = () => {
+  const ctx = useContext(WalletContext);
+  if (!ctx) throw new Error("useWallet must be used within WalletProvider");
+  return ctx;
+};
