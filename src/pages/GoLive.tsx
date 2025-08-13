@@ -314,7 +314,9 @@ const GoLive: React.FC = () => {
             <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
             <div className="flex items-center justify-between mt-4 gap-2">
               <Button variant="secondary" onClick={generateStreamDetails} disabled={!title}>Regenerate RTMP</Button>
-              <Button variant="hero" onClick={handleStart} disabled={!kaspaAddress}>Start Stream</Button>
+              <Button variant="hero" onClick={handleStart} disabled={!kaspaAddress || !previewReady}>
+                {!previewReady ? 'Preview Required' : 'Start Stream'}
+              </Button>
             </div>
 
             {(ingestUrl || streamKey || playbackUrl) && (

@@ -72,7 +72,16 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
         if (data.fatal) {
-          setError('Stream error - refresh to retry');
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              setError('Network error - check connection');
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              setError('Media error - stream format issue');
+              break;
+            default:
+              setError('Stream error - refresh to retry');
+          }
         }
       });
       
