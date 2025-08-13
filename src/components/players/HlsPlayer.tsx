@@ -16,7 +16,12 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [retryCount, setRetryCount] = React.useState(0);
+  const [streamReadyCalled, setStreamReadyCalled] = React.useState(false);
   const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    setStreamReadyCalled(false); // Reset when src changes
+  }, [src]);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -36,7 +41,10 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       console.log('🎬 Video: canplay event');
       setLoading(false);
       setRetryCount(0);
-      onStreamReady?.();
+      if (!streamReadyCalled && onStreamReady) {
+        setStreamReadyCalled(true);
+        onStreamReady();
+      }
       if (autoPlay) {
         video.play().catch((err) => {
           console.warn('🎬 Autoplay failed:', err);

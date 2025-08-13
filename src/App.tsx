@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
+import Stream from "./pages/Stream";
 import NotFound from "./pages/NotFound";
 import BackgroundV2 from "@/components/background/BackgroundV2";
 import SiteHeader from "@/components/layout/SiteHeader";
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/app" element={<AppDirectory />} />
                 <Route path="/watch/:id" element={<Watch />} />
                 <Route path="/go-live" element={<GoLive />} />
+                <Route path="/stream/:streamId" element={<Stream />} />
                 <Route path="/recordings" element={<Recordings />} />
                 <Route path="/vod/:id" element={<Vod />} />
                 <Route path="/clip/:id" element={<Clip />} />
