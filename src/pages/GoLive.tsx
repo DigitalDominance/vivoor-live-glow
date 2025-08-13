@@ -358,34 +358,18 @@ const GoLive: React.FC = () => {
                 {playbackUrl && (
                   <div className="mt-4">
                     <div className="font-medium mb-2">Live Preview</div>
-                    <HlsPlayer src={playbackUrl} autoPlay />
+                    <HlsPlayer 
+                      src={playbackUrl} 
+                      autoPlay 
+                      onStreamReady={() => setPreviewReady(true)}
+                    />
                     {!previewReady && (
                       <div className="text-xs text-muted-foreground mt-2">
                         {debugInfo || "Waiting for stream signal... Start streaming in OBS with the exact settings above. Preview appears in 10–60 seconds."}
                       </div>
                     )}
                     {previewReady && (
-                      <div className="space-y-3">
-                        <div className="text-xs text-green-600">✓ Stream is live and ready!</div>
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={handleStart} 
-                            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                          >
-                            🔴 Start Stream
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setPreviewReady(false);
-                              setDebugInfo('Reconnecting...');
-                            }}
-                          >
-                            Reconnect
-                          </Button>
-                        </div>
-                      </div>
+                      <div className="text-xs text-green-600 mt-2">✓ Stream is live and ready!</div>
                     )}
                   </div>
                 )}
@@ -396,7 +380,7 @@ const GoLive: React.FC = () => {
       ) : (
         <section className="grid lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2">
-            {playbackUrl ? (<HlsPlayer src={playbackUrl} autoPlay />) : (<PlayerPlaceholder />)}
+            {playbackUrl ? (<HlsPlayer src={playbackUrl} autoPlay isLiveStream />) : (<PlayerPlaceholder />)}
             <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
               <span className="px-2 py-0.5 rounded-full bg-grad-primary text-[hsl(var(--on-gradient))]">LIVE</span>
               <span>Elapsed: {new Date(elapsed*1000).toISOString().substring(11,19)}</span>

@@ -7,12 +7,16 @@ type HlsPlayerProps = {
   autoPlay?: boolean;
   controls?: boolean;
   className?: string;
+  onStreamReady?: () => void;
+  isLiveStream?: boolean;
 };
 
-const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className }) => {
+const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className, onStreamReady, isLiveStream = false }) => {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
+  const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -31,6 +35,8 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     const onCanPlay = () => {
       console.log('🎬 Video: canplay event');
       setLoading(false);
+      setRetryCount(0);
+      onStreamReady?.();
       if (autoPlay) {
         video.play().catch((err) => {
           console.warn('🎬 Autoplay failed:', err);
@@ -41,7 +47,17 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     const onError = (e: any) => {
       console.error('🎬 Video error:', e, video.error);
       setLoading(false);
-      setError('Stream unavailable');
+      
+      if (isLiveStream && retryCount < 10) {
+        setError('Connection Lost, Retrying...');
+        setRetryCount(prev => prev + 1);
+        retryTimeoutRef.current = setTimeout(() => {
+          console.log('🎬 Retrying stream connection...');
+          video.load();
+        }, 5000);
+      } else {
+        setError('Stream unavailable');
+      }
     };
     const onWaiting = () => {
       console.log('🎬 Video: waiting for data');
@@ -74,7 +90,16 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              setError('Network error - check connection');
+              if (isLiveStream && retryCount < 10) {
+                setError('Connection Lost, Retrying...');
+                setRetryCount(prev => prev + 1);
+                retryTimeoutRef.current = setTimeout(() => {
+                  console.log('🎬 Retrying HLS connection...');
+                  hls?.loadSource(src);
+                }, 5000);
+              } else {
+                setError('Please Connect Stream');
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               setError('Media error - stream format issue');
@@ -107,6 +132,9 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       video.removeEventListener('error', onError);
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('playing', onPlaying);
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
       if (hls) {
         hls.destroy();
       }
