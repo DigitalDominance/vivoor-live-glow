@@ -123,6 +123,7 @@ const GoLive: React.FC = () => {
     let cancelled = false;
     const controller = new AbortController();
     let checkCount = 0;
+    let intervalId: NodeJS.Timeout | null = null;
     
     const check = async () => {
       if (cancelled) return;
@@ -171,10 +172,12 @@ const GoLive: React.FC = () => {
                   console.log('Rendition playlist:', renditionText.substring(0, 300));
                   
                   if (renditionText.includes('.ts') || renditionText.includes('#EXTINF')) {
+                    console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+                    cancelled = true; // Stop any further checks
+                    if (intervalId) clearInterval(intervalId);
                     setPreviewReady(true);
                     setDebugInfo('Stream ready! HLS segments found in rendition.');
-                    clearInterval(id); // Stop polling when stream is ready
-                    return; // Exit the check function
+                    return;
                   } else {
                     setDebugInfo(`Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`);
                   }
@@ -187,10 +190,12 @@ const GoLive: React.FC = () => {
             }
           } else if (text.includes('.ts') || text.includes('#EXTINF')) {
             // Direct playlist with segments
+            console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+            cancelled = true; // Stop any further checks
+            if (intervalId) clearInterval(intervalId);
             setPreviewReady(true);
             setDebugInfo('Stream ready! HLS segments found.');
-            clearInterval(id); // Stop polling when stream is ready
-            return; // Exit the check function
+            return;
           } else {
             setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
             
@@ -212,12 +217,12 @@ const GoLive: React.FC = () => {
     
     setPreviewReady(false);
     setDebugInfo('Starting stream checks...');
-    const id = setInterval(check, 3000); // Check every 3 seconds
+    intervalId = setInterval(check, 3000); // Check every 3 seconds
     check(); // Initial check
     
     return () => { 
       cancelled = true; 
-      clearInterval(id); 
+      if (intervalId) clearInterval(intervalId); 
       controller.abort(); 
     };
   }, [playbackUrl]);
