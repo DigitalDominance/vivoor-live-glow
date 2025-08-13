@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import HlsPlayer from "@/components/players/HlsPlayer";
 import ProfileModal from "@/components/modals/ProfileModal";
 import TipModal from "@/components/modals/TipModal";
 import { useWallet } from "@/context/WalletContext";
@@ -130,7 +131,7 @@ const GoLive: React.FC = () => {
     <main className="container mx-auto px-4 py-6">
       <Helmet>
         <title>Go Live — Vivoor</title>
-        <meta name="description" content="Set up your stream and go live on Vivoor. Mock-only studio with preview and health badges." />
+        <meta name="description" content="Set up RTMP ingest and OBS streaming with live preview on Vivoor." />
         <link rel="canonical" href="/go-live" />
       </Helmet>
 
@@ -154,7 +155,7 @@ const GoLive: React.FC = () => {
       ) : (
         <section className="grid lg:grid-cols-3 gap-4 items-start">
           <div className="lg:col-span-2">
-            <PlayerPlaceholder />
+            {playbackUrl ? (<HlsPlayer src={playbackUrl} />) : (<PlayerPlaceholder />)}
             <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
               <span className="px-2 py-0.5 rounded-full bg-grad-primary text-[hsl(var(--on-gradient))]">LIVE</span>
               <span>Elapsed: {new Date(elapsed*1000).toISOString().substring(11,19)}</span>
@@ -173,6 +174,25 @@ const GoLive: React.FC = () => {
                 <Button variant="ghost" size="sm" onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(()=>toast.success('Copied stream key'))}>Copy</Button>
               </div>
               <div className="text-xs text-muted-foreground mt-2">Use these in OBS or Streamlabs. Playback is linked automatically.</div>
+
+              <div className="mt-4 grid gap-2">
+                <div className="font-medium">OBS setup</div>
+                <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                  <li>Settings → Stream → Service: Custom...</li>
+                  <li>Server: paste the Ingest URL</li>
+                  <li>Stream Key: paste the Stream Key</li>
+                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps, Keyframe Interval: 2s</li>
+                  <li>Video → Base/Output: 1920x1080 or 1280x720, FPS: 30</li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2 flex-wrap">
+                <span className="text-muted-foreground font-medium">Preview URL:</span>
+                <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{playbackUrl ?? '—'}</code>
+                {playbackUrl ? (
+                  <a className="text-xs underline" href={playbackUrl} target="_blank" rel="noreferrer">Open</a>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="lg:col-span-1 space-y-4">
