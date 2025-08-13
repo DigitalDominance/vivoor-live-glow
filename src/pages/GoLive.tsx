@@ -21,6 +21,7 @@ const GoLive = () => {
   const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
   
   const [previewReady, setPreviewReady] = React.useState(false);
+  const [playerKey, setPlayerKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
 
   // Get current user profile for display
@@ -87,6 +88,7 @@ const GoLive = () => {
                   cancelled = true; // Stop any further checks
                   if (intervalId) clearInterval(intervalId);
                   setPreviewReady(true);
+                  setPlayerKey(prev => prev + 1); // Refresh player once when ready
                   setDebugInfo('Stream ready! HLS segments found in rendition.');
                   return;
                 } else {
@@ -105,6 +107,7 @@ const GoLive = () => {
           cancelled = true; // Stop any further checks
           if (intervalId) clearInterval(intervalId);
           setPreviewReady(true);
+          setPlayerKey(prev => prev + 1); // Refresh player once when ready
           setDebugInfo('Stream ready! HLS segments found.');
           return;
         } else {
@@ -302,7 +305,7 @@ const GoLive = () => {
                 <div className="mt-4">
                   <div className="font-medium mb-2">Live Preview</div>
                   <HlsPlayer 
-                    key={playbackUrl}
+                    key={playerKey}
                     src={playbackUrl} 
                     autoPlay 
                   />
