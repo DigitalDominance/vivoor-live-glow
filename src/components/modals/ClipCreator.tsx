@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import VideoPlayer from "@/components/players/VideoPlayer";
@@ -109,7 +109,6 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create a clip</DialogTitle>
-          <DialogDescription className="sr-only">Select a time range from the replay and save it as a shareable clip.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <VideoPlayer src={vod.src_url} startAt={range[0]} endAt={range[1]} loopRange className="rounded-lg" />

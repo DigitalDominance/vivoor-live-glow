@@ -1,13 +1,12 @@
 import React from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
-import DbStreamCard, { DbStream, DbProfile } from "@/components/streams/DbStreamCard";
-import VodCard from "@/components/streams/VodCard";
+import { StreamCard } from "@/components/streams/StreamCard";
+import { allCategories, streams, users, Stream, UserProfile } from "@/mock/data";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { LoginModal } from "@/components/modals/LoginModal";
-import { supabase } from "@/integrations/supabase/client";
 
-const categories = ['IRL','Music','Gaming','Talk','Sports','Crypto','Tech'];
+const categories = allCategories;
 
 type SearchMode = 'username' | 'title';
 
@@ -24,41 +23,21 @@ const AppDirectory: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [loginOpen, setLoginOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [activeProfile, setActiveProfile] = React.useState<DbProfile | undefined>();
+  const [activeProfile, setActiveProfile] = React.useState<UserProfile | undefined>();
 
   const onRequireLogin = () => setLoginOpen(true);
 
-  const [dbStreams, setDbStreams] = React.useState<DbStream[]>([]);
-  const [profiles, setProfiles] = React.useState<Record<string, DbProfile>>({});
-  const [vods, setVods] = React.useState<any[]>([]);
-
-  React.useEffect(() => {
-    (async () => {
-      const { data: s } = await supabase.from('streams').select('*').order('started_at', { ascending: false });
-      if (s) setDbStreams(s as any);
-      const uids = Array.from(new Set((s || []).map((x:any)=>x.user_id)));
-      if (uids.length) {
-        const { data: p } = await supabase.from('profiles').select('id,handle,display_name,avatar_url').in('id', uids);
-        const map: Record<string, DbProfile> = {};
-        (p||[]).forEach((r:any)=>{ map[r.id] = r; });
-        setProfiles(map);
-      }
-      const { data: v } = await supabase.from('vods').select('id,title,thumbnail_url,created_at').order('created_at', { ascending: false });
-      if (v) setVods(v);
-    })();
-  }, []);
-
   const filtered = React.useMemo(() => {
-    let list = [...dbStreams];
-    if (searchMode === 'username' && query) list = list.filter(s => (profiles[s.user_id]?.handle || '').toLowerCase().includes(query.toLowerCase()));
+    let list = [...streams];
+    if (searchMode === 'username' && query) list = list.filter(s => s.username.toLowerCase().includes(query.toLowerCase()));
     if (searchMode === 'title' && query) list = list.filter(s => s.title.toLowerCase().includes(query.toLowerCase()));
-    if (activeCats.length) list = list.filter(s => activeCats.includes(s.category || ''));
-    if (showLive !== 'all') list = list.filter(s => (showLive === 'live' ? s.is_live : !s.is_live));
-    if (sort === 'viewers') list.sort((a:any,b:any) => (b.viewers||0) - (a.viewers||0));
-    if (sort === 'newest') list.sort((a:any,b:any) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
-    if (sort === 'trending') list.sort((a:any,b:any) => ((b.viewers||0) + (b.is_live?200:0)) - ((a.viewers||0) + (a.is_live?200:0)));
+    if (activeCats.length) list = list.filter(s => activeCats.includes(s.category));
+    if (showLive !== 'all') list = list.filter(s => (showLive === 'live' ? s.live : !s.live));
+    if (sort === 'viewers') list.sort((a,b) => b.viewers - a.viewers);
+    if (sort === 'newest') list.sort((a,b) => (b.startedAt?1:0) - (a.startedAt?1:0));
+    if (sort === 'trending') list.sort((a,b) => (b.viewers + (b.live?200:0)) - (a.viewers + (a.live?200:0)));
     return list;
-  }, [searchMode, query, activeCats, showLive, sort, dbStreams, profiles]);
+  }, [searchMode, query, activeCats, showLive, sort]);
 
   // Infinite scroll sentinel
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -76,7 +55,7 @@ const AppDirectory: React.FC = () => {
   }, [filtered.length]);
 
   const openProfile = (userId: string) => {
-    const prof = profiles[userId];
+    const prof = users[userId];
     if (prof) { setActiveProfile(prof); setProfileOpen(true); }
   };
 
@@ -132,18 +111,20 @@ const AppDirectory: React.FC = () => {
         </div>
       </section>
 
+      {/* Results */}
       <section className="mt-6">
-        {filtered.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className="text-center text-muted-foreground py-20">
             No results. Try a different category or search.
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.slice(0, visible).map((s) => (
-              <DbStreamCard key={s.id} stream={s as any} profile={profiles[s.user_id]} />
+            {visibleItems.map((s) => (
+              <StreamCard key={s.id} stream={s} isLoggedIn={isLoggedIn} onOpenProfile={(id)=>openProfile(id)} onRequireLogin={onRequireLogin} />
             ))}
           </div>
         )}
+        {/* skeletons for loading more (mock) */}
         {visible < filtered.length && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -154,19 +135,9 @@ const AppDirectory: React.FC = () => {
         <div ref={sentinelRef} className="h-8" />
       </section>
 
-      <section className="mt-10">
-        <div className="mb-3 font-semibold">Replays</div>
-        {vods.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No replays yet.</div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {vods.slice(0, 12).map((v:any) => <VodCard key={v.id} vod={v} />)}
-          </div>
-        )}
-      </section>
       {/* Modals */}
       <LoginModal open={loginOpen} onOpenChange={setLoginOpen} onContinue={() => { setIsLoggedIn(true); setLoginOpen(false); }} />
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={activeProfile as any} isLoggedIn={isLoggedIn} onRequireLogin={() => setLoginOpen(true)} onGoToChannel={() => {}} />
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={activeProfile} isLoggedIn={isLoggedIn} onRequireLogin={() => setLoginOpen(true)} onGoToChannel={() => {}} />
     </main>
   );
 };
