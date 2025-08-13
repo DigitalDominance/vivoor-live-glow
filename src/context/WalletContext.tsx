@@ -18,7 +18,9 @@ export type ProfileRecord = {
   username: string;
   avatarUrl?: string;
   lastUsernameChange?: string; // ISO date
+  lastAvatarChange?: string; // ISO date for pfp edits cooldown
 };
+
 
 function readProfiles(): Record<string, ProfileRecord> {
   try {
@@ -120,14 +122,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [identity]
   );
 
-  const saveAvatarUrl = useCallback(
+const saveAvatarUrl = useCallback(
     (url: string) => {
       if (!identity) return;
       const map = readProfiles();
+      const nowIso = new Date().toISOString();
       const rec: ProfileRecord = {
         username: map[identity.id]?.username || profile?.username || "",
         avatarUrl: url,
         lastUsernameChange: map[identity.id]?.lastUsernameChange,
+        lastAvatarChange: nowIso,
       };
       map[identity.id] = rec;
       writeProfiles(map);
