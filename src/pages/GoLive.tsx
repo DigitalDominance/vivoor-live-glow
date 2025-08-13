@@ -173,6 +173,8 @@ const GoLive: React.FC = () => {
                   if (renditionText.includes('.ts') || renditionText.includes('#EXTINF')) {
                     setPreviewReady(true);
                     setDebugInfo('Stream ready! HLS segments found in rendition.');
+                    clearInterval(id); // Stop polling when stream is ready
+                    return; // Exit the check function
                   } else {
                     setDebugInfo(`Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`);
                   }
@@ -187,6 +189,8 @@ const GoLive: React.FC = () => {
             // Direct playlist with segments
             setPreviewReady(true);
             setDebugInfo('Stream ready! HLS segments found.');
+            clearInterval(id); // Stop polling when stream is ready
+            return; // Exit the check function
           } else {
             setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
             
