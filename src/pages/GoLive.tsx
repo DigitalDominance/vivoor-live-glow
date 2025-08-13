@@ -363,7 +363,27 @@ const GoLive: React.FC = () => {
                       </div>
                     )}
                     {previewReady && (
-                      <div className="text-xs text-green-600 mt-2">✓ Stream is live and ready!</div>
+                      <div className="space-y-3">
+                        <div className="text-xs text-green-600">✓ Stream is live and ready!</div>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleStart} 
+                            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                          >
+                            🔴 Start Stream
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setPreviewReady(false);
+                              setDebugInfo('Reconnecting...');
+                            }}
+                          >
+                            Reconnect
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
