@@ -32,9 +32,11 @@ serve(async (req: Request) => {
         name: name || `vivoor-${Date.now()}`,
         record: true,
         profiles: [
-          { name: "720p0", bitrate: 2000000, fps: 30, width: 1280, height: 720 },
-          { name: "480p0", bitrate: 1000000, fps: 30, width: 854, height: 480 },
-          { name: "360p0", bitrate: 500000, fps: 30, width: 640, height: 360 },
+          { name: "1440p60", bitrate: 10000000, fps: 60, width: 2560, height: 1440 },
+          { name: "1080p60", bitrate: 6000000, fps: 60, width: 1920, height: 1080 },
+          { name: "720p30", bitrate: 2500000, fps: 30, width: 1280, height: 720 },
+          { name: "480p30", bitrate: 1200000, fps: 30, width: 854, height: 480 },
+          { name: "360p30", bitrate: 600000, fps: 30, width: 640, height: 360 },
         ],
       }),
     });

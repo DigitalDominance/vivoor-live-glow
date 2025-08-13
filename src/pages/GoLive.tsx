@@ -188,8 +188,8 @@ const GoLive: React.FC = () => {
                     <li>Settings → Stream → Service: Custom...</li>
                     <li>Server: paste the Ingest URL</li>
                     <li>Stream Key: paste the Stream Key</li>
-                    <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps, Keyframe Interval: 2s</li>
-                    <li>Video → Base/Output: 1920x1080 or 1280x720, FPS: 30</li>
+                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 6000–8000 (1080p60), 9000–12000 (1440p60), Keyframe Interval: 2s</li>
+                  <li>Video → Base/Output: 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
                   </ul>
                 </div>
 
@@ -231,8 +231,8 @@ const GoLive: React.FC = () => {
                   <li>Settings → Stream → Service: Custom...</li>
                   <li>Server: paste the Ingest URL</li>
                   <li>Stream Key: paste the Stream Key</li>
-                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps, Keyframe Interval: 2s</li>
-                  <li>Video → Base/Output: 1920x1080 or 1280x720, FPS: 30</li>
+                  <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps (720p30), 6000–8000 (1080p60), 9000–12000 (1440p60), Keyframe Interval: 2s</li>
+                  <li>Video → Base/Output: 2560x1440, 1920x1080, or 1280x720, FPS: 30 or 60</li>
                 </ul>
               </div>
 
