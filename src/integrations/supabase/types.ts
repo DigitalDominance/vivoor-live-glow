@@ -97,6 +97,7 @@ export type Database = {
           created_at: string
           id: string
           is_live: boolean
+          playback_url: string | null
           started_at: string
           thumbnail_url: string | null
           title: string
@@ -109,6 +110,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_live?: boolean
+          playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
           title: string
@@ -121,6 +123,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_live?: boolean
+          playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
           title?: string
