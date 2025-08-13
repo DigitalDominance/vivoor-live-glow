@@ -146,13 +146,49 @@ const GoLive: React.FC = () => {
           const text = await res.text();
           console.log('HLS playlist content:', text.substring(0, 500));
           
-          // Check if playlist has actual segments
-          if (text.includes('.ts') || text.includes('#EXTINF')) {
+          // Check if this is a master playlist (has EXT-X-STREAM-INF)
+          if (text.includes('#EXT-X-STREAM-INF')) {
+            console.log('Master playlist detected, checking first rendition for segments...');
+            // Extract first rendition URL
+            const lines = text.split('\n');
+            let renditionUrl = null;
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].includes('#EXT-X-STREAM-INF') && lines[i + 1]) {
+                renditionUrl = lines[i + 1].trim();
+                break;
+              }
+            }
+            
+            if (renditionUrl && !renditionUrl.startsWith('http')) {
+              // Construct full URL for rendition
+              const baseUrl = playbackUrl.substring(0, playbackUrl.lastIndexOf('/') + 1);
+              renditionUrl = baseUrl + renditionUrl;
+              
+              try {
+                const renditionRes = await fetch(renditionUrl, { signal: controller.signal });
+                if (renditionRes.ok) {
+                  const renditionText = await renditionRes.text();
+                  console.log('Rendition playlist:', renditionText.substring(0, 300));
+                  
+                  if (renditionText.includes('.ts') || renditionText.includes('#EXTINF')) {
+                    setPreviewReady(true);
+                    setDebugInfo('Stream ready! HLS segments found in rendition.');
+                  } else {
+                    setDebugInfo(`Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`);
+                  }
+                } else {
+                  setDebugInfo(`Stream starting... (rendition not ready, attempt ${checkCount})`);
+                }
+              } catch (renditionError) {
+                setDebugInfo(`Stream starting... (checking rendition, attempt ${checkCount})`);
+              }
+            }
+          } else if (text.includes('.ts') || text.includes('#EXTINF')) {
+            // Direct playlist with segments
             setPreviewReady(true);
             setDebugInfo('Stream ready! HLS segments found.');
           } else {
-            console.log('Full playlist content:', text);
-            setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount}). Check console for playlist content.`);
+            setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
             
             // If we've been waiting too long, show troubleshooting info
             if (checkCount > 15) {
