@@ -4,9 +4,15 @@ import { Button } from "@/components/ui/button";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { users } from "@/mock/data";
+import { useWallet } from "@/context/WalletContext";
+import { getStartDaa, setStartDaa, clearStartDaa } from "@/lib/streamLocal";
+import { fetchAddressFullTxs } from "@/lib/kaspaApi";
+import { useKaspaTipScanner } from "@/hooks/useKaspaTipScanner";
+import { toast } from "sonner";
 
 const GoLive: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const { identity } = useWallet();
+  const kaspaAddress = React.useMemo(() => (identity?.id?.startsWith('kaspa:') ? identity.id : null), [identity?.id]);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const example = users['u1'];
 
@@ -14,12 +20,56 @@ const GoLive: React.FC = () => {
   const [title, setTitle] = React.useState('My awesome stream');
   const [category, setCategory] = React.useState('IRL');
   const [elapsed, setElapsed] = React.useState(0);
+  const [startDaa, setStartDaaState] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (live && kaspaAddress) {
+      const v = getStartDaa(kaspaAddress);
+      setStartDaaState(v);
+    } else {
+      setStartDaaState(null);
+    }
+  }, [live, kaspaAddress]);
 
   React.useEffect(() => {
     if (!live) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [live]);
+
+  const handleStart = React.useCallback(async () => {
+    if (!kaspaAddress) {
+      toast.error("Connect a Kaspa wallet to go live");
+      return;
+    }
+    try {
+      const txs = await fetchAddressFullTxs(kaspaAddress, 50);
+      const maxDaa = txs.reduce((m, tx) => Math.max(m, tx.accepting_block_blue_score || 0), 0);
+      setStartDaa(kaspaAddress, maxDaa);
+      setStartDaaState(maxDaa);
+      setLive(true);
+      toast.success("Stream started. Kaspa tips scanning enabled.");
+    } catch (e:any) {
+      toast.error(e?.message || "Failed to set baseline DAA");
+    }
+  }, [kaspaAddress]);
+
+  const handleEnd = React.useCallback(() => {
+    setLive(false);
+    if (kaspaAddress) clearStartDaa(kaspaAddress);
+    setStartDaaState(null);
+  }, [kaspaAddress]);
+
+  useKaspaTipScanner({
+    address: kaspaAddress,
+    startDaa: startDaa ?? undefined,
+    enabled: live && !!kaspaAddress && typeof startDaa === 'number',
+    onTip: (tip) => {
+      const amountKas = tip.amountSompi / 1e8;
+      toast("New KAS tip", { description: `${amountKas.toFixed(8)} KAS • DAA ${tip.daa}${tip.message ? ' — ' + tip.message : ''}` });
+      console.log("Tip event", tip);
+    },
+  });
 
   return (
     <main className="container mx-auto px-4 py-6">
@@ -43,7 +93,7 @@ const GoLive: React.FC = () => {
             </select>
             <label className="text-sm mt-2">Thumbnail (mock)</label>
             <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
-            <div className="flex justify-end mt-4"><Button variant="hero" onClick={()=>setLive(true)}>Start Stream</Button></div>
+            <div className="flex justify-end mt-4"><Button variant="hero" onClick={handleStart} disabled={!kaspaAddress}>Start Stream</Button></div>
           </div>
         </section>
       ) : (
@@ -54,7 +104,7 @@ const GoLive: React.FC = () => {
               <span className="px-2 py-0.5 rounded-full bg-grad-primary text-[hsl(var(--on-gradient))]">LIVE</span>
               <span>Elapsed: {new Date(elapsed*1000).toISOString().substring(11,19)}</span>
               <span className="ml-auto">Viewers: 0 (mock)</span>
-              <Button variant="destructive" size="sm" onClick={()=>setLive(false)}>End Stream</Button>
+              <Button variant="destructive" size="sm" onClick={handleEnd}>End Stream</Button>
             </div>
             <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm text-muted-foreground">
               Ingest URL: rtmp://live.vivoor/mock • Stream Key: pk_live_••••••••••
@@ -85,7 +135,7 @@ const GoLive: React.FC = () => {
         </section>
       )}
 
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={isLoggedIn} onRequireLogin={()=>{}} onGoToChannel={()=>{}} />
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={example} isLoggedIn={!!identity} onRequireLogin={()=>{}} onGoToChannel={()=>{}} />
     </main>
   );
 };
