@@ -32,6 +32,7 @@ const GoLive: React.FC = () => {
   const [startDaa, setStartDaaState] = React.useState<number | null>(null);
   const [dbStreamId, setDbStreamId] = React.useState<string | null>(null);
   const [previewReady, setPreviewReady] = React.useState(false);
+  const [previewKey, setPreviewKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
 
   // Load current user's profile for display
@@ -59,16 +60,21 @@ const GoLive: React.FC = () => {
       setStartDaaState(null);
     }
   }, [live, kaspaAddress]);
-
+  
   React.useEffect(() => {
     if (!live) return;
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [live]);
 
-  const generateStreamDetails = React.useCallback(async () => {
+  const generateStreamDetails = async () => {
+    if (!kaspaAddress) {
+      toast.error('Please connect wallet first');
+      return;
+    }
+    
+    console.log('Generating stream details...');
     try {
-      console.log('Generating stream details...');
       setDebugInfo('Creating Livepeer stream...');
       
       const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
@@ -100,7 +106,7 @@ const GoLive: React.FC = () => {
       toast.error(e?.message || 'Failed to create stream');
       throw e;
     }
-  }, [title]);
+  };
 
   // Auto-generate RTMP details on first load
   const autoInitRef = React.useRef(false);
@@ -172,12 +178,13 @@ const GoLive: React.FC = () => {
                   console.log('Rendition playlist:', renditionText.substring(0, 300));
                   
                   if (renditionText.includes('.ts') || renditionText.includes('#EXTINF')) {
-                    console.log('🎉 Stream segments found! Stopping polling and showing preview.');
-                    cancelled = true; // Stop any further checks
-                    if (intervalId) clearInterval(intervalId);
-                    setPreviewReady(true);
-                    setDebugInfo('Stream ready! HLS segments found in rendition.');
-                    return;
+                     console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+                     cancelled = true; // Stop any further checks
+                     if (intervalId) clearInterval(intervalId);
+                     setPreviewReady(true);
+                     setPreviewKey(prev => prev + 1); // Force preview refresh
+                     setDebugInfo('Stream ready! HLS segments found in rendition.');
+                     return;
                   } else {
                     setDebugInfo(`Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`);
                   }
@@ -190,12 +197,13 @@ const GoLive: React.FC = () => {
             }
           } else if (text.includes('.ts') || text.includes('#EXTINF')) {
             // Direct playlist with segments
-            console.log('🎉 Stream segments found! Stopping polling and showing preview.');
-            cancelled = true; // Stop any further checks
-            if (intervalId) clearInterval(intervalId);
-            setPreviewReady(true);
-            setDebugInfo('Stream ready! HLS segments found.');
-            return;
+             console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+             cancelled = true; // Stop any further checks
+             if (intervalId) clearInterval(intervalId);
+             setPreviewReady(true);
+             setPreviewKey(prev => prev + 1); // Force preview refresh
+             setDebugInfo('Stream ready! HLS segments found.');
+             return;
           } else {
             setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
             
@@ -313,7 +321,9 @@ const GoLive: React.FC = () => {
             <label className="text-sm mt-2">Thumbnail (mock)</label>
             <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
             <div className="flex items-center justify-between mt-4 gap-2">
-              <Button variant="secondary" onClick={generateStreamDetails} disabled={!title}>Regenerate RTMP</Button>
+              <Button variant="secondary" onClick={generateStreamDetails} disabled={!title || !kaspaAddress}>
+                {!kaspaAddress ? 'Connect Wallet First' : 'Regenerate RTMP'}
+              </Button>
               <Button variant="hero" onClick={handleStart} disabled={!kaspaAddress || !previewReady}>
                 {!previewReady ? 'Preview Required' : 'Start Stream'}
               </Button>
@@ -359,9 +369,13 @@ const GoLive: React.FC = () => {
                   <div className="mt-4">
                     <div className="font-medium mb-2">Live Preview</div>
                     <HlsPlayer 
+                      key={previewKey}
                       src={playbackUrl} 
                       autoPlay 
-                      onStreamReady={() => setPreviewReady(true)}
+                      onStreamReady={() => {
+                        setPreviewReady(true);
+                        setPreviewKey(prev => prev + 1); // Force refresh when ready
+                      }}
                     />
                     {!previewReady && (
                       <div className="text-xs text-muted-foreground mt-2">
