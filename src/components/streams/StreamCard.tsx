@@ -1,10 +1,10 @@
-import { Heart, Play, User } from "lucide-react";
+import { Heart, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { Stream } from "@/mock/data";
 import { motion } from "framer-motion";
 import React from "react";
-
 export type StreamCardProps = {
   stream: Stream;
   isLoggedIn?: boolean;
@@ -48,10 +48,14 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
             <div className="text-sm font-medium truncate">{stream.title}</div>
             <div className="text-xs text-muted-foreground mt-0.5 truncate">{stream.category} • {stream.viewers} viewers</div>
             <button
-              className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none story-link"
+              className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground focus:outline-none story-link"
               onClick={(e) => { e.stopPropagation(); onOpenProfile?.(stream.userId); }}
             >
-              <User className="size-3.5" /> @{stream.username}
+              <Avatar className="size-4">
+                <AvatarImage src={""} alt={`@${stream.username} avatar`} />
+                <AvatarFallback className="text-[10px]">{stream.username[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span>@{stream.username}</span>
             </button>
           </div>
           <Button variant="ghost" size="icon" onClick={handleLike} aria-label={liked ? 'Unlike' : 'Like'}>

@@ -41,6 +41,7 @@ export type WalletState = {
   disconnect: () => void;
   ensureUsername: () => { needsUsername: boolean; lastChange?: string };
   saveUsername: (username: string) => void;
+  saveAvatarUrl: (url: string) => void;
 };
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -119,9 +120,25 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [identity]
   );
 
+  const saveAvatarUrl = useCallback(
+    (url: string) => {
+      if (!identity) return;
+      const map = readProfiles();
+      const rec: ProfileRecord = {
+        username: map[identity.id]?.username || profile?.username || "",
+        avatarUrl: url,
+        lastUsernameChange: map[identity.id]?.lastUsernameChange,
+      };
+      map[identity.id] = rec;
+      writeProfiles(map);
+      setProfile(rec);
+    },
+    [identity, profile?.username]
+  );
+
   const value = useMemo<WalletState>(
-    () => ({ identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername }),
-    [identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername]
+    () => ({ identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl }),
+    [identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
