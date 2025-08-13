@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/context/WalletContext";
 
 const WalletConnectModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
-  const { connectKasware, connectKastle, connecting } = useWallet();
+  const { connectKasware, connecting } = useWallet();
 
   const handle = async (fn: () => Promise<void>) => {
     try {
@@ -23,12 +23,8 @@ const WalletConnectModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) =
           <DialogTitle>Connect a Kaspa wallet</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3">
-          <Button variant="gradientOutline" disabled={connecting} onClick={() => handle(connectKasware)}>
-            {/* Logo could be added here; using text for now */}
-            Kasware Wallet
-          </Button>
-          <Button variant="gradientOutline" disabled={connecting} onClick={() => handle(connectKastle)}>
-            Kastle Wallet
+          <Button variant="gradientOutline" disabled={connecting} onClick={() => handle(connectKasware)} className="h-12">
+            <img src="/lovable-uploads/d505d6b1-b6d9-41cd-9c6d-a953c2587cde.png" alt="Kasware wallet logo" className="h-6 w-auto mx-auto" loading="lazy" />
           </Button>
           <p className="text-xs text-muted-foreground">
             We’ll never custody funds. You’ll approve actions in your wallet.
