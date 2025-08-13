@@ -144,17 +144,23 @@ const GoLive: React.FC = () => {
         
         if (!cancelled && res.ok) {
           const text = await res.text();
-          console.log('HLS playlist content:', text.substring(0, 200));
+          console.log('HLS playlist content:', text.substring(0, 500));
           
           // Check if playlist has actual segments
           if (text.includes('.ts') || text.includes('#EXTINF')) {
             setPreviewReady(true);
             setDebugInfo('Stream ready! HLS segments found.');
           } else {
-            setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
+            console.log('Full playlist content:', text);
+            setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount}). Check console for playlist content.`);
+            
+            // If we've been waiting too long, show troubleshooting info
+            if (checkCount > 15) {
+              setDebugInfo(`⚠️ Stream not connecting after ${checkCount} attempts. Verify OBS is streaming to the exact ingest URL and stream key above. Check OBS status bar for "LIVE" indicator.`);
+            }
           }
         } else {
-          setDebugInfo(`Stream not ready (HTTP ${res.status}, attempt ${checkCount})`);
+          setDebugInfo(`Stream not ready (HTTP ${res.status}, attempt ${checkCount}). ${res.status === 404 ? 'Stream may not exist yet.' : ''}`);
         }
       } catch (error: any) {
         if (!cancelled && error.name !== 'AbortError') {
