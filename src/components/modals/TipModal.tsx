@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import KaspaLogo from "@/components/icons/KaspaLogo";
 import { useToast } from "@/components/ui/use-toast";
@@ -42,6 +42,7 @@ const TipModal: React.FC<{
           <DialogTitle className="flex items-center gap-2">
             <KaspaLogo className="size-5 text-[hsl(var(--brand-cyan))]" /> Tip in KAS
           </DialogTitle>
+          <DialogDescription className="sr-only">Send a Kaspa tip to support the creator.</DialogDescription>
         </DialogHeader>
         {isLoggedIn ? (
           <div className="space-y-3">

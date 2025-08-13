@@ -1,6 +1,7 @@
 import React from "react";
 import { Helmet } from "react-helmet-async";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import HlsPlayer from "@/components/players/HlsPlayer";
 import ChatPanel, { ChatMessage } from "@/components/streams/ChatPanel";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
@@ -74,7 +75,11 @@ const Watch: React.FC = () => {
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
-          <PlayerPlaceholder />
+          {dbStream?.playback_url ? (
+            <HlsPlayer src={dbStream.playback_url} poster={dbStream.thumbnail_url || undefined} />
+          ) : (
+            <PlayerPlaceholder />
+          )}
           <div className="mt-3 flex items-center gap-2">
             <Button variant="glass" size="sm" aria-label="Play/Pause"><Play /></Button>
             <Button variant="glass" size="sm" aria-label="Mute"><Volume2 /></Button>
