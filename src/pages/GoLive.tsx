@@ -63,6 +63,21 @@ const GoLive: React.FC = () => {
     return () => clearInterval(t);
   }, [live]);
 
+  const generateStreamDetails = React.useCallback(async () => {
+    try {
+      const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
+      if (lpErr || !lp) throw new Error(lpErr?.message || 'Failed to create stream');
+      setIngestUrl(lp.ingestUrl || null);
+      setStreamKey(lp.streamKey || null);
+      setPlaybackUrl(lp.playbackUrl || null);
+      toast.success('RTMP details ready');
+      return lp as { ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
+    } catch (e:any) {
+      toast.error(e?.message || 'Failed to create stream');
+      throw e;
+    }
+  }, [title]);
+
   const handleStart = React.useCallback(async () => {
     if (!kaspaAddress) {
       toast.error("Connect a Kaspa wallet to go live");
@@ -81,17 +96,16 @@ const GoLive: React.FC = () => {
         await supabase.from('profiles').upsert({ id: auth.user.id, kaspa_address: kaspaAddress }).select('id');
       }
 
-      // Create Livepeer stream via Edge Function
-      const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
-      if (lpErr || !lp) throw new Error(lpErr?.message || 'Failed to create stream');
-
-      setIngestUrl(lp.ingestUrl || null);
-      setStreamKey(lp.streamKey || null);
-      setPlaybackUrl(lp.playbackUrl || null);
+      // Ensure Livepeer RTMP details exist
+      let lpRes: { playbackUrl?: string | null } | null = null;
+      if (!ingestUrl || !streamKey || !playbackUrl) {
+        lpRes = await generateStreamDetails();
+      }
+      const pbUrl = playbackUrl || lpRes?.playbackUrl || null;
 
       if (auth.user) {
         const ins = await supabase.from('streams')
-          .insert({ user_id: auth.user.id, title, category, is_live: true, playback_url: lp.playbackUrl || null })
+          .insert({ user_id: auth.user.id, title, category, is_live: true, playback_url: pbUrl })
           .select('id')
           .maybeSingle();
         if (!ins.error && ins.data) setDbStreamId(ins.data.id);
@@ -102,7 +116,7 @@ const GoLive: React.FC = () => {
       toast.error(e?.message || "Failed to start stream");
       setLive(false);
     }
-  }, [kaspaAddress, title, category]);
+  }, [kaspaAddress, title, category, ingestUrl, streamKey, playbackUrl, generateStreamDetails]);
 
   const handleEnd = React.useCallback(async () => {
     setLive(false);
@@ -149,7 +163,43 @@ const GoLive: React.FC = () => {
             </select>
             <label className="text-sm mt-2">Thumbnail (mock)</label>
             <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">Upload placeholder</div>
-            <div className="flex justify-end mt-4"><Button variant="hero" onClick={handleStart} disabled={!kaspaAddress}>Start Stream</Button></div>
+            <div className="flex items-center justify-between mt-4 gap-2">
+              <Button variant="secondary" onClick={generateStreamDetails} disabled={!title}>Generate RTMP</Button>
+              <Button variant="hero" onClick={handleStart} disabled={!kaspaAddress}>Start Stream</Button>
+            </div>
+
+            {(ingestUrl || streamKey || playbackUrl) && (
+              <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-muted-foreground font-medium">Ingest URL:</span>
+                  <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{ingestUrl ?? '—'}</code>
+                  <Button variant="ghost" size="sm" onClick={() => ingestUrl && navigator.clipboard.writeText(ingestUrl).then(()=>toast.success('Copied ingest URL'))}>Copy</Button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap mt-2">
+                  <span className="text-muted-foreground font-medium">Stream Key:</span>
+                  <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">{streamKey ? '••••••••••' : '—'}</code>
+                  <Button variant="ghost" size="sm" onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(()=>toast.success('Copied stream key'))}>Copy</Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">Use these in OBS or Streamlabs. Playback appears once you start streaming in OBS.</div>
+
+                <div className="mt-4 grid gap-2">
+                  <div className="font-medium">OBS setup</div>
+                  <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                    <li>Settings → Stream → Service: Custom...</li>
+                    <li>Server: paste the Ingest URL</li>
+                    <li>Stream Key: paste the Stream Key</li>
+                    <li>Output → Encoder: x264 or NVENC, Bitrate: 2500–4500 Kbps, Keyframe Interval: 2s</li>
+                    <li>Video → Base/Output: 1920x1080 or 1280x720, FPS: 30</li>
+                  </ul>
+                </div>
+
+                {playbackUrl && (
+                  <div className="mt-4">
+                    <HlsPlayer src={playbackUrl} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
       ) : (
