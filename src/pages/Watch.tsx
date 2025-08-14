@@ -259,6 +259,15 @@ const Watch: React.FC = () => {
     : undefined;
   const username = profile?.handle || profile?.display_name || 'creator';
   const kaspaAddress = profile?.kaspa_address;
+  
+  // Debug logging for tip address
+  React.useEffect(() => {
+    if (streamData) {
+      console.log('Stream data:', streamData);
+      console.log('Profile data:', profile);
+      console.log('Streamer Kaspa address for tips:', kaspaAddress);
+    }
+  }, [streamData, profile, kaspaAddress]);
 
   // Monitor tips for this stream
   const { tips: allTips } = useTipMonitoring({
