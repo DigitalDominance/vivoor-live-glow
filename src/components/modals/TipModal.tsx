@@ -20,16 +20,28 @@ const TipModal: React.FC<{
       toast({ title: "Streamer not tip-enabled", description: "No Kaspa address found.", variant: "destructive" });
       return;
     }
-    const kas = Math.max(0.00000001, Number(amount) || 0);
+    const kas = Math.max(1, Number(amount) || 1); // Minimum 1 KAS
+    const sompi = kas * 100000000; // Convert KAS to sompi (1e8)
+    
     try {
       setSending(true);
-      const uri = `kaspa:${toAddress}?amount=${kas}`;
-      // Open Kaspa URI; compatible wallets can catch this
-      window.open(uri, "_blank");
-      toast({ title: "Tip initiated", description: `${kas} KAS via your wallet.` });
+      
+      if (!window.kasware?.sendKaspa) {
+        throw new Error("Kasware wallet not available");
+      }
+      
+      // Create payload with unique identifier for tips
+      const payload = `KSTREAM_TIP:${kas}KAS:from_viewer`;
+      
+      const txid = await window.kasware.sendKaspa(toAddress, sompi, {
+        priorityFee: 10000,
+        payload
+      });
+      
+      toast({ title: "Tip sent successfully!", description: `${kas} KAS sent. Txid: ${txid.slice(0, 8)}...` });
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Failed to initiate tip", description: e?.message || "Try again.", variant: "destructive" });
+      toast({ title: "Failed to send tip", description: e?.message || "Try again.", variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -47,13 +59,13 @@ const TipModal: React.FC<{
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Choose an amount. Your wallet will open to confirm.</p>
             <div className="flex gap-2 flex-wrap">
-              {["0.1","1","5"].map(v => (
+              {["1","5","10"].map(v => (
                 <Button key={v} variant="glass" onClick={() => setAmount(v)} aria-label={`Tip ${v} KAS`}>{v} KAS</Button>
               ))}
             </div>
             <div>
-              <label className="text-sm">Custom amount</label>
-              <input value={amount} onChange={(e)=>setAmount(e.target.value)} type="number" min="0" step="0.00000001" className="mt-1 w-full rounded-md bg-background px-3 py-2 text-sm border border-border" />
+              <label className="text-sm">Custom amount (minimum 1 KAS)</label>
+              <input value={amount} onChange={(e)=>setAmount(e.target.value)} type="number" min="1" step="1" className="mt-1 w-full rounded-md bg-background px-3 py-2 text-sm border border-border" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="hero" disabled={sending} onClick={sendTip}>Send Tip</Button>

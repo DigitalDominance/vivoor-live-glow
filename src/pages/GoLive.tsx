@@ -185,16 +185,37 @@ const GoLive = () => {
       return;
     }
     
-    // Store stream data in localStorage for persistence
-    const streamId = Date.now().toString();
-    localStorage.setItem('currentIngestUrl', ingestUrl || '');
-    localStorage.setItem('currentStreamKey', streamKey || '');
-    localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
-    localStorage.setItem('streamStartTime', new Date().toISOString());
-    localStorage.setItem('currentStreamId', streamId);
-    
-    toast.success('Stream started!');
-    navigate(`/stream/${streamId}`);
+    try {
+      // Save stream to Supabase
+      const { data: streamData, error } = await supabase
+        .from('streams')
+        .insert({
+          user_id: kaspaAddress,
+          title: title || 'Live Stream',
+          category: category,
+          playback_url: playbackUrl,
+          is_live: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const streamId = streamData.id;
+      
+      // Store stream data in localStorage for persistence
+      localStorage.setItem('currentIngestUrl', ingestUrl || '');
+      localStorage.setItem('currentStreamKey', streamKey || '');
+      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
+      localStorage.setItem('streamStartTime', new Date().toISOString());
+      localStorage.setItem('currentStreamId', streamId);
+      
+      toast.success('Stream started!');
+      navigate(`/stream/${streamId}`);
+    } catch (error) {
+      console.error('Failed to save stream:', error);
+      toast.error('Failed to start stream');
+    }
   };
 
   return (
