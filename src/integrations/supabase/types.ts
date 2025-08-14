@@ -193,6 +193,18 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_profiles: {
+        Args: { _query?: string; _limit?: number; _offset?: number }
+        Returns: {
+          id: string
+          display_name: string
+          handle: string
+          avatar_url: string
+          bio: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
