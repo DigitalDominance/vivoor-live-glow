@@ -240,6 +240,22 @@ const Watch: React.FC = () => {
     toast.success('Liked!');
   };
 
+  // Compute profile data (before any early returns to avoid undefined variables)
+  const profile = streamData?.profiles as any;
+  const computedProfile = profile
+    ? {
+        id: profile.id || streamData?.user_id,
+        handle: profile.handle || 'creator',
+        displayName: profile.display_name || profile.handle || 'Creator',
+        bio: profile.bio || '',
+        followers: 0,
+        following: 0,
+        tags: [] as string[],
+      }
+    : undefined;
+  const username = profile?.handle || profile?.display_name || 'creator';
+  const kaspaAddress = profile?.kaspa_address;
+
   // Loading state
   if (isLoading) {
     return (
@@ -261,34 +277,18 @@ const Watch: React.FC = () => {
     );
   }
 
-  // Compute profile data
-  const profile = streamData?.profiles as any;
-  const computedProfile = profile
-    ? {
-        id: profile.id || streamData.user_id,
-        handle: profile.handle || 'creator',
-        displayName: profile.display_name || profile.handle || 'Creator',
-        bio: profile.bio || '',
-        followers: 0,
-        following: 0,
-        tags: [] as string[],
-      }
-    : undefined;
-  const username = profile?.handle || profile?.display_name || 'creator';
-  const kaspaAddress = profile?.kaspa_address;
-
   return (
     <main className="container mx-auto px-4 py-6">
       <Helmet>
-        <title>{streamData.title} — Watch on Vivoor</title>
-        <meta name="description" content={`Watch ${streamData.title} by @${username} on Vivoor.`} />
-        <link rel="canonical" href={`/watch/${streamData.id}`} />
+        <title>{streamData?.title || 'Stream'} — Watch on Vivoor</title>
+        <meta name="description" content={`Watch ${streamData?.title || 'stream'} by @${username} on Vivoor.`} />
+        <link rel="canonical" href={`/watch/${streamData?.id || id}`} />
       </Helmet>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           {/* Video Player */}
-          {streamData.playback_url ? (
+          {streamData?.playback_url ? (
             <HlsPlayer 
               src={streamData.playback_url} 
               autoPlay 
@@ -327,13 +327,13 @@ const Watch: React.FC = () => {
 
           <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
             <div className="text-sm text-muted-foreground">
-              {streamData.category} • {streamData.viewers ?? 0} viewers
-              {streamData.is_live && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
+              {streamData?.category} • {streamData?.viewers ?? 0} viewers
+              {streamData?.is_live && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
                 <span className="size-2 bg-red-500 rounded-full animate-pulse"></span>
                 LIVE
               </span>}
             </div>
-            <div className="font-medium">{streamData.title}</div>
+            <div className="font-medium">{streamData?.title}</div>
             <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>
               @{username}
             </button>
@@ -365,7 +365,7 @@ const Watch: React.FC = () => {
       {/* Modals */}
       <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={kaspaAddress} />
       {computedProfile && (
-        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${streamData.id}`)} />
+        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${streamData?.id || id}`)} />
       )}
     </main>
   );
