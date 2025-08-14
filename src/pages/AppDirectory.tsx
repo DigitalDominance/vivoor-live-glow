@@ -5,6 +5,9 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { allCategories, streams, users, Stream, UserProfile } from "@/mock/data";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { LoginModal } from "@/components/modals/LoginModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useWallet } from "@/context/WalletContext";
+import { useQuery } from "@tanstack/react-query";
 
 const categories = allCategories;
 
@@ -20,15 +23,66 @@ const AppDirectory: React.FC = () => {
   const [sort, setSort] = React.useState<SortMode>('viewers');
   const [visible, setVisible] = React.useState(9);
 
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-  const [loginOpen, setLoginOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [activeProfile, setActiveProfile] = React.useState<UserProfile | undefined>();
+  
+  const { identity } = useWallet();
+  const isLoggedIn = !!identity;
 
-  const onRequireLogin = () => setLoginOpen(true);
+  const onRequireLogin = () => {
+    if (!isLoggedIn) {
+      // Handle login requirement
+    }
+  };
+
+  // Fetch live streams from database
+  const { data: liveStreams = [] } = useQuery({
+    queryKey: ['live-streams'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select(`
+          id,
+          title,
+          category,
+          is_live,
+          viewers,
+          user_id,
+          thumbnail_url,
+          created_at,
+          profiles!streams_user_id_fkey (
+            handle,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('is_live', true)
+        .order('viewers', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching streams:', error);
+        return [];
+      }
+      
+      return data.map(stream => ({
+        id: stream.id,
+        title: stream.title,
+        category: stream.category,
+        live: stream.is_live,
+        viewers: stream.viewers,
+        username: (stream.profiles as any)?.handle || 'unknown',
+        userId: stream.user_id,
+        thumbnail: stream.thumbnail_url,
+        startedAt: stream.created_at
+      }));
+    },
+    refetchInterval: 10000 // Refresh every 10 seconds
+  });
 
   const filtered = React.useMemo(() => {
-    let list = [...streams];
+    // Combine live streams from database with mock data for demonstration
+    let list = [...liveStreams, ...streams.filter(s => !liveStreams.find(ls => ls.id === s.id))];
+    
     if (searchMode === 'username' && query) list = list.filter(s => s.username.toLowerCase().includes(query.toLowerCase()));
     if (searchMode === 'title' && query) list = list.filter(s => s.title.toLowerCase().includes(query.toLowerCase()));
     if (activeCats.length) list = list.filter(s => activeCats.includes(s.category));
@@ -37,7 +91,7 @@ const AppDirectory: React.FC = () => {
     if (sort === 'newest') list.sort((a,b) => (b.startedAt?1:0) - (a.startedAt?1:0));
     if (sort === 'trending') list.sort((a,b) => (b.viewers + (b.live?200:0)) - (a.viewers + (a.live?200:0)));
     return list;
-  }, [searchMode, query, activeCats, showLive, sort]);
+  }, [liveStreams, searchMode, query, activeCats, showLive, sort]);
 
   // Infinite scroll sentinel
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -136,8 +190,7 @@ const AppDirectory: React.FC = () => {
       </section>
 
       {/* Modals */}
-      <LoginModal open={loginOpen} onOpenChange={setLoginOpen} onContinue={() => { setIsLoggedIn(true); setLoginOpen(false); }} />
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={activeProfile} isLoggedIn={isLoggedIn} onRequireLogin={() => setLoginOpen(true)} onGoToChannel={() => {}} />
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={activeProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => {}} />
     </main>
   );
 };

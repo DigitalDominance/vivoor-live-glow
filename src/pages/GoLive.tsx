@@ -2,11 +2,14 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import { useWallet } from "@/context/WalletContext";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet-async";
+import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
+import { Upload, Image as ImageIcon } from "lucide-react";
 
 const GoLive = () => {
   const navigate = useNavigate();
@@ -15,6 +18,8 @@ const GoLive = () => {
   
   const [title, setTitle] = React.useState('');
   const [category, setCategory] = React.useState('IRL');
+  const [thumbnailFile, setThumbnailFile] = React.useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = React.useState<string | null>(null);
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -199,6 +204,29 @@ const GoLive = () => {
           }, { onConflict: 'id' });
       }
 
+      // Handle thumbnail upload
+      let thumbnailUrl = null;
+      if (thumbnailFile) {
+        const fileExt = thumbnailFile.name.split('.').pop();
+        const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('vods')
+          .upload(fileName, thumbnailFile);
+        
+        if (uploadError) {
+          console.error('Error uploading thumbnail:', uploadError);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('vods')
+            .getPublicUrl(fileName);
+          thumbnailUrl = publicUrl;
+        }
+      } else if (category) {
+        // Use category-based thumbnail if no custom thumbnail uploaded
+        thumbnailUrl = getCategoryThumbnail(category);
+      }
+
       // Save stream to Supabase
       const { data: streamData, error } = await supabase
         .from('streams')
@@ -231,6 +259,18 @@ const GoLive = () => {
     }
   };
 
+  const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setThumbnailFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setThumbnailPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <main className="container mx-auto px-4 py-6">
       <Helmet>
@@ -260,9 +300,53 @@ const GoLive = () => {
               <option key={c} value={c}>{c}</option>
             )}
           </select>
-          <label className="text-sm mt-2">Thumbnail (mock)</label>
-          <div className="h-24 rounded-md border border-dashed border-border/70 bg-muted/30 flex items-center justify-center text-xs text-muted-foreground">
-            Upload placeholder
+          <div>
+            <Label htmlFor="thumbnail">Stream Thumbnail</Label>
+            <div className="mt-2">
+              <input
+                type="file"
+                id="thumbnail"
+                accept="image/*"
+                onChange={handleThumbnailUpload}
+                className="hidden"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <label
+                  htmlFor="thumbnail"
+                  className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  {thumbnailPreview ? (
+                    <img
+                      src={thumbnailPreview}
+                      alt="Thumbnail preview"
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Upload className="size-6" />
+                      <span className="text-sm">Upload custom</span>
+                    </div>
+                  )}
+                </label>
+                <div className="flex flex-col items-center justify-center h-32 border border-border rounded-lg">
+                  {category ? (
+                    <img
+                      src={getCategoryThumbnail(category)}
+                      alt={`${category} category thumbnail`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <ImageIcon className="size-6" />
+                      <span className="text-sm">Category default</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Upload a custom thumbnail or use the default for your category
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-between mt-4 gap-2">
             <Button 

@@ -8,70 +8,116 @@ import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStreamById, streams, users } from "@/mock/data";
 import { supabase } from "@/integrations/supabase/client";
-import { Volume2, Play, Settings } from "lucide-react";
+import { Volume2, Play, Settings, Heart } from "lucide-react";
 import { StreamCard } from "@/components/streams/StreamCard";
+import { useWallet } from "@/context/WalletContext";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const Watch: React.FC = () => {
   const { id } = useParams();
   const stream = getStreamById(id || "");
   const navigate = useNavigate();
 
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-  const [loginOpen, setLoginOpen] = React.useState(false);
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [isFollowing, setIsFollowing] = React.useState(false);
+  const [isLiked, setIsLiked] = React.useState(false);
 
-  const onRequireLogin = () => setLoginOpen(true);
+  const { identity } = useWallet();
+  const isLoggedIn = !!identity;
 
-  const [dbStream, setDbStream] = React.useState<any | null>(null);
-  const [dbProfile, setDbProfile] = React.useState<any | null>(null);
-  const [kaspaAddress, setKaspaAddress] = React.useState<string | null>(null);
+  const onRequireLogin = () => {
+    if (!isLoggedIn) {
+      toast.error('Please connect your wallet to continue');
+    }
+  };
 
-  React.useEffect(() => {
-    (async () => {
-      if (!id) return;
-      const { data: s } = await supabase.from('streams').select('*').eq('id', id).maybeSingle();
-      if (s) {
-        setDbStream(s);
-        const { data: p } = await supabase.rpc('get_public_profile', { _id: s.user_id });
-        const pub = Array.isArray(p) ? (p[0] || null) : (p || null);
-        setDbProfile(pub);
-
-        const { data: auth } = await supabase.auth.getUser();
-        setIsLoggedIn(!!auth.user);
-        if (auth.user) {
-          const { data: addr } = await supabase.rpc('get_kaspa_address', { _id: s.user_id });
-          setKaspaAddress(addr || null);
-        } else {
-          setKaspaAddress(null);
-        }
+  // Fetch stream data from database
+  const { data: streamData, isLoading } = useQuery({
+    queryKey: ['stream', id],
+    queryFn: async () => {
+      if (!id) return null;
+      
+      const { data: stream, error } = await supabase
+        .from('streams')
+        .select(`
+          *,
+          profiles!streams_user_id_fkey (
+            handle,
+            display_name,
+            avatar_url,
+            bio,
+            kaspa_address
+          )
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching stream:', error);
+        return null;
       }
-    })();
-  }, [id]);
+      
+      return stream;
+    },
+    enabled: !!id,
+    refetchInterval: 5000 // Refresh every 5 seconds to update viewer count
+  });
 
   const messages: ChatMessage[] = Array.from({ length: 12 }).map((_, i) => ({
     id: String(i), user: i % 3 === 0 ? 'mod' : 'viewer', text: 'Sample message ' + (i + 1), time: 'now'
   }));
 
-  if (!stream && !dbStream) return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="text-center">Stream not found.</div>
-    </main>
-  );
+  const handleFollow = () => {
+    if (!isLoggedIn) {
+      onRequireLogin();
+      return;
+    }
+    setIsFollowing(!isFollowing);
+    toast.success(isFollowing ? 'Unfollowed' : 'Followed!');
+  };
 
-  const active = dbStream || stream;
-  const computedProfile = dbProfile
+  const handleLike = () => {
+    if (!isLoggedIn) {
+      onRequireLogin();
+      return;
+    }
+    setIsLiked(!isLiked);
+    toast.success('Liked!');
+  };
+
+  if (isLoading) {
+    return (
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center">Loading stream...</div>
+      </main>
+    );
+  }
+
+  const active = streamData || stream;
+  if (!active) {
+    return (
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center">Stream not found.</div>
+      </main>
+    );
+  }
+
+  const profile = streamData?.profiles as any;
+  const computedProfile = profile
     ? {
-        id: dbProfile.id,
-        handle: dbProfile.handle || (dbProfile.display_name || 'creator').toLowerCase().replace(/\s+/g, '_'),
-        displayName: dbProfile.display_name || dbProfile.handle || 'Creator',
-        bio: dbProfile.bio || '',
+        id: profile.id || (active as any).user_id || (active as any).userId,
+        handle: profile.handle || 'creator',
+        displayName: profile.display_name || profile.handle || 'Creator',
+        bio: profile.bio || '',
         followers: 0,
         following: 0,
         tags: [] as string[],
       }
     : (stream ? users[stream.userId] : undefined);
-  const username = dbProfile?.handle || (active?.username || 'creator');
+  const username = profile?.handle || ((active as any)?.username || 'creator');
+  const kaspaAddress = profile?.kaspa_address;
 
   const suggested = streams.filter((s) => s.id !== (active?.id || '')).slice(0, 6);
 
@@ -91,15 +137,40 @@ const Watch: React.FC = () => {
             <Button variant="glass" size="sm" aria-label="Mute"><Volume2 /></Button>
             <Button variant="glass" size="sm" aria-label="Settings"><Settings /></Button>
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="gradientOutline" size="sm" onClick={() => setTipOpen(true)}>Tip in KAS</Button>
-              <Button variant="hero" size="sm" onClick={() => { if (!isLoggedIn) return onRequireLogin(); /* follow toggle */ }}>Follow</Button>
+              <Button 
+                variant="glass" 
+                size="sm" 
+                onClick={handleLike}
+                className={isLiked ? "text-red-500" : ""}
+                aria-label="Like stream"
+              >
+                <Heart className={isLiked ? "fill-current" : ""} />
+              </Button>
+              <Button variant="gradientOutline" size="sm" onClick={() => setTipOpen(true)}>
+                Tip in KAS
+              </Button>
+              <Button 
+                variant={isFollowing ? "secondary" : "hero"} 
+                size="sm" 
+                onClick={handleFollow}
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </Button>
             </div>
           </div>
 
           <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
-            <div className="text-sm text-muted-foreground">{active.category} • {active.viewers ?? 0} viewers</div>
+            <div className="text-sm text-muted-foreground">
+              {active.category} • {active.viewers ?? 0} viewers
+              {((active as any).is_live !== false) && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
+                <span className="size-2 bg-red-500 rounded-full animate-pulse"></span>
+                LIVE
+              </span>}
+            </div>
             <div className="font-medium">{active.title}</div>
-            <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>@{username}</button>
+            <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>
+              @{username}
+            </button>
           </div>
 
           <div className="mt-6">

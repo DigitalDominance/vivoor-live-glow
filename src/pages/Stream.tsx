@@ -17,6 +17,8 @@ const Stream = () => {
   const { identity } = useWallet();
   const kaspaAddress = identity?.id; // The kaspa address from wallet identity
   const [elapsed, setElapsed] = React.useState(0);
+  const [isAuthorized, setIsAuthorized] = React.useState(false);
+  const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
 
@@ -101,6 +103,71 @@ const Stream = () => {
   const isOwnStream = streamData?.user_id === identity?.id;
 
   React.useEffect(() => {
+    const checkAuth = async () => {
+      if (!streamId) return;
+      
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: stream } = await supabase.from('streams').select('user_id').eq('id', streamId).single();
+      
+      // Only allow access if user owns this stream
+      if (!auth.user || !stream || stream.user_id !== identity?.id) {
+        navigate('/app');
+        return;
+      }
+      
+      setIsAuthorized(true);
+    };
+    
+    checkAuth();
+  }, [streamId, navigate, identity?.id]);
+
+  React.useEffect(() => {
+    let disconnectTimer: number;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
+    
+    const handleDisconnect = () => {
+      setConnectionStatus('disconnected');
+      disconnectTimer = window.setTimeout(async () => {
+        // Auto-end stream after 2 minutes of disconnection
+        if (streamId) {
+          await supabase.from('streams').update({ is_live: false }).eq('id', streamId);
+          toast.error('Stream ended due to extended disconnection');
+          navigate('/app');
+        }
+      }, 120000); // 2 minutes
+    };
+
+    const handleReconnect = () => {
+      clearTimeout(disconnectTimer);
+      reconnectAttempts++;
+      
+      if (reconnectAttempts <= maxReconnectAttempts) {
+        setConnectionStatus('reconnecting');
+        setTimeout(() => {
+          setConnectionStatus('connected');
+          reconnectAttempts = 0;
+        }, 2000);
+      } else {
+        handleDisconnect();
+      }
+    };
+
+    // Simulate connection status changes for demo
+    const interval = setInterval(() => {
+      const random = Math.random();
+      if (random < 0.05) { // 5% chance of disconnect
+        handleReconnect();
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(disconnectTimer);
+    };
+  }, [streamId, navigate]);
+
+  React.useEffect(() => {
     const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
     if (!playbackUrl) {
       toast.error('Stream not found');
@@ -146,6 +213,22 @@ const Stream = () => {
   };
 
   const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
+  
+  if (!streamId || !isAuthorized) {
+    return (
+      <main className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="text-lg font-medium">
+            {!streamId ? 'Stream not found' : 'Checking authorization...'}
+          </div>
+          {!streamId && (
+            <Button onClick={() => navigate('/app')} className="mt-4">Back to App</Button>
+          )}
+        </div>
+      </main>
+    );
+  }
+  
   if (!playbackUrl) {
     return null; // Will redirect in useEffect
   }
