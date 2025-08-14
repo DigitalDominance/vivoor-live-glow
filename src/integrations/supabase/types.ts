@@ -134,12 +134,15 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          ended_at: string | null
           id: string
           is_live: boolean
           playback_url: string | null
           started_at: string
           thumbnail_url: string | null
           title: string
+          treasury_block_time: number | null
+          treasury_txid: string | null
           updated_at: string
           user_id: string
           viewers: number
@@ -147,12 +150,15 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          ended_at?: string | null
           id?: string
           is_live?: boolean
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
           title: string
+          treasury_block_time?: number | null
+          treasury_txid?: string | null
           updated_at?: string
           user_id: string
           viewers?: number
@@ -160,12 +166,15 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          ended_at?: string | null
           id?: string
           is_live?: boolean
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
           title?: string
+          treasury_block_time?: number | null
+          treasury_txid?: string | null
           updated_at?: string
           user_id?: string
           viewers?: number
@@ -176,6 +185,56 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tips: {
+        Row: {
+          amount_sompi: number
+          block_time: number
+          created_at: string
+          decrypted_message: string | null
+          encrypted_message: string | null
+          id: string
+          processed_at: string | null
+          recipient_address: string
+          sender_address: string
+          stream_id: string
+          txid: string
+        }
+        Insert: {
+          amount_sompi: number
+          block_time: number
+          created_at?: string
+          decrypted_message?: string | null
+          encrypted_message?: string | null
+          id?: string
+          processed_at?: string | null
+          recipient_address: string
+          sender_address: string
+          stream_id: string
+          txid: string
+        }
+        Update: {
+          amount_sompi?: number
+          block_time?: number
+          created_at?: string
+          decrypted_message?: string | null
+          encrypted_message?: string | null
+          id?: string
+          processed_at?: string | null
+          recipient_address?: string
+          sender_address?: string
+          stream_id?: string
+          txid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
             referencedColumns: ["id"]
           },
         ]
@@ -224,6 +283,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      end_user_active_streams: {
+        Args: { user_id_param: string }
+        Returns: number
+      }
       get_kaspa_address: {
         Args: { _id: string } | { _id: string }
         Returns: string
@@ -250,6 +313,22 @@ export type Database = {
           bio: string
           created_at: string
           updated_at: string
+        }[]
+      }
+      user_has_active_stream: {
+        Args: { user_id_param: string }
+        Returns: boolean
+      }
+      validate_treasury_payment: {
+        Args: {
+          txid_param: string
+          user_address_param: string
+          treasury_address_param?: string
+        }
+        Returns: {
+          is_valid: boolean
+          block_time: number
+          amount_sompi: number
         }[]
       }
     }
