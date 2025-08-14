@@ -103,6 +103,54 @@ const Watch: React.FC = () => {
     refetchInterval: 2000 // Refresh chat every 2 seconds
   });
 
+  // Fetch suggested streams from database
+  const { data: suggestedStreams = [] } = useQuery({
+    queryKey: ['suggested-streams', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('streams')
+        .select(`
+          id,
+          title,
+          category,
+          is_live,
+          viewers,
+          user_id,
+          thumbnail_url,
+          created_at,
+          profiles (
+            handle,
+            display_name,
+            avatar_url
+          )
+        `)
+        .neq('id', id)
+        .eq('is_live', true)
+        .limit(6)
+        .order('viewers', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching suggested streams:', error);
+        return [];
+      }
+      
+      return data.map(stream => ({
+        id: stream.id,
+        title: stream.title,
+        category: stream.category,
+        live: stream.is_live,
+        viewers: stream.viewers,
+        username: (stream.profiles as any)?.handle || 'unknown',
+        userId: stream.user_id,
+        thumbnail: stream.thumbnail_url,
+        startedAt: stream.created_at
+      }));
+    },
+    enabled: !!id
+  });
+
   // Set up realtime subscription for chat messages
   React.useEffect(() => {
     if (!id) return;
@@ -192,6 +240,7 @@ const Watch: React.FC = () => {
     toast.success('Liked!');
   };
 
+  // Loading state
   if (isLoading) {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -200,8 +249,8 @@ const Watch: React.FC = () => {
     );
   }
 
-  const active = streamData;
-  if (!active) {
+  // Stream not found state
+  if (!streamData) {
     return (
       <main className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -212,10 +261,11 @@ const Watch: React.FC = () => {
     );
   }
 
+  // Compute profile data
   const profile = streamData?.profiles as any;
   const computedProfile = profile
     ? {
-        id: profile.id || active.user_id,
+        id: profile.id || streamData.user_id,
         handle: profile.handle || 'creator',
         displayName: profile.display_name || profile.handle || 'Creator',
         bio: profile.bio || '',
@@ -224,74 +274,26 @@ const Watch: React.FC = () => {
         tags: [] as string[],
       }
     : undefined;
-  const username = profile?.handle || 'creator';
+  const username = profile?.handle || profile?.display_name || 'creator';
   const kaspaAddress = profile?.kaspa_address;
-
-  // Fetch suggested streams from database
-  const { data: suggestedStreams = [] } = useQuery({
-    queryKey: ['suggested-streams', active.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('streams')
-        .select(`
-          id,
-          title,
-          category,
-          is_live,
-          viewers,
-          user_id,
-          thumbnail_url,
-          created_at,
-          profiles (
-            handle,
-            display_name,
-            avatar_url
-          )
-        `)
-        .neq('id', active.id)
-        .eq('is_live', true)
-        .limit(6)
-        .order('viewers', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching suggested streams:', error);
-        return [];
-      }
-      
-      return data.map(stream => ({
-        id: stream.id,
-        title: stream.title,
-        category: stream.category,
-        live: stream.is_live,
-        viewers: stream.viewers,
-        username: (stream.profiles as any)?.handle || 'unknown',
-        userId: stream.user_id,
-        thumbnail: stream.thumbnail_url,
-        startedAt: stream.created_at
-      }));
-    },
-    enabled: !!active.id
-  });
-
-  const suggested = suggestedStreams;
 
   return (
     <main className="container mx-auto px-4 py-6">
       <Helmet>
-        <title>{active.title} — Watch on Vivoor</title>
-        <meta name="description" content={`Watch ${active.title} by @${username} on Vivoor.`} />
-        <link rel="canonical" href={`/watch/${active.id}`} />
+        <title>{streamData.title} — Watch on Vivoor</title>
+        <meta name="description" content={`Watch ${streamData.title} by @${username} on Vivoor.`} />
+        <link rel="canonical" href={`/watch/${streamData.id}`} />
       </Helmet>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           {/* Video Player */}
-          {active.playback_url ? (
+          {streamData.playback_url ? (
             <HlsPlayer 
-              src={active.playback_url} 
+              src={streamData.playback_url} 
               autoPlay 
               controls 
-              isLiveStream={active.is_live}
+              isLiveStream={streamData.is_live}
             />
           ) : (
             <PlayerPlaceholder />
@@ -325,13 +327,13 @@ const Watch: React.FC = () => {
 
           <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
             <div className="text-sm text-muted-foreground">
-              {active.category} • {active.viewers ?? 0} viewers
-              {((active as any).is_live !== false) && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
+              {streamData.category} • {streamData.viewers ?? 0} viewers
+              {streamData.is_live && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
                 <span className="size-2 bg-red-500 rounded-full animate-pulse"></span>
                 LIVE
               </span>}
             </div>
-            <div className="font-medium">{active.title}</div>
+            <div className="font-medium">{streamData.title}</div>
             <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>
               @{username}
             </button>
@@ -340,7 +342,7 @@ const Watch: React.FC = () => {
           <div className="mt-6">
             <div className="mb-2 font-medium">Suggested streams</div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {suggested.map((s) => (
+              {suggestedStreams.map((s) => (
                 <StreamCard key={s.id} stream={s} isLoggedIn={isLoggedIn} onOpenProfile={()=>setProfileOpen(true)} onRequireLogin={onRequireLogin} />
               ))}
             </div>
@@ -363,7 +365,7 @@ const Watch: React.FC = () => {
       {/* Modals */}
       <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={kaspaAddress} />
       {computedProfile && (
-        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${active.id}`)} />
+        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${streamData.id}`)} />
       )}
     </main>
   );
