@@ -242,16 +242,18 @@ const Stream = () => {
               <Avatar className="size-10">
                 <AvatarImage src={streamerProfile?.avatar_url || undefined} alt="Streamer avatar" />
                 <AvatarFallback>
+                  {/* Use display_name, handle, or username as fallback */}
                   {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
+                {/* Display the name */}
                 <div>{streamerProfile?.display_name || streamerProfile?.handle || 'Streamer'}</div>
                 <button 
                   className="text-xs text-muted-foreground hover:text-foreground story-link" 
                   onClick={() => setProfileOpen(true)}
                 >
-                  @{streamerProfile?.handle || (streamerProfile?.display_name ? streamerProfile.display_name.toLowerCase().replace(/\s+/g, '_') : 'streamer')}
+                  @{streamerProfile?.handle || 'streamer'}
                 </button>
               </div>
             </div>

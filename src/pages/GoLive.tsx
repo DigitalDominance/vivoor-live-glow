@@ -10,7 +10,7 @@ import { Helmet } from "react-helmet-async";
 
 const GoLive = () => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, profile: walletProfile } = useWallet();
   const kaspaAddress = identity?.id; // The kaspa address from wallet identity
   
   const [title, setTitle] = React.useState('');
@@ -186,16 +186,15 @@ const GoLive = () => {
     }
     
     try {
-      // Ensure profile exists for this Kaspa address
-      if (profile) {
+      // Ensure profile exists for this Kaspa address using wallet context profile
+      if (walletProfile) {
         await supabase
           .from('profiles')
           .upsert({
             id: kaspaAddress,
-            display_name: profile.display_name,
-            handle: profile.handle,
-            avatar_url: profile.avatar_url,
-            bio: profile.bio,
+            display_name: walletProfile.username, // Map username to display_name
+            handle: walletProfile.username,       // Use username as handle
+            avatar_url: walletProfile.avatarUrl,  // Map avatarUrl to avatar_url
             kaspa_address: kaspaAddress
           }, { onConflict: 'id' });
       }
