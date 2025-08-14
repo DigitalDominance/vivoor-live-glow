@@ -5,6 +5,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
+import { startStreamCleanupTimer } from "@/lib/streamCleanup";
 import { useQuery } from "@tanstack/react-query";
 
 const categories = ['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'];
@@ -26,6 +27,12 @@ const AppDirectory: React.FC = () => {
   
   const { identity } = useWallet();
   const isLoggedIn = !!identity;
+
+  // Start stream cleanup timer on app load
+  React.useEffect(() => {
+    const cleanupTimer = startStreamCleanupTimer();
+    return () => clearInterval(cleanupTimer);
+  }, []);
 
   const onRequireLogin = () => {
     if (!isLoggedIn) {

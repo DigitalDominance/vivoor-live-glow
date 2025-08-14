@@ -8,7 +8,9 @@ import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
+import TipDisplay from "@/components/TipDisplay";
 import { useWallet } from "@/context/WalletContext";
+import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { toast } from "sonner";
 
 const Stream = () => {
@@ -21,6 +23,8 @@ const Stream = () => {
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [newTips, setNewTips] = React.useState<any[]>([]);
+  const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
 
   // Get current user profile
   const { data: profile } = useQuery({
@@ -101,6 +105,24 @@ const Stream = () => {
   };
 
   const isOwnStream = streamData?.user_id === identity?.id;
+
+  // Monitor tips for this stream (only if it's own stream)
+  const { tips: allTips, totalAmountReceived } = useTipMonitoring({
+    streamId: streamData?.id,
+    kaspaAddress: identity?.id,
+    streamStartBlockTime: streamData?.treasury_block_time,
+    onNewTip: (tip) => {
+      if (!shownTipIds.has(tip.id)) {
+        setNewTips(prev => [...prev, tip]);
+        toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
+      }
+    }
+  });
+
+  const handleTipShown = (tipId: string) => {
+    setShownTipIds(prev => new Set([...prev, tipId]));
+    setNewTips(prev => prev.filter(tip => tip.id !== tipId));
+  };
 
   React.useEffect(() => {
     const checkAuth = async () => {
@@ -271,6 +293,11 @@ const Stream = () => {
             <span className="px-2 py-0.5 rounded-full bg-red-500 text-white">LIVE</span>
             <span>Elapsed: {formatTime(elapsed)}</span>
             <span className="ml-auto">Viewers: {'viewers' in displayStreamData ? displayStreamData.viewers : 0}</span>
+            {isOwnStream && totalAmountReceived > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-green-500 text-white">
+                Tips: {totalAmountReceived} KAS
+              </span>
+            )}
             {isOwnStream && (
               <Button variant="destructive" size="sm" onClick={handleEndStream}>
                 End Stream
@@ -415,8 +442,12 @@ const Stream = () => {
         onOpenChange={setTipOpen} 
         isLoggedIn={!!identity} 
         onRequireLogin={() => {}} 
-        toAddress={streamerKaspaAddress} 
+        toAddress={streamerKaspaAddress}
+        senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
+      
+      {/* Tip notifications overlay */}
+      <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
     </main>
   );
 };

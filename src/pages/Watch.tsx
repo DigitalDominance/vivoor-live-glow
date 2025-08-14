@@ -5,12 +5,14 @@ import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import ChatPanel, { ChatMessage } from "@/components/streams/ChatPanel";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
+import TipDisplay from "@/components/TipDisplay";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Volume2, Play, Settings, Heart } from "lucide-react";
 import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
+import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -24,6 +26,8 @@ const Watch: React.FC = () => {
   const [isLiked, setIsLiked] = React.useState(false);
   const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = React.useState('');
+  const [newTips, setNewTips] = React.useState<any[]>([]);
+  const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
 
   const { identity } = useWallet();
   const isLoggedIn = !!identity;
@@ -256,6 +260,23 @@ const Watch: React.FC = () => {
   const username = profile?.handle || profile?.display_name || 'creator';
   const kaspaAddress = profile?.kaspa_address;
 
+  // Monitor tips for this stream
+  const { tips: allTips } = useTipMonitoring({
+    streamId: streamData?.id,
+    kaspaAddress: streamData?.profiles?.kaspa_address,
+    streamStartBlockTime: streamData?.treasury_block_time,
+    onNewTip: (tip) => {
+      if (!shownTipIds.has(tip.id)) {
+        setNewTips(prev => [...prev, tip]);
+      }
+    }
+  });
+
+  const handleTipShown = (tipId: string) => {
+    setShownTipIds(prev => new Set([...prev, tipId]));
+    setNewTips(prev => prev.filter(tip => tip.id !== tipId));
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -363,10 +384,20 @@ const Watch: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <TipModal open={tipOpen} onOpenChange={setTipOpen} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} toAddress={kaspaAddress} />
+      <TipModal 
+        open={tipOpen} 
+        onOpenChange={setTipOpen} 
+        isLoggedIn={isLoggedIn} 
+        onRequireLogin={onRequireLogin} 
+        toAddress={kaspaAddress}
+        senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
+      />
       {computedProfile && (
         <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${streamData?.id || id}`)} />
       )}
+      
+      {/* Tip notifications overlay */}
+      <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
     </main>
   );
 };

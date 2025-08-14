@@ -180,6 +180,27 @@ const GoLive = () => {
     }
   };
 
+  const sendTreasuryFee = async (): Promise<string | null> => {
+    if (!window.kasware?.sendKaspa) {
+      throw new Error("Kasware wallet not available");
+    }
+    
+    const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
+    const feeAmountSompi = 20000000; // 0.2 KAS in sompi
+    
+    try {
+      const txid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
+        priorityFee: 10000,
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+      });
+      
+      return txid;
+    } catch (error) {
+      console.error('Treasury fee payment failed:', error);
+      throw error;
+    }
+  };
+
   const handleStart = async () => {
     if (!kaspaAddress) {
       toast.error('Connect wallet first');
@@ -192,6 +213,31 @@ const GoLive = () => {
     
     try {
       console.log('Starting stream creation process...');
+      
+      // First, end any existing active streams for this user
+      try {
+        const { data: existingStreams } = await supabase
+          .from('streams')
+          .select('id')
+          .eq('user_id', kaspaAddress)
+          .eq('is_live', true);
+        
+        if (existingStreams && existingStreams.length > 0) {
+          console.log(`Ending ${existingStreams.length} existing active streams`);
+          await supabase.rpc('end_user_active_streams', { user_id_param: kaspaAddress });
+          toast.success('Ended previous active streams');
+        }
+      } catch (error) {
+        console.error('Failed to end existing streams:', error);
+      }
+      
+      // Send treasury fee
+      toast.info('Processing treasury fee (0.2 KAS)...');
+      const treasuryTxid = await sendTreasuryFee();
+      console.log('Treasury fee paid:', treasuryTxid);
+      
+      // Wait a moment for transaction to be confirmed
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Ensure profile exists for this Kaspa address using wallet context profile
       if (walletProfile) {
@@ -233,7 +279,7 @@ const GoLive = () => {
         console.log('Using category thumbnail:', thumbnailUrl);
       }
 
-      // Save stream to Supabase
+      // Save stream to Supabase with treasury transaction info
       console.log('Creating stream in database...');
       const { data: streamData, error } = await supabase
         .from('streams')
@@ -243,6 +289,8 @@ const GoLive = () => {
           category: category,
           playback_url: playbackUrl,
           thumbnail_url: thumbnailUrl,
+          treasury_txid: treasuryTxid,
+          treasury_block_time: Date.now(), // Approximate block time
           is_live: true
         })
         .select()
