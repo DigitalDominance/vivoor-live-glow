@@ -97,7 +97,10 @@ const Watch: React.FC = () => {
   if (!active) {
     return (
       <main className="container mx-auto px-4 py-8">
-        <div className="text-center">Stream not found.</div>
+        <div className="text-center">
+          <div className="text-lg font-medium">Stream not found or ended</div>
+          <Button onClick={() => navigate('/app')} className="mt-4">Back to App</Button>
+        </div>
       </main>
     );
   }

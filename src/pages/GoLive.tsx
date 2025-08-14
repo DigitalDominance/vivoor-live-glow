@@ -191,8 +191,11 @@ const GoLive = () => {
     }
     
     try {
+      console.log('Starting stream creation process...');
+      
       // Ensure profile exists for this Kaspa address using wallet context profile
       if (walletProfile) {
+        console.log('Upserting profile:', walletProfile);
         await supabase
           .from('profiles')
           .upsert({
@@ -207,6 +210,7 @@ const GoLive = () => {
       // Handle thumbnail upload
       let thumbnailUrl = null;
       if (thumbnailFile) {
+        console.log('Uploading custom thumbnail...');
         const fileExt = thumbnailFile.name.split('.').pop();
         const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
         
@@ -221,13 +225,16 @@ const GoLive = () => {
             .from('vods')
             .getPublicUrl(fileName);
           thumbnailUrl = publicUrl;
+          console.log('Thumbnail uploaded successfully:', thumbnailUrl);
         }
       } else if (category) {
         // Use category-based thumbnail if no custom thumbnail uploaded
         thumbnailUrl = getCategoryThumbnail(category);
+        console.log('Using category thumbnail:', thumbnailUrl);
       }
 
       // Save stream to Supabase
+      console.log('Creating stream in database...');
       const { data: streamData, error } = await supabase
         .from('streams')
         .insert({
@@ -241,9 +248,13 @@ const GoLive = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to create stream in database:', error);
+        throw error;
+      }
 
       const streamId = streamData.id;
+      console.log('Stream created successfully with ID:', streamId);
       
       // Store stream data in localStorage for persistence
       localStorage.setItem('currentIngestUrl', ingestUrl || '');
@@ -253,6 +264,7 @@ const GoLive = () => {
       localStorage.setItem('currentStreamId', streamId);
       
       toast.success('Stream started!');
+      console.log('Navigating to stream page:', `/stream/${streamId}`);
       navigate(`/stream/${streamId}`);
     } catch (error) {
       console.error('Failed to save stream:', error);

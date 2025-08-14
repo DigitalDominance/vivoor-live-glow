@@ -106,11 +106,22 @@ const Stream = () => {
     const checkAuth = async () => {
       if (!streamId) return;
       
-      const { data: auth } = await supabase.auth.getUser();
-      const { data: stream } = await supabase.from('streams').select('user_id').eq('id', streamId).single();
+      // Check if user owns this stream by checking the streams table
+      const { data: stream } = await supabase
+        .from('streams')
+        .select('user_id')
+        .eq('id', streamId)
+        .single();
       
-      // Only allow access if user owns this stream
-      if (!auth.user || !stream || stream.user_id !== identity?.id) {
+      // Only allow access if user owns this stream OR if stream doesn't exist check localStorage
+      if (!stream) {
+        // If no stream in DB, check if it's in localStorage (just created)
+        const localStreamId = localStorage.getItem('currentStreamId');
+        if (localStreamId !== streamId) {
+          navigate('/app');
+          return;
+        }
+      } else if (stream.user_id !== identity?.id) {
         navigate('/app');
         return;
       }

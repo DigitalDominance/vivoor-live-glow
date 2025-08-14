@@ -33,17 +33,35 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
     setLiked((v) => !v);
   };
 
+  const handleClick = () => {
+    // Navigate to watch page for all streams - let the page handle authorization
+    navigate(`/watch/${stream.id}`);
+  };
+
   return (
     <motion.article
       className="group glass rounded-xl overflow-hidden border border-border hover:shadow-lg transition-colors"
       whileHover={{ translateY: -2 }}
-      onClick={() => navigate(`/watch/${stream.id}`)}
+      onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && navigate(`/watch/${stream.id}`)}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
     >
       <div className="relative aspect-video bg-muted/40">
-        <div className="absolute inset-0 bg-[length:200%_100%] animate-shimmer bg-gradient-to-r from-foreground/10 via-transparent to-foreground/10" />
+        {stream.thumbnail ? (
+          <img
+            src={stream.thumbnail}
+            alt={stream.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to category thumbnail if custom thumbnail fails
+              const target = e.target as HTMLImageElement;
+              target.src = `/src/assets/category-${stream.category.toLowerCase()}.jpg`;
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[length:200%_100%] animate-shimmer bg-gradient-to-r from-foreground/10 via-transparent to-foreground/10" />
+        )}
         <Button variant="glass" size="icon" className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <Play />
         </Button>

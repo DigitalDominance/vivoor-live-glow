@@ -64,16 +64,16 @@ const AppDirectory: React.FC = () => {
       return data.map(stream => ({
         id: stream.id,
         title: stream.title,
-        category: stream.category,
+        category: stream.category || 'IRL',
         live: stream.is_live,
         viewers: stream.viewers,
-        username: (stream.profiles as any)?.handle || 'unknown',
+        username: (stream.profiles as any)?.handle || (stream.profiles as any)?.display_name || 'unknown',
         userId: stream.user_id,
-        thumbnail: stream.thumbnail_url,
+        thumbnail: stream.thumbnail_url || `/src/assets/category-${(stream.category || 'irl').toLowerCase()}.jpg`,
         startedAt: stream.created_at
       }));
     },
-    refetchInterval: 10000 // Refresh every 10 seconds
+    refetchInterval: 5000 // Refresh every 5 seconds for live updates
   });
 
   const filtered = React.useMemo(() => {
