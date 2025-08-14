@@ -51,8 +51,23 @@ const Stream = () => {
     queryKey: ['streamer-profile', streamData?.user_id],
     queryFn: async () => {
       if (!streamData?.user_id) return null;
-      const { data } = await supabase.rpc('get_public_profile', { _id: streamData.user_id });
-      return data?.[0] || null;
+      console.log('Fetching profile for user_id:', streamData.user_id);
+      
+      // Try direct query first
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', streamData.user_id)
+        .maybeSingle();
+      
+      console.log('Profile query result:', { data, error });
+      
+      if (error) {
+        console.error('Profile fetch error:', error);
+        return null;
+      }
+      
+      return data;
     },
     enabled: !!streamData?.user_id
   });

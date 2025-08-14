@@ -186,6 +186,20 @@ const GoLive = () => {
     }
     
     try {
+      // Ensure profile exists for this Kaspa address
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: kaspaAddress,
+            display_name: profile.display_name,
+            handle: profile.handle,
+            avatar_url: profile.avatar_url,
+            bio: profile.bio,
+            kaspa_address: kaspaAddress
+          }, { onConflict: 'id' });
+      }
+
       // Save stream to Supabase
       const { data: streamData, error } = await supabase
         .from('streams')
