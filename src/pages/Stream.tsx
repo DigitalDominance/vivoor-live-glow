@@ -123,46 +123,47 @@ const Stream = () => {
 
   React.useEffect(() => {
     let disconnectTimer: number;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 3;
+    let disconnectStartTime: number | null = null;
     
-    const handleDisconnect = () => {
-      setConnectionStatus('disconnected');
-      disconnectTimer = window.setTimeout(async () => {
+    const handleStreamEnd = async () => {
+      if (streamId) {
+        await supabase.from('streams').update({ is_live: false }).eq('id', streamId);
+        toast.error('Stream ended due to extended disconnection');
+        navigate('/app');
+      }
+    };
+
+    const handlePlayerError = () => {
+      if (!disconnectStartTime) {
+        disconnectStartTime = Date.now();
+        setConnectionStatus('disconnected');
+        
         // Auto-end stream after 2 minutes of disconnection
-        if (streamId) {
-          await supabase.from('streams').update({ is_live: false }).eq('id', streamId);
-          toast.error('Stream ended due to extended disconnection');
-          navigate('/app');
-        }
-      }, 120000); // 2 minutes
-    };
-
-    const handleReconnect = () => {
-      clearTimeout(disconnectTimer);
-      reconnectAttempts++;
-      
-      if (reconnectAttempts <= maxReconnectAttempts) {
-        setConnectionStatus('reconnecting');
-        setTimeout(() => {
-          setConnectionStatus('connected');
-          reconnectAttempts = 0;
-        }, 2000);
-      } else {
-        handleDisconnect();
+        disconnectTimer = window.setTimeout(handleStreamEnd, 120000);
       }
     };
 
-    // Simulate connection status changes for demo
-    const interval = setInterval(() => {
-      const random = Math.random();
-      if (random < 0.05) { // 5% chance of disconnect
-        handleReconnect();
+    const handlePlayerRecover = () => {
+      if (disconnectStartTime) {
+        clearTimeout(disconnectTimer);
+        disconnectStartTime = null;
+        setConnectionStatus('connected');
       }
-    }, 5000);
+    };
+
+    // Listen for HLS errors on the window to catch player disconnects
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'hls-error') {
+        handlePlayerError();
+      } else if (event.data?.type === 'hls-recover') {
+        handlePlayerRecover();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
 
     return () => {
-      clearInterval(interval);
+      window.removeEventListener('message', handleMessage);
       clearTimeout(disconnectTimer);
     };
   }, [streamId, navigate]);

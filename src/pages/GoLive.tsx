@@ -235,6 +235,7 @@ const GoLive = () => {
           title: title || 'Live Stream',
           category: category,
           playback_url: playbackUrl,
+          thumbnail_url: thumbnailUrl,
           is_live: true
         })
         .select()

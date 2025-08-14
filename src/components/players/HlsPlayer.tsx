@@ -90,27 +90,42 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         enableWorker: true, 
         lowLatencyMode: true,
         maxBufferLength: 30,
-        maxMaxBufferLength: 60
+        maxMaxBufferLength: 60,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 5,
+        liveDurationInfinity: true,
+        highBufferWatchdogPeriod: 2
       });
       
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
+        
+        // Handle buffer stalled errors specifically
+        if (data.details === 'bufferStalledError') {
+          console.log('🎬 Buffer stalled, trying to recover...');
+          if (hls && !data.fatal) {
+            hls.recoverMediaError();
+            return;
+          }
+        }
+        
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              if (isLiveStream && retryCount < 10) {
+              if (isLiveStream && retryCount < 5) {
                 setError('Connection Lost, Retrying...');
                 setRetryCount(prev => prev + 1);
                 retryTimeoutRef.current = setTimeout(() => {
                   console.log('🎬 Retrying HLS connection...');
                   hls?.loadSource(src);
-                }, 5000);
+                }, 3000);
               } else {
-                setError('Please Connect Stream');
+                setError('Stream Ended or Unavailable');
               }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              setError('Media error - stream format issue');
+              console.log('🎬 Trying to recover from media error...');
+              hls?.recoverMediaError();
               break;
             default:
               setError('Stream error - refresh to retry');
