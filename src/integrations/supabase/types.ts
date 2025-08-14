@@ -287,10 +287,6 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: number
       }
-      get_current_user_kaspa_address: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
       get_kaspa_address: {
         Args: { _id: string } | { _id: string }
         Returns: string
@@ -319,16 +315,8 @@ export type Database = {
           updated_at: string
         }[]
       }
-      is_stream_live: {
-        Args: { stream_id_param: string }
-        Returns: boolean
-      }
       user_has_active_stream: {
         Args: { user_id_param: string }
-        Returns: boolean
-      }
-      user_owns_stream: {
-        Args: { stream_id_param: string }
         Returns: boolean
       }
       validate_treasury_payment: {
