@@ -178,11 +178,11 @@ export type Database = {
     }
     Functions: {
       get_kaspa_address: {
-        Args: { _id: string }
+        Args: { _id: string } | { _id: string }
         Returns: string
       }
       get_public_profile: {
-        Args: { _id: string }
+        Args: { _id: string } | { _id: string }
         Returns: {
           id: string
           display_name: string
