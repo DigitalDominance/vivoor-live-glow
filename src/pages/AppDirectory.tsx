@@ -48,7 +48,7 @@ const AppDirectory: React.FC = () => {
           user_id,
           thumbnail_url,
           created_at,
-          profiles!streams_user_id_fkey (
+          profiles (
             handle,
             display_name,
             avatar_url

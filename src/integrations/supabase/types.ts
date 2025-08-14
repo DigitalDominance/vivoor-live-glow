@@ -131,7 +131,15 @@ export type Database = {
           user_id?: string
           viewers?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vods: {
         Row: {

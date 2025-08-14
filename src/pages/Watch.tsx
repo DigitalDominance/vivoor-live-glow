@@ -41,7 +41,7 @@ const Watch: React.FC = () => {
         .from('streams')
         .select(`
           *,
-          profiles!streams_user_id_fkey (
+          profiles (
             handle,
             display_name,
             avatar_url,
@@ -135,13 +135,14 @@ const Watch: React.FC = () => {
           user_id,
           thumbnail_url,
           created_at,
-          profiles!streams_user_id_fkey (
+          profiles (
             handle,
             display_name,
             avatar_url
           )
         `)
         .neq('id', active.id)
+        .eq('is_live', true)
         .limit(6)
         .order('viewers', { ascending: false });
       

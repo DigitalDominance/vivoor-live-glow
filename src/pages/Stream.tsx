@@ -138,7 +138,16 @@ const Stream = () => {
     
     const handleStreamEnd = async () => {
       if (streamId) {
+        console.log('Auto-ending stream due to prolonged disconnection');
         await supabase.from('streams').update({ is_live: false }).eq('id', streamId);
+        
+        // Clear local storage
+        localStorage.removeItem('currentIngestUrl');
+        localStorage.removeItem('currentStreamKey');
+        localStorage.removeItem('currentPlaybackUrl');
+        localStorage.removeItem('streamStartTime');
+        localStorage.removeItem('currentStreamId');
+        
         toast.error('Stream ended due to extended disconnection');
         navigate('/app');
       }
@@ -197,6 +206,8 @@ const Stream = () => {
 
   const handleEndStream = async () => {
     try {
+      console.log('Manually ending stream');
+      
       // Update stream in Supabase
       if (streamData?.id) {
         await supabase
@@ -213,7 +224,7 @@ const Stream = () => {
       localStorage.removeItem('currentStreamId');
       
       toast.success('Stream ended');
-      navigate('/go-live');
+      navigate('/app');
     } catch (error) {
       console.error('Failed to end stream:', error);
       toast.error('Failed to end stream');
