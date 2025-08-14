@@ -1,5 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet-async";
+import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import ChatPanel, { ChatMessage } from "@/components/streams/ChatPanel";
 import TipModal from "@/components/modals/TipModal";
@@ -21,6 +22,8 @@ const Watch: React.FC = () => {
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [isFollowing, setIsFollowing] = React.useState(false);
   const [isLiked, setIsLiked] = React.useState(false);
+  const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = React.useState('');
 
   const { identity } = useWallet();
   const isLoggedIn = !!identity;
@@ -63,9 +66,113 @@ const Watch: React.FC = () => {
     refetchInterval: 5000 // Refresh every 5 seconds to update viewer count
   });
 
-  const messages: ChatMessage[] = Array.from({ length: 12 }).map((_, i) => ({
-    id: String(i), user: i % 3 === 0 ? 'mod' : 'viewer', text: 'Sample message ' + (i + 1), time: 'now'
-  }));
+  // Fetch chat messages for this stream
+  const { data: chatData = [] } = useQuery({
+    queryKey: ['chat-messages', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          id,
+          message,
+          created_at,
+          profiles (
+            handle,
+            display_name
+          )
+        `)
+        .eq('stream_id', id)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      
+      if (error) {
+        console.error('Error fetching chat messages:', error);
+        return [];
+      }
+      
+      return data.map(msg => ({
+        id: msg.id,
+        user: (msg.profiles as any)?.handle || (msg.profiles as any)?.display_name || 'Anonymous',
+        text: msg.message,
+        time: new Date(msg.created_at).toLocaleTimeString()
+      }));
+    },
+    enabled: !!id,
+    refetchInterval: 2000 // Refresh chat every 2 seconds
+  });
+
+  // Set up realtime subscription for chat messages
+  React.useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel('chat-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `stream_id=eq.${id}`
+        },
+        async (payload) => {
+          console.log('New chat message:', payload);
+          
+          // Fetch the profile for the new message
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('handle, display_name')
+            .eq('id', payload.new.user_id)
+            .single();
+          
+          const newMsg: ChatMessage = {
+            id: payload.new.id,
+            user: profile?.handle || profile?.display_name || 'Anonymous',
+            text: payload.new.message,
+            time: new Date(payload.new.created_at).toLocaleTimeString()
+          };
+          
+          setChatMessages(prev => [...prev, newMsg]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  // Update chat messages when data changes
+  React.useEffect(() => {
+    setChatMessages(chatData);
+  }, [chatData]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !isLoggedIn || !id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          stream_id: id,
+          user_id: identity?.id,
+          message: newMessage.trim()
+        });
+      
+      if (error) {
+        console.error('Error sending message:', error);
+        toast.error('Failed to send message');
+        return;
+      }
+      
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
+  };
 
   const handleFollow = () => {
     if (!isLoggedIn) {
@@ -178,7 +285,17 @@ const Watch: React.FC = () => {
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
-          <PlayerPlaceholder />
+          {/* Video Player */}
+          {active.playback_url ? (
+            <HlsPlayer 
+              src={active.playback_url} 
+              autoPlay 
+              controls 
+              isLiveStream={active.is_live}
+            />
+          ) : (
+            <PlayerPlaceholder />
+          )}
           <div className="mt-3 flex items-center gap-2">
             <Button variant="glass" size="sm" aria-label="Play/Pause"><Play /></Button>
             <Button variant="glass" size="sm" aria-label="Mute"><Volume2 /></Button>
@@ -232,7 +349,14 @@ const Watch: React.FC = () => {
 
         {/* Chat */}
         <div className="lg:col-span-1 h-full">
-          <ChatPanel messages={messages} canPost={isLoggedIn} onRequireLogin={onRequireLogin} />
+          <ChatPanel 
+            messages={chatMessages} 
+            canPost={isLoggedIn} 
+            onRequireLogin={onRequireLogin}
+            newMessage={newMessage}
+            onMessageChange={setNewMessage}
+            onSendMessage={handleSendMessage}
+          />
         </div>
       </div>
 
