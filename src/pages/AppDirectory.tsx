@@ -2,14 +2,12 @@ import React from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { StreamCard } from "@/components/streams/StreamCard";
-import { allCategories, streams, users, Stream, UserProfile } from "@/mock/data";
 import ProfileModal from "@/components/modals/ProfileModal";
-import { LoginModal } from "@/components/modals/LoginModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { useQuery } from "@tanstack/react-query";
 
-const categories = allCategories;
+const categories = ['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'];
 
 type SearchMode = 'username' | 'title';
 
@@ -24,7 +22,7 @@ const AppDirectory: React.FC = () => {
   const [visible, setVisible] = React.useState(9);
 
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [activeProfile, setActiveProfile] = React.useState<UserProfile | undefined>();
+  const [activeProfile, setActiveProfile] = React.useState<any>();
   
   const { identity } = useWallet();
   const isLoggedIn = !!identity;
@@ -35,9 +33,9 @@ const AppDirectory: React.FC = () => {
     }
   };
 
-  // Fetch live streams from database
-  const { data: liveStreams = [] } = useQuery({
-    queryKey: ['live-streams'],
+  // Fetch all streams from database (both live and replays)
+  const { data: allStreams = [] } = useQuery({
+    queryKey: ['all-streams'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('streams')
@@ -56,8 +54,7 @@ const AppDirectory: React.FC = () => {
             avatar_url
           )
         `)
-        .eq('is_live', true)
-        .order('viewers', { ascending: false });
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching streams:', error);
@@ -80,8 +77,8 @@ const AppDirectory: React.FC = () => {
   });
 
   const filtered = React.useMemo(() => {
-    // Combine live streams from database with mock data for demonstration
-    let list = [...liveStreams, ...streams.filter(s => !liveStreams.find(ls => ls.id === s.id))];
+    // Use only real database streams
+    let list = [...allStreams];
     
     if (searchMode === 'username' && query) list = list.filter(s => s.username.toLowerCase().includes(query.toLowerCase()));
     if (searchMode === 'title' && query) list = list.filter(s => s.title.toLowerCase().includes(query.toLowerCase()));
@@ -91,7 +88,7 @@ const AppDirectory: React.FC = () => {
     if (sort === 'newest') list.sort((a,b) => (b.startedAt?1:0) - (a.startedAt?1:0));
     if (sort === 'trending') list.sort((a,b) => (b.viewers + (b.live?200:0)) - (a.viewers + (a.live?200:0)));
     return list;
-  }, [liveStreams, searchMode, query, activeCats, showLive, sort]);
+  }, [allStreams, searchMode, query, activeCats, showLive, sort]);
 
   // Infinite scroll sentinel
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -108,9 +105,25 @@ const AppDirectory: React.FC = () => {
     return () => io.disconnect();
   }, [filtered.length]);
 
-  const openProfile = (userId: string) => {
-    const prof = users[userId];
-    if (prof) { setActiveProfile(prof); setProfileOpen(true); }
+  const openProfile = async (userId: string) => {
+    try {
+      const { data } = await supabase.rpc('get_public_profile', { _id: userId });
+      const profile = Array.isArray(data) ? data[0] : data;
+      if (profile) {
+        setActiveProfile({
+          id: profile.id,
+          handle: profile.handle || 'user',
+          displayName: profile.display_name || profile.handle || 'User',
+          bio: profile.bio || '',
+          followers: 0,
+          following: 0,
+          tags: []
+        });
+        setProfileOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
   };
 
   const visibleItems = filtered.slice(0, visible);

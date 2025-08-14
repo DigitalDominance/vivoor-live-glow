@@ -2,11 +2,22 @@ import { Heart, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { Stream } from "@/mock/data";
 import { motion } from "framer-motion";
 import React from "react";
+
 export type StreamCardProps = {
-  stream: Stream;
+  stream: {
+    id: string;
+    title: string;
+    category: string;
+    live: boolean;
+    viewers: number;
+    username: string;
+    userId: string;
+    thumbnail?: string;
+    startedAt?: string;
+    duration?: string;
+  };
   isLoggedIn?: boolean;
   onOpenProfile?: (userId: string) => void;
   onRequireLogin?: () => void;

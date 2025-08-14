@@ -6,7 +6,6 @@ import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
-import { getStreamById, streams, users } from "@/mock/data";
 import { supabase } from "@/integrations/supabase/client";
 import { Volume2, Play, Settings, Heart } from "lucide-react";
 import { StreamCard } from "@/components/streams/StreamCard";
@@ -16,7 +15,6 @@ import { toast } from "sonner";
 
 const Watch: React.FC = () => {
   const { id } = useParams();
-  const stream = getStreamById(id || "");
   const navigate = useNavigate();
 
   const [tipOpen, setTipOpen] = React.useState(false);
@@ -95,7 +93,7 @@ const Watch: React.FC = () => {
     );
   }
 
-  const active = streamData || stream;
+  const active = streamData;
   if (!active) {
     return (
       <main className="container mx-auto px-4 py-8">
@@ -107,7 +105,7 @@ const Watch: React.FC = () => {
   const profile = streamData?.profiles as any;
   const computedProfile = profile
     ? {
-        id: profile.id || (active as any).user_id || (active as any).userId,
+        id: profile.id || active.user_id,
         handle: profile.handle || 'creator',
         displayName: profile.display_name || profile.handle || 'Creator',
         bio: profile.bio || '',
@@ -115,11 +113,56 @@ const Watch: React.FC = () => {
         following: 0,
         tags: [] as string[],
       }
-    : (stream ? users[stream.userId] : undefined);
-  const username = profile?.handle || ((active as any)?.username || 'creator');
+    : undefined;
+  const username = profile?.handle || 'creator';
   const kaspaAddress = profile?.kaspa_address;
 
-  const suggested = streams.filter((s) => s.id !== (active?.id || '')).slice(0, 6);
+  // Fetch suggested streams from database
+  const { data: suggestedStreams = [] } = useQuery({
+    queryKey: ['suggested-streams', active.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select(`
+          id,
+          title,
+          category,
+          is_live,
+          viewers,
+          user_id,
+          thumbnail_url,
+          created_at,
+          profiles!streams_user_id_fkey (
+            handle,
+            display_name,
+            avatar_url
+          )
+        `)
+        .neq('id', active.id)
+        .limit(6)
+        .order('viewers', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching suggested streams:', error);
+        return [];
+      }
+      
+      return data.map(stream => ({
+        id: stream.id,
+        title: stream.title,
+        category: stream.category,
+        live: stream.is_live,
+        viewers: stream.viewers,
+        username: (stream.profiles as any)?.handle || 'unknown',
+        userId: stream.user_id,
+        thumbnail: stream.thumbnail_url,
+        startedAt: stream.created_at
+      }));
+    },
+    enabled: !!active.id
+  });
+
+  const suggested = suggestedStreams;
 
   return (
     <main className="container mx-auto px-4 py-6">

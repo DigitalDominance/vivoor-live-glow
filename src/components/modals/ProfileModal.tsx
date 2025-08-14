@@ -1,7 +1,17 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/mock/data";
+
+export type UserProfile = {
+  id: string;
+  handle: string;
+  displayName: string;
+  bio: string;
+  followers: number;
+  following: number;
+  tags: string[];
+  socials?: { twitter?: string; youtube?: string; tiktok?: string };
+};
 
 const ProfileModal: React.FC<{
   open: boolean;
