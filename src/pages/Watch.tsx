@@ -15,7 +15,6 @@ import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-const Watch: React.FC = () => {
 
 const Watch: React.FC = () => {
   const { id } = useParams();
