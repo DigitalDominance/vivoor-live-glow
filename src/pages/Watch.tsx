@@ -15,6 +15,7 @@ import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+const Watch: React.FC = () => {
 
 const Watch: React.FC = () => {
   const { id } = useParams();
@@ -422,26 +423,26 @@ const Watch: React.FC = () => {
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
     </main>
   );
-
-// Viewer-side auto-end enforcement (in case streamer disconnects)
-React.useEffect(() => {
-  let timer: any;
-  const check = async () => {
-    try {
-      if (streamData?.id) {
-        await supabase.rpc('stream_auto_end', { _stream_id: streamData.id, _threshold_seconds: 60 });
-      }
-    } catch (e) {
-      console.warn('Auto-end check failed', e);
-    }
-  };
-  if (streamData?.id && streamData?.is_live) {
-    timer = setInterval(check, 30000);
-  }
-  return () => timer && clearInterval(timer);
-}, [streamData?.id, streamData?.is_live]);
-
 };
 
 
-  
+  // Viewer-side auto-end enforcement (in case streamer disconnects)
+  React.useEffect(() => {
+    let timer: any;
+    const check = async () => {
+      try {
+        if (streamData?.id) {
+          await supabase.rpc('stream_auto_end', { _stream_id: streamData.id, _threshold_seconds: 60 });
+        }
+      } catch (e) {
+        console.warn('Auto-end check failed', e);
+      }
+    };
+    if (streamData?.id && streamData?.is_live) {
+      timer = setInterval(check, 30000);
+    }
+    return () => timer && clearInterval(timer);
+  }, [streamData?.id, streamData?.is_live]);
+
+};
+export default Watch;
