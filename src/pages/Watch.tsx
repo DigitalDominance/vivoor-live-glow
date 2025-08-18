@@ -70,6 +70,21 @@ const Watch: React.FC = () => {
   });
 
   // Fetch chat messages for this stream
+  // Get streamer's Kaspa address for tipping via secure RPC
+  const { data: kaspaAddress } = useQuery({
+    queryKey: ['kaspaAddress', streamData?.id],
+    queryFn: async () => {
+      if (!streamData?.id) return null;
+      const { data, error } = await supabase.rpc('get_stream_tip_address', { _stream_id: streamData.id });
+      if (error) {
+        console.error('Kaspa address fetch error:', error);
+        return null;
+      }
+      return data as string | null;
+    },
+    enabled: !!streamData?.id
+  });
+
   const { data: chatData = [] } = useQuery({
     queryKey: ['chat-messages', id],
     queryFn: async () => {
@@ -257,7 +272,6 @@ const Watch: React.FC = () => {
       }
     : undefined;
   const username = profile?.handle || profile?.display_name || 'creator';
-  const kaspaAddress = profile?.;
   
   // Debug logging for tip address
   React.useEffect(() => {
