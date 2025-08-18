@@ -285,7 +285,7 @@ const Watch: React.FC = () => {
   // Monitor tips for this stream
   const { tips: allTips } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: streamData?.profiles?.,
+    kaspaAddress: (kaspaAddress || undefined),
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
