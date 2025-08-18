@@ -52,8 +52,7 @@ const Watch: React.FC = () => {
             handle,
             display_name,
             avatar_url,
-            bio,
-            kaspa_address
+            bio
           )
         `)
         .eq('id', id)
@@ -258,7 +257,7 @@ const Watch: React.FC = () => {
       }
     : undefined;
   const username = profile?.handle || profile?.display_name || 'creator';
-  const kaspaAddress = profile?.kaspa_address;
+  const kaspaAddress = profile?.;
   
   // Debug logging for tip address
   React.useEffect(() => {
@@ -272,7 +271,7 @@ const Watch: React.FC = () => {
   // Monitor tips for this stream
   const { tips: allTips } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: streamData?.profiles?.kaspa_address,
+    kaspaAddress: streamData?.profiles?.,
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
@@ -398,7 +397,7 @@ const Watch: React.FC = () => {
         onOpenChange={setTipOpen} 
         isLoggedIn={isLoggedIn} 
         onRequireLogin={onRequireLogin} 
-        toAddress={kaspaAddress}
+        toAddress={kaspaAddress || undefined}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
       {computedProfile && (
@@ -411,4 +410,22 @@ const Watch: React.FC = () => {
   );
 };
 
+
+  // Viewer-side auto-end enforcement (in case streamer disconnects)
+  React.useEffect(() => {
+    let timer: any;
+    const check = async () => {
+      try {
+        if (streamData?.id) {
+          await supabase.rpc('stream_auto_end', { _stream_id: streamData.id, _threshold_seconds: 60 });
+        }
+      } catch (e) {
+        console.warn('Auto-end check failed', e);
+      }
+    };
+    if (streamData?.id && streamData?.is_live) {
+      timer = setInterval(check, 30000);
+    }
+    return () => timer && clearInterval(timer);
+  }, [streamData?.id, streamData?.is_live]);
 export default Watch;

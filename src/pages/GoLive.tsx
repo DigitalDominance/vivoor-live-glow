@@ -506,4 +506,23 @@ const GoLive = () => {
   );
 };
 
+
+  // Heartbeat to keep stream alive
+  React.useEffect(() => {
+    let timer: any;
+    const ping = async () => {
+      try {
+        if (streamData?.id) {
+          await supabase.rpc('stream_heartbeat', { _stream_id: streamData.id });
+        }
+      } catch (e) {
+        console.warn('Heartbeat failed', e);
+      }
+    };
+    if (streamData?.id && isLive) {
+      ping();
+      timer = setInterval(ping, 15000);
+    }
+    return () => timer && clearInterval(timer);
+  }, [streamData?.id, isLive]);
 export default GoLive;
