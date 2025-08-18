@@ -51,6 +51,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clips: {
@@ -187,6 +194,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tips: {
@@ -280,7 +294,65 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      live_stream_tips: {
+        Row: {
+          amount_sompi: number | null
+          created_at: string | null
+          decrypted_message: string | null
+          masked_sender_address: string | null
+          stream_id: string | null
+        }
+        Insert: {
+          amount_sompi?: number | null
+          created_at?: string | null
+          decrypted_message?: string | null
+          masked_sender_address?: never
+          stream_id?: string | null
+        }
+        Update: {
+          amount_sompi?: number | null
+          created_at?: string | null
+          decrypted_message?: string | null
+          masked_sender_address?: never
+          stream_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          handle: string | null
+          id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       end_user_active_streams: {
