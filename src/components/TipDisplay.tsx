@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import TipNotification, { TipNotificationData } from './TipNotification';
-import FullscreenPortal from './FullscreenPortal';
 import { ProcessedTip } from '@/hooks/useTipMonitoring';
 
 interface TipDisplayProps {
@@ -40,8 +39,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown }) => {
   };
 
   return (
-    <FullscreenPortal>
-      <div className="absolute top-4 right-4 z-[10000] p-4 space-y-2 pointer-events-none">
+    <div className="fixed top-0 right-0 z-50 p-4 space-y-2 pointer-events-none">
       {activeTips.map(tip => (
         <TipNotification
           key={tip.id}
@@ -50,8 +48,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown }) => {
           duration={5000}
         />
       ))}
-      </div>
-    </FullscreenPortal>
+    </div>
   );
 };
 

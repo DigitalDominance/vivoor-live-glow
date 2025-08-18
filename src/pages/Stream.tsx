@@ -83,7 +83,7 @@ const Stream = () => {
     queryKey: ['kaspa-address', streamData?.user_id],
     queryFn: async () => {
       if (!streamData?.user_id || !identity?.id) return null;
-      const { data } = await supabase.rpc('get_', { _id: streamData.user_id });
+      const { data } = await supabase.rpc('get_kaspa_address', { _id: streamData.user_id });
       return data;
     },
     enabled: !!streamData?.user_id && !!identity?.id

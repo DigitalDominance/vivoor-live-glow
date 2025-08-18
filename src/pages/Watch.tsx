@@ -52,7 +52,8 @@ const Watch: React.FC = () => {
             handle,
             display_name,
             avatar_url,
-            bio
+            bio,
+            kaspa_address
           )
         `)
         .eq('id', id)
@@ -70,21 +71,6 @@ const Watch: React.FC = () => {
   });
 
   // Fetch chat messages for this stream
-  // Get streamer's Kaspa address for tipping via secure RPC
-  const { data: kaspaAddress } = useQuery({
-    queryKey: ['kaspaAddress', streamData?.id],
-    queryFn: async () => {
-      if (!streamData?.id) return null;
-      const { data, error } = await supabase.rpc('get_stream_tip_address', { _stream_id: streamData.id });
-      if (error) {
-        console.error('Kaspa address fetch error:', error);
-        return null;
-      }
-      return data as string | null;
-    },
-    enabled: !!streamData?.id
-  });
-
   const { data: chatData = [] } = useQuery({
     queryKey: ['chat-messages', id],
     queryFn: async () => {
@@ -205,23 +191,6 @@ const Watch: React.FC = () => {
       )
       .subscribe();
 
-  // Viewer-side auto-end enforcement (in case streamer disconnects)
-  React.useEffect(() => {
-    let timer: any;
-    const check = async () => {
-      try {
-        if (streamData?.id) {
-          await supabase.rpc('stream_auto_end', { _stream_id: streamData.id, _threshold_seconds: 60 });
-        }
-      } catch (e) {
-        console.warn('Auto-end check failed', e);
-      }
-    };
-    if (streamData?.id && streamData?.is_live) {
-      timer = setInterval(check, 30000);
-    }
-    return () => timer && clearInterval(timer);
-  }, [streamData?.id, streamData?.is_live]);
     return () => {
       supabase.removeChannel(channel);
     };
@@ -289,6 +258,7 @@ const Watch: React.FC = () => {
       }
     : undefined;
   const username = profile?.handle || profile?.display_name || 'creator';
+  const kaspaAddress = profile?.kaspa_address;
   
   // Debug logging for tip address
   React.useEffect(() => {
@@ -302,7 +272,7 @@ const Watch: React.FC = () => {
   // Monitor tips for this stream
   const { tips: allTips } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: (kaspaAddress || undefined),
+    kaspaAddress: streamData?.profiles?.kaspa_address,
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
@@ -428,7 +398,7 @@ const Watch: React.FC = () => {
         onOpenChange={setTipOpen} 
         isLoggedIn={isLoggedIn} 
         onRequireLogin={onRequireLogin} 
-        toAddress={kaspaAddress || undefined}
+        toAddress={kaspaAddress}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
       {computedProfile && (
