@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -287,6 +287,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: number
       }
+      get_current_user_kaspa_address: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_kaspa_address: {
         Args: { _id: string } | { _id: string }
         Returns: string
@@ -294,41 +298,49 @@ export type Database = {
       get_public_profile: {
         Args: { _id: string } | { _id: string }
         Returns: {
-          id: string
-          display_name: string
-          handle: string
           avatar_url: string
           bio: string
           created_at: string
+          display_name: string
+          handle: string
+          id: string
           updated_at: string
         }[]
       }
       get_public_profiles: {
-        Args: { _query?: string; _limit?: number; _offset?: number }
+        Args: { _limit?: number; _offset?: number; _query?: string }
         Returns: {
-          id: string
-          display_name: string
-          handle: string
           avatar_url: string
           bio: string
           created_at: string
+          display_name: string
+          handle: string
+          id: string
           updated_at: string
         }[]
+      }
+      is_stream_live: {
+        Args: { stream_id_param: string }
+        Returns: boolean
       }
       user_has_active_stream: {
         Args: { user_id_param: string }
         Returns: boolean
       }
+      user_owns_stream: {
+        Args: { stream_id_param: string }
+        Returns: boolean
+      }
       validate_treasury_payment: {
         Args: {
+          treasury_address_param?: string
           txid_param: string
           user_address_param: string
-          treasury_address_param?: string
         }
         Returns: {
-          is_valid: boolean
-          block_time: number
           amount_sompi: number
+          block_time: number
+          is_valid: boolean
         }[]
       }
     }
