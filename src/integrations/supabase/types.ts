@@ -51,13 +51,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       clips: {
@@ -194,13 +187,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "streams_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       tips: {
@@ -294,65 +280,7 @@ export type Database = {
       }
     }
     Views: {
-      live_stream_tips: {
-        Row: {
-          amount_sompi: number | null
-          created_at: string | null
-          decrypted_message: string | null
-          masked_sender_address: string | null
-          stream_id: string | null
-        }
-        Insert: {
-          amount_sompi?: number | null
-          created_at?: string | null
-          decrypted_message?: string | null
-          masked_sender_address?: never
-          stream_id?: string | null
-        }
-        Update: {
-          amount_sompi?: number | null
-          created_at?: string | null
-          decrypted_message?: string | null
-          masked_sender_address?: never
-          stream_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tips_stream_id_fkey"
-            columns: ["stream_id"]
-            isOneToOne: false
-            referencedRelation: "streams"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          created_at: string | null
-          display_name: string | null
-          handle: string | null
-          id: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          handle?: string | null
-          id?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          handle?: string | null
-          id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       end_user_active_streams: {
@@ -367,6 +295,16 @@ export type Database = {
         Args: { _id: string } | { _id: string }
         Returns: string
       }
+      get_live_stream_tips_safe: {
+        Args: { _stream_id: string }
+        Returns: {
+          amount_sompi: number
+          created_at: string
+          decrypted_message: string
+          masked_sender_address: string
+          stream_id: string
+        }[]
+      }
       get_public_profile: {
         Args: { _id: string } | { _id: string }
         Returns: {
@@ -377,6 +315,17 @@ export type Database = {
           handle: string
           id: string
           updated_at: string
+        }[]
+      }
+      get_public_profile_safe: {
+        Args: { _id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
         }[]
       }
       get_public_profiles: {

@@ -1,1 +1,4 @@
 project_id = "qcowmxypihinteajhnjw"
+
+[functions.tip-encrypt]
+verify_jwt = false

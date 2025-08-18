@@ -1,6 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { SendHorizonal } from "lucide-react";
+import { validateChatMessage, checkRateLimit } from "@/lib/validation";
+import { toast } from "sonner";
 
 export type ChatMessage = { id: string; user: string; text: string; time: string };
 
@@ -22,10 +24,29 @@ const ChatPanel: React.FC<{
     scrollToBottom();
   }, [messages]);
 
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+    
+    // Rate limiting: max 5 messages per minute
+    if (!checkRateLimit('chat', 5, 60000)) {
+      toast.error('Too many messages. Please wait before sending another.');
+      return;
+    }
+    
+    // Validate and sanitize message
+    const validation = validateChatMessage(newMessage);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Invalid message');
+      return;
+    }
+    
+    onSendMessage?.();
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onSendMessage?.();
+      handleSendMessage();
     }
   };
   return (
@@ -63,7 +84,7 @@ const ChatPanel: React.FC<{
               size="icon" 
               variant="hero" 
               aria-label="Send"
-              onClick={onSendMessage}
+              onClick={handleSendMessage}
               disabled={!newMessage.trim()}
             >
               <SendHorizonal />

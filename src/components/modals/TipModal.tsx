@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import KaspaLogo from "@/components/icons/KaspaLogo";
 import { useToast } from "@/components/ui/use-toast";
 import { encryptTipMessage } from "@/lib/crypto";
+import { validateTipMessage, validateTipAmount, checkRateLimit } from "@/lib/validation";
 
 const TipModal: React.FC<{
   open: boolean;
@@ -24,7 +25,29 @@ const TipModal: React.FC<{
       toast({ title: "Streamer not tip-enabled", description: "No Kaspa address found.", variant: "destructive" });
       return;
     }
-    const kas = Math.max(1, Number(amount) || 1); // Minimum 1 KAS
+
+    // Rate limiting: max 3 tips per minute
+    if (!checkRateLimit('tips', 3, 60000)) {
+      toast({ title: "Rate limit exceeded", description: "Too many tips. Please wait before sending another.", variant: "destructive" });
+      return;
+    }
+
+    const kas = Number(amount) || 1;
+
+    // Validate tip amount
+    const amountValidation = validateTipAmount(kas);
+    if (!amountValidation.isValid) {
+      toast({ title: "Invalid amount", description: amountValidation.error, variant: "destructive" });
+      return;
+    }
+
+    // Validate tip message
+    const messageValidation = validateTipMessage(message || "");
+    if (!messageValidation.isValid) {
+      toast({ title: "Invalid message", description: messageValidation.error, variant: "destructive" });
+      return;
+    }
+
     const sompi = kas * 100000000; // Convert KAS to sompi (1e8)
     
     try {
@@ -34,9 +57,9 @@ const TipModal: React.FC<{
         throw new Error("Kasware wallet not available");
       }
       
-      // Create encrypted payload for tips
+      // Create encrypted payload for tips using secure server-side encryption
       const encryptedPayload = await encryptTipMessage(
-        message || "Thanks for the stream!", 
+        messageValidation.sanitized || "Thanks for the stream!", 
         kas, 
         senderHandle || "Anonymous"
       );

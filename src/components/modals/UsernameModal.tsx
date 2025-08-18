@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/context/WalletContext";
+import { validateUsername } from "@/lib/validation";
+import { toast } from "sonner";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -21,10 +23,15 @@ const UsernameModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => voi
   const canEdit = cooldownLeft === 0 || !profile?.username;
 
   const onSave = () => {
-    const clean = value.trim();
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(clean)) return alert("Username must be 3-20 characters (letters, numbers, underscore)");
-    saveUsername(clean);
+    const validation = validateUsername(value);
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Invalid username');
+      return;
+    }
+    
+    saveUsername(validation.sanitized);
     onOpenChange(false);
+    toast.success('Username saved successfully!');
   };
 
   const fmt = (ms: number) => {
