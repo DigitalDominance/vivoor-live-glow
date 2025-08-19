@@ -8,19 +8,18 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export async function cleanupStaleStreams(timeoutMinutes: number = 1) {
   try {
-    const { data, error } = await supabase.rpc('auto_end_disconnected_streams', { 
-      timeout_minutes: timeoutMinutes 
-    });
+    // Use the new monitoring function that's more comprehensive
+    const { data, error } = await supabase.rpc('monitor_livepeer_streams');
     
     if (error) {
-      console.error('Error cleaning up stale streams:', error);
+      console.error('Error monitoring Livepeer streams:', error);
       return { cleaned: 0, error };
     }
 
-    console.log(`Successfully cleaned up ${data || 0} stale streams`);
+    console.log(`Successfully monitored and cleaned up ${data || 0} disconnected streams`);
     return { cleaned: data || 0 };
   } catch (error) {
-    console.error('Unexpected error during stream cleanup:', error);
+    console.error('Unexpected error during stream monitoring:', error);
     return { cleaned: 0, error };
   }
 }
@@ -43,16 +42,16 @@ export async function cleanupUserStreams(userId: string) {
 }
 
 /**
- * Auto-cleanup function that runs periodically
+ * Auto-cleanup function that runs periodically for comprehensive stream monitoring
  */
 export function startStreamCleanupTimer() {
   // Run cleanup immediately
   cleanupStaleStreams(1);
   
-  // Then run every 2 minutes to check for streams disconnected for 1+ minutes
+  // Run every 30 seconds to aggressively monitor for disconnected streams
   const intervalId = setInterval(() => {
     cleanupStaleStreams(1);
-  }, 2 * 60 * 1000);
+  }, 30 * 1000);
   
   return intervalId;
 }

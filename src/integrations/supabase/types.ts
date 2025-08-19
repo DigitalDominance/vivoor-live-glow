@@ -318,6 +318,10 @@ export type Database = {
         Args: { timeout_minutes?: number }
         Returns: number
       }
+      cleanup_old_streams: {
+        Args: { days_old?: number }
+        Returns: number
+      }
       decrement_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
@@ -394,6 +398,22 @@ export type Database = {
         Args: { _stream_id: string }
         Returns: string
       }
+      get_streams_with_profiles: {
+        Args: { _limit?: number; _offset?: number }
+        Returns: {
+          category: string
+          created_at: string
+          id: string
+          is_live: boolean
+          profile_avatar_url: string
+          profile_display_name: string
+          profile_handle: string
+          thumbnail_url: string
+          title: string
+          user_id: string
+          viewers: number
+        }[]
+      }
       get_tip_address: {
         Args: { stream_id: string }
         Returns: string
@@ -405,6 +425,10 @@ export type Database = {
       is_stream_live: {
         Args: { stream_id_param: string }
         Returns: boolean
+      }
+      monitor_livepeer_streams: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       stream_auto_end: {
         Args: { _stream_id: string; _threshold_seconds?: number }

@@ -1,1 +1,55 @@
 project_id = "qcowmxypihinteajhnjw"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+enabled = true
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "ipv4"
+port = 54323
+max_header_length = 4096
+
+[studio]
+enabled = true
+port = 54324
+api_url = "http://127.0.0.1:54321"
+openai_api_key = "env(OPENAI_API_KEY)"
+
+[inbucket]
+enabled = true
+port = 54325
+smtp_port = 54326
+pop3_port = 54327
+
+[storage]
+enabled = true
+port = 54328
+file_size_limit = "50MiB"
+image_transformation = { enabled = true }
+
+[edge-runtime]
+enabled = true
+port = 54329
+
+[functions.livepeer-create-stream]
+verify_jwt = false
+
+[functions.stream-monitor]
+verify_jwt = false

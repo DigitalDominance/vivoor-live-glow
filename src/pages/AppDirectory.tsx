@@ -45,37 +45,23 @@ const AppDirectory: React.FC = () => {
   const { data: allStreams = [] } = useQuery({
     queryKey: ['all-streams'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('streams')
-        .select(`
-          id,
-          title,
-          category,
-          is_live,
-          viewers,
-          user_id,
-          thumbnail_url,
-          created_at,
-          profiles (
-            handle,
-            display_name,
-            avatar_url
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_streams_with_profiles', { 
+        _limit: 100, 
+        _offset: 0 
+      });
       
       if (error) {
         console.error('Error fetching streams:', error);
         return [];
       }
       
-      return data.map(stream => ({
+      return (data || []).map((stream: any) => ({
         id: stream.id,
         title: stream.title,
         category: stream.category || 'IRL',
         live: stream.is_live,
         viewers: stream.viewers,
-        username: (stream.profiles as any)?.handle || (stream.profiles as any)?.display_name || 'unknown',
+        username: stream.profile_handle || stream.profile_display_name || 'unknown',
         userId: stream.user_id,
         thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
         startedAt: stream.created_at
