@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import React from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useWallet } from "@/context/WalletContext";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type StreamCardProps = {
   stream: {

@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Save, ArrowLeft } from "lucide-react";
 import AvatarCropper from "@/components/modals/AvatarCropper";
+import VerificationSection from "@/components/VerificationSection";
 
 const ChannelSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -265,6 +266,9 @@ const ChannelSettings: React.FC = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Verification Section */}
+        <VerificationSection />
       </div>
 
       {/* Avatar Cropper Modal */}

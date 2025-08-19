@@ -13,6 +13,7 @@ type WalletProviderName = "kasware";
 export type WalletIdentity = {
   provider: WalletProviderName;
   id: string; // kasware address (kaspa:...) OR kastle publicKey base64
+  address: string; // The actual wallet address
 };
 
 export type ProfileRecord = {
@@ -64,10 +65,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .getAccounts()
         .then((acc: string[]) => {
           if (Array.isArray(acc) && acc[0]) {
-            const id = acc[0];
-            setIdentity({ provider: "kasware", id });
+            const addr = acc[0];
+            setIdentity({ provider: "kasware", id: addr, address: addr });
             const map = readProfiles();
-            setProfile(map[id] || null);
+            setProfile(map[addr] || null);
           }
         })
         .catch(() => {});
@@ -95,7 +96,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
 
-      const ident: WalletIdentity = { provider: "kasware", id: userId.toString() };
+      const ident: WalletIdentity = { provider: "kasware", id: userId.toString(), address: addr };
       setIdentity(ident);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
       const map = readProfiles();

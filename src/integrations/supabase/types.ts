@@ -276,6 +276,45 @@ export type Database = {
           },
         ]
       }
+      verifications: {
+        Row: {
+          amount_sompi: number
+          block_time: number
+          created_at: string
+          duration_type: string
+          expires_at: string
+          id: string
+          txid: string
+          updated_at: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          amount_sompi: number
+          block_time: number
+          created_at?: string
+          duration_type: string
+          expires_at: string
+          id?: string
+          txid: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          amount_sompi?: number
+          block_time?: number
+          created_at?: string
+          duration_type?: string
+          expires_at?: string
+          id?: string
+          txid?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
       vods: {
         Row: {
           category: string | null
@@ -479,12 +518,24 @@ export type Database = {
         Args: { stream_id: string }
         Returns: string
       }
+      get_user_verification: {
+        Args: { user_id_param: string }
+        Returns: {
+          duration_type: string
+          expires_at: string
+          is_verified: boolean
+        }[]
+      }
       increment_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
       }
       is_stream_live: {
         Args: { stream_id_param: string }
+        Returns: boolean
+      }
+      is_user_verified: {
+        Args: { user_id_param: string }
         Returns: boolean
       }
       monitor_livepeer_streams: {
