@@ -206,8 +206,8 @@ const GoLive = () => {
       toast.error('Connect wallet first');
       return;
     }
-    if (!previewReady) {
-      toast.error('Wait for stream preview to be ready');
+    if (!title.trim()) {
+      toast.error('Please enter a stream title');
       return;
     }
     
@@ -229,6 +229,25 @@ const GoLive = () => {
         }
       } catch (error) {
         console.error('Failed to end existing streams:', error);
+      }
+
+      // Generate stream details first if not already done
+      let currentIngestUrl = ingestUrl;
+      let currentStreamKey = streamKey;
+      let currentPlaybackUrl = playbackUrl;
+
+      if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
+        console.log('Generating stream details...');
+        toast.info('Creating stream...');
+        
+        const streamDetails = await generateStreamDetails();
+        currentIngestUrl = streamDetails.ingestUrl;
+        currentStreamKey = streamDetails.streamKey;
+        currentPlaybackUrl = streamDetails.playbackUrl;
+        
+        if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
+          throw new Error('Failed to generate valid stream details');
+        }
       }
       
       // Send treasury fee
@@ -287,7 +306,7 @@ const GoLive = () => {
           user_id: kaspaAddress,
           title: title || 'Live Stream',
           category: category,
-          playback_url: playbackUrl,
+          playback_url: currentPlaybackUrl,
           thumbnail_url: thumbnailUrl,
           treasury_txid: treasuryTxid,
           treasury_block_time: Date.now(), // Approximate block time
@@ -305,18 +324,24 @@ const GoLive = () => {
       console.log('Stream created successfully with ID:', streamId);
       
       // Store stream data in localStorage for persistence
-      localStorage.setItem('currentIngestUrl', ingestUrl || '');
-      localStorage.setItem('currentStreamKey', streamKey || '');
-      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
+      localStorage.setItem('currentIngestUrl', currentIngestUrl || '');
+      localStorage.setItem('currentStreamKey', currentStreamKey || '');
+      localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
       localStorage.setItem('streamStartTime', new Date().toISOString());
       localStorage.setItem('currentStreamId', streamId);
       
-      toast.success('Stream started!');
-      console.log('Navigating to stream page:', `/stream/${streamId}`);
-      navigate(`/stream/${streamId}`);
+      toast.success('Stream started! Use the RTMP details below in OBS.');
+      console.log('Stream ready, RTMP details:', {
+        ingestUrl: currentIngestUrl,
+        streamKey: currentStreamKey ? '***HIDDEN***' : null,
+        playbackUrl: currentPlaybackUrl
+      });
+      
+      // Don't navigate to stream page, keep user on go-live page to see RTMP details
+      // navigate(`/stream/${streamId}`);
     } catch (error) {
-      console.error('Failed to save stream:', error);
-      toast.error('Failed to start stream');
+      console.error('Failed to start stream:', error);
+      toast.error(`Failed to start stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -420,9 +445,9 @@ const GoLive = () => {
             <Button 
               variant="hero" 
               onClick={handleStart} 
-              disabled={!kaspaAddress || !previewReady}
+              disabled={!kaspaAddress || !title.trim()}
             >
-              {!previewReady ? 'Preview Required' : 'Start Stream'}
+              {!kaspaAddress ? 'Connect Wallet First' : !title.trim() ? 'Enter Title First' : 'Start Stream & Pay Fee'}
             </Button>
           </div>
 
