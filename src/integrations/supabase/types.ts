@@ -320,8 +320,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_wallet_user: {
+        Args: {
+          display_name?: string
+          user_handle?: string
+          wallet_address: string
+        }
+        Returns: string
+      }
       auto_end_disconnected_streams: {
         Args: { timeout_minutes?: number }
+        Returns: number
+      }
+      cleanup_inactive_streams: {
+        Args: Record<PropertyKey, never>
         Returns: number
       }
       cleanup_old_streams: {

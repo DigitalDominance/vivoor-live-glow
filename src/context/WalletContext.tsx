@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from '@/integrations/supabase/client';
 
 
 // Simple local storage helpers
@@ -81,7 +82,20 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const accounts: string[] = await w.requestAccounts();
       const addr = accounts?.[0];
       if (!addr) throw new Error("No Kasware account returned");
-      const ident: WalletIdentity = { provider: "kasware", id: addr };
+      
+      // Create/update profile in Supabase and get user ID
+      const { data: userId, error } = await supabase.rpc('authenticate_wallet_user', {
+        wallet_address: addr,
+        user_handle: null,
+        display_name: null
+      });
+
+      if (error) {
+        console.error('Failed to authenticate wallet user:', error);
+        throw error;
+      }
+
+      const ident: WalletIdentity = { provider: "kasware", id: userId.toString() };
       setIdentity(ident);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
       const map = readProfiles();
