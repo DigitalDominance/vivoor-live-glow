@@ -48,7 +48,7 @@ const App = () => (
                 <Route path="/clip/:id" element={<Clip />} />
                 <Route path="/following" element={<Following />} />
                 <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/channel/:userId" element={<Channel />} />
+                <Route path="/channel/:username" element={<Channel />} />
                 <Route path="/channel/settings" element={<ChannelSettings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

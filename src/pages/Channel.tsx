@@ -12,27 +12,32 @@ import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
 const Channel: React.FC = () => {
-  const { userId } = useParams<{ userId: string }>();
+  const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
   const { identity } = useWallet();
-  const isOwnChannel = identity?.id === userId;
 
-  // Fetch profile data
+  // Fetch profile data by username (handle)
   const { data: profile } = useQuery({
-    queryKey: ['profile', userId],
+    queryKey: ['profile-by-username', username],
     queryFn: async () => {
-      if (!userId) return null;
-      const { data } = await supabase.rpc('get_profile_with_stats', { _user_id: userId });
-      return Array.isArray(data) ? data[0] : data;
+      if (!username) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('*, follower_count:follows!following_id(count), following_count:follows!follower_id(count)')
+        .eq('handle', username)
+        .single();
+      return data;
     },
-    enabled: !!userId
+    enabled: !!username
   });
+
+  const isOwnChannel = identity?.id === profile?.id;
 
   // Check if following
   const [following, setFollowing] = React.useState(false);
   React.useEffect(() => {
     const checkFollowing = async () => {
-      if (!userId || !identity?.id || identity.id === userId) {
+      if (!profile?.id || !identity?.id || identity.id === profile.id) {
         setFollowing(false);
         return;
       }
@@ -41,17 +46,17 @@ const Channel: React.FC = () => {
         .from('follows')
         .select('id')
         .eq('follower_id', identity.id)
-        .eq('following_id', userId)
+        .eq('following_id', profile.id)
         .single();
       
       setFollowing(!!data);
     };
     
     checkFollowing();
-  }, [userId, identity?.id]);
+  }, [profile?.id, identity?.id]);
 
   const handleFollow = async () => {
-    if (!identity?.id || !userId) {
+    if (!identity?.id || !profile?.id) {
       toast({ title: "Please connect your wallet first" });
       return;
     }
@@ -62,7 +67,7 @@ const Channel: React.FC = () => {
           .from('follows')
           .delete()
           .eq('follower_id', identity.id)
-          .eq('following_id', userId);
+          .eq('following_id', profile.id);
         setFollowing(false);
         toast({ title: "Unfollowed" });
       } else {
@@ -70,7 +75,7 @@ const Channel: React.FC = () => {
           .from('follows')
           .insert({
             follower_id: identity.id,
-            following_id: userId
+            following_id: profile.id
           });
         setFollowing(true);
         toast({ title: "Following!" });
@@ -104,7 +109,16 @@ const Channel: React.FC = () => {
       {/* Channel Header */}
       <div className="relative">
         {/* Banner */}
-        <div className="h-32 md:h-48 bg-grad-primary relative">
+        <div className="h-32 md:h-48 relative">
+          {profile?.banner_url ? (
+            <img 
+              src={profile.banner_url} 
+              alt="Channel banner" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-grad-primary" />
+          )}
           <div className="absolute inset-0 bg-background/10" />
           {isOwnChannel && (
             <Button
@@ -151,11 +165,11 @@ const Channel: React.FC = () => {
                 
                 <div className="flex gap-6 text-sm mb-4">
                   <div>
-                    <span className="font-semibold">{profile.follower_count || 0}</span>
+                    <span className="font-semibold">{Array.isArray(profile.follower_count) ? profile.follower_count.length : (profile.follower_count || 0)}</span>
                     <span className="text-muted-foreground ml-1">followers</span>
                   </div>
                   <div>
-                    <span className="font-semibold">{profile.following_count || 0}</span>
+                    <span className="font-semibold">{Array.isArray(profile.following_count) ? profile.following_count.length : (profile.following_count || 0)}</span>
                     <span className="text-muted-foreground ml-1">following</span>
                   </div>
                 </div>

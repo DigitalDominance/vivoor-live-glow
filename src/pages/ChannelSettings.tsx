@@ -29,6 +29,9 @@ const ChannelSettings: React.FC = () => {
   const [avatarSrc, setAvatarSrc] = React.useState<string | null>(null);
   const [showCropper, setShowCropper] = React.useState(false);
 
+  // Banner states
+  const [bannerFile, setBannerFile] = React.useState<File | null>(null);
+
   // Redirect if not logged in
   React.useEffect(() => {
     if (!identity?.id) {
@@ -41,16 +44,19 @@ const ChannelSettings: React.FC = () => {
     queryKey: ['profile', identity?.id],
     queryFn: async () => {
       if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_profile_with_stats', { _user_id: identity.id });
-      const profileData = Array.isArray(data) ? data[0] : data;
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', identity.id)
+        .single();
       
-      if (profileData) {
-        setDisplayName(profileData.display_name || '');
-        setBio(profileData.bio || '');
-        setHandle(profileData.handle || '');
+      if (data) {
+        setDisplayName(data.display_name || '');
+        setBio(data.bio || '');
+        setHandle(data.handle || '');
       }
       
-      return profileData;
+      return data;
     },
     enabled: !!identity?.id
   });
@@ -144,6 +150,46 @@ const ChannelSettings: React.FC = () => {
     }
   };
 
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !identity?.id) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please select an image under 5MB", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const fileName = `banner-${identity.id}-${Date.now()}.jpg`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ banner_url: publicUrl })
+        .eq('id', identity.id);
+
+      if (updateError) throw updateError;
+
+      queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
+      toast({ title: "Banner updated successfully!" });
+    } catch (error) {
+      console.error('Error uploading banner:', error);
+      toast({ title: "Failed to upload banner", variant: "destructive" });
+    }
+  };
+
   if (!identity?.id) {
     return null;
   }
@@ -158,7 +204,7 @@ const ChannelSettings: React.FC = () => {
       <div className="mb-6">
         <Button
           variant="ghost"
-          onClick={() => navigate(`/channel/${identity.id}`)}
+          onClick={() => navigate(`/channel/${profile?.handle || identity.id}`)}
           className="mb-4"
         >
           <ArrowLeft className="size-4 mr-2" />
@@ -169,6 +215,51 @@ const ChannelSettings: React.FC = () => {
       </div>
 
       <div className="space-y-6">
+        {/* Channel Banner */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Channel Banner</CardTitle>
+            <CardDescription>Upload a banner image for your channel</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="aspect-[3/1] w-full max-w-sm bg-grad-primary rounded-lg overflow-hidden">
+                {profile?.banner_url ? (
+                  <img 
+                    src={profile.banner_url} 
+                    alt="Channel banner" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-grad-primary flex items-center justify-center text-white">
+                    <span className="text-sm">No banner set</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="banner-upload" className="cursor-pointer">
+                  <Button variant="outline" asChild>
+                    <span>
+                      <Upload className="size-4 mr-2" />
+                      Upload banner
+                    </span>
+                  </Button>
+                </Label>
+                <input
+                  id="banner-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleBannerChange}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Recommended: 1200x400px, under 5MB
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Profile Picture */}
         <Card>
           <CardHeader>

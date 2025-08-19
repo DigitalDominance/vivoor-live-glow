@@ -6,11 +6,11 @@
 
 @layer base {
   :root {
-    /* Brand palette (HSL) */
-    --brand-cyan: 190 100% 50%; /* #00D4FF */
-    --brand-iris: 252 100% 68%; /* #7C5CFF */
-    --brand-pink: 329 86% 70%; /* #F472B6 */
-    --brand-mint: 172 100% 48%; /* #00F5D4 */
+    /* Brand palette (HSL) - Lighter versions to match logo */
+    --brand-cyan: 190 85% 65%; /* Lighter cyan */
+    --brand-iris: 252 85% 75%; /* Lighter iris */
+    --brand-pink: 329 75% 80%; /* Lighter pink */
+    --brand-mint: 172 85% 65%; /* Lighter mint */
 
     /* Surfaces - Light (Pearl) */
     --background: 218 44% 98%;

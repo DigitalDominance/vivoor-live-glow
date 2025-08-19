@@ -24,12 +24,7 @@ const Wordmark = () => (
       alt="Vivoor logo" 
       className="h-8 w-auto"
     />
-    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">iv</span>
-    <span className="relative text-xl font-extrabold font-display tracking-tight text-gradient">
-      oo
-      <span className="absolute left-0 right-0 -bottom-1 h-0.5 rounded-full bg-grad-primary opacity-70" />
-    </span>
-    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">r</span>
+    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">ivoor</span>
   </Link>
 );
 
@@ -100,7 +95,7 @@ const wallet = useWallet();
                   <User className="size-4 mr-2" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/channel/${wallet.identity?.id}`)}>
+                <DropdownMenuItem onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>
                   <User className="size-4 mr-2" />
                   My Channel
                 </DropdownMenuItem>
@@ -133,7 +128,7 @@ const wallet = useWallet();
                   <div className="mt-2 grid gap-2">
                     <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
                     <Button variant="secondary" onClick={() => setShowProfileModal(true)}>Profile</Button>
-                    <Button variant="ghost" onClick={() => navigate(`/channel/${wallet.identity?.id}`)}>My Channel</Button>
+                    <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>My Channel</Button>
                     <Button variant="ghost" onClick={() => navigate("/recordings")}>My Recordings</Button>
                     <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
                     <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
