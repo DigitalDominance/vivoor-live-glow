@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -49,6 +49,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -137,6 +144,7 @@ export type Database = {
           ended_at: string | null
           id: string
           is_live: boolean
+          last_heartbeat: string | null
           playback_url: string | null
           started_at: string
           thumbnail_url: string | null
@@ -153,6 +161,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_live?: boolean
+          last_heartbeat?: string | null
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
@@ -169,6 +178,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           is_live?: boolean
+          last_heartbeat?: string | null
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
@@ -185,6 +195,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -280,55 +297,129 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          handle: string | null
+          id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number
       }
+      get_current_user_kaspa_address: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_kaspa_address: {
         Args: { _id: string } | { _id: string }
         Returns: string
       }
+      get_live_stream_tips_safe: {
+        Args: { _stream_id: string }
+        Returns: {
+          amount_sompi: number
+          created_at: string
+          decrypted_message: string
+          masked_sender_address: string
+          stream_id: string
+        }[]
+      }
       get_public_profile: {
         Args: { _id: string } | { _id: string }
         Returns: {
-          id: string
-          display_name: string
-          handle: string
           avatar_url: string
           bio: string
           created_at: string
+          display_name: string
+          handle: string
+          id: string
           updated_at: string
         }[]
       }
-      get_public_profiles: {
-        Args: { _query?: string; _limit?: number; _offset?: number }
+      get_public_profile_safe: {
+        Args: { _id: string }
         Returns: {
-          id: string
-          display_name: string
-          handle: string
           avatar_url: string
           bio: string
           created_at: string
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
+      get_public_profiles: {
+        Args: { _limit?: number; _offset?: number; _query?: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
           updated_at: string
         }[]
+      }
+      get_stream_tip_address: {
+        Args: { _stream_id: string }
+        Returns: string
+      }
+      is_stream_live: {
+        Args: { stream_id_param: string }
+        Returns: boolean
+      }
+      stream_auto_end: {
+        Args: { _stream_id: string; _threshold_seconds?: number }
+        Returns: boolean
+      }
+      stream_heartbeat: {
+        Args: { _stream_id: string }
+        Returns: undefined
       }
       user_has_active_stream: {
         Args: { user_id_param: string }
         Returns: boolean
       }
+      user_owns_stream: {
+        Args: { stream_id_param: string }
+        Returns: boolean
+      }
       validate_treasury_payment: {
         Args: {
+          treasury_address_param?: string
           txid_param: string
           user_address_param: string
-          treasury_address_param?: string
         }
         Returns: {
-          is_valid: boolean
-          block_time: number
           amount_sompi: number
+          block_time: number
+          is_valid: boolean
         }[]
       }
     }
