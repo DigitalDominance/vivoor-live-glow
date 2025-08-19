@@ -21,7 +21,7 @@ const buttonVariants = cva(
         hero:
           "[background:var(--grad-primary)] text-[hsl(var(--on-gradient))] shadow-[0_10px_30px_-10px_hsl(var(--brand-iris)/0.45)] hover:brightness-105",
         glass:
-          "glass hover:shadow-[0_10px_30px_-16px_hsl(var(--brand-iris)/0.35)]",
+          "glass hover:shadow-[0_10px_30px_-16px_hsl(var(--brand-iris)/0.35)] text-foreground",
         gradientOutline:
           "gradient-border bg-background text-foreground hover:shadow-[0_0_0_4px_hsl(var(--brand-cyan)/0.15)]",
       },

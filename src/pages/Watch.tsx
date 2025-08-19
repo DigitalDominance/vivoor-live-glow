@@ -13,8 +13,10 @@ import ChatPanel from "@/components/streams/ChatPanel";
 import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
+import { useViewerTracking } from "@/hooks/useViewerTracking";
+import ClipCreator from "@/components/modals/ClipCreator";
 import { toast } from "sonner";
-import { Heart, Play, Pause, MoreVertical, Users } from "lucide-react";
+import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 const Watch = () => {
@@ -29,6 +31,7 @@ const Watch = () => {
   const [isPlaying, setIsPlaying] = React.useState(true);
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
+  const [clipModalOpen, setClipModalOpen] = React.useState(false);
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
@@ -141,6 +144,9 @@ const Watch = () => {
       }
     }
   });
+
+  // Track viewer count
+  useViewerTracking(streamData?.id || null, streamData?.is_live || false);
 
   const handleTipShown = (tipId: string) => {
     setShownTipIds(prev => new Set([...prev, tipId]));
@@ -288,26 +294,42 @@ const Watch = () => {
               <PlayerPlaceholder />
             )}
             
-            {/* Video controls overlay */}
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
+             {/* Video controls overlay */}
+            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Button
                   variant="glass"
                   size="icon"
                   onClick={() => setIsPlaying(!isPlaying)}
+                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
                 >
                   {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
                 </Button>
-                <span className="text-sm">
+                <span className="text-sm bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-foreground border border-border/50">
                   {streamData.is_live ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-sm">
+                <span className="flex items-center gap-1 text-sm bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-foreground border border-border/50">
                   <Users className="size-4" />
                   {streamData.viewers || 0}
                 </span>
-                <Button variant="glass" size="icon">
+                {streamData.is_live && (
+                  <Button 
+                    variant="glass" 
+                    size="icon"
+                    onClick={() => setClipModalOpen(true)}
+                    title="Create Clip"
+                    className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
+                  >
+                    <Scissors className="size-4" />
+                  </Button>
+                )}
+                <Button 
+                  variant="glass" 
+                  size="icon"
+                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
+                >
                   <MoreVertical className="size-4" />
                 </Button>
               </div>
@@ -454,6 +476,21 @@ const Watch = () => {
       
       {/* Tip notifications overlay - positioned for fullscreen compatibility */}
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
+      
+      {/* Clip Creator Modal */}
+      <ClipCreator 
+        open={clipModalOpen}
+        onOpenChange={setClipModalOpen}
+        vod={streamData ? {
+          id: streamData.id,
+          src_url: streamData.playback_url || '',
+          title: streamData.title,
+          duration_seconds: elapsed
+        } : null}
+        onCreated={() => {
+          toast.success('Clip created successfully!');
+        }}
+      />
     </main>
   );
 };

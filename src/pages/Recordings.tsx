@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import ClipCreator from "@/components/modals/ClipCreator";
 
 type Vod = {
   id: string;
@@ -14,9 +16,25 @@ type Vod = {
   duration_seconds: number | null;
 };
 
+type Clip = {
+  id: string;
+  title: string;
+  created_at: string;
+  thumbnail_url: string | null;
+  start_seconds: number;
+  end_seconds: number;
+  vods: {
+    title: string;
+    src_url: string;
+  };
+};
+
 const Recordings: React.FC = () => {
   const [vods, setVods] = useState<Vod[]>([]);
+  const [clips, setClips] = useState<Clip[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [clipModalOpen, setClipModalOpen] = useState(false);
+  const [selectedVod, setSelectedVod] = useState<Vod | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -25,8 +43,30 @@ const Recordings: React.FC = () => {
     if (!error && data) setVods(data as Vod[]);
   };
 
+  const loadClips = async () => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+    
+    const { data, error } = await supabase
+      .from("clips")
+      .select(`
+        id,
+        title,
+        created_at,
+        thumbnail_url,
+        start_seconds,
+        end_seconds,
+        vods!inner(title, src_url)
+      `)
+      .eq('user_id', user.user.id)
+      .order("created_at", { ascending: false });
+    
+    if (!error && data) setClips(data as Clip[]);
+  };
+
   useEffect(() => {
     loadVods();
+    loadClips();
   }, []);
 
   const captureThumb = (url: string): Promise<Blob | null> =>
@@ -132,33 +172,93 @@ const Recordings: React.FC = () => {
         </div>
       </section>
 
-      <section className="mt-6">
-        <div className="mb-2 font-medium">Your Replays</div>
-        {vods.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No replays yet.</div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {vods.map((v) => (
-              <div key={v.id} className="glass rounded-xl overflow-hidden">
-                <div className="aspect-[16/9] bg-muted/20">
-                  {v.thumbnail_url ? (
-                    <img src={v.thumbnail_url} alt={`${v.title} replay thumbnail`} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full" />
-                  )}
-                </div>
-                <div className="p-3">
-                  <div className="font-medium truncate" title={v.title}>{v.title}</div>
-                  <div className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleString()}</div>
-                  <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="glass" onClick={() => navigate(`/vod/${v.id}`)}>View VOD</Button>
+      <Tabs defaultValue="recordings" className="mt-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="recordings">Recordings</TabsTrigger>
+          <TabsTrigger value="clips">My Clips</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="recordings" className="mt-4">
+          <div className="mb-2 font-medium">Your Replays</div>
+          {vods.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No replays yet.</div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {vods.map((v) => (
+                <div key={v.id} className="glass rounded-xl overflow-hidden">
+                  <div className="aspect-[16/9] bg-muted/20">
+                    {v.thumbnail_url ? (
+                      <img src={v.thumbnail_url} alt={`${v.title} replay thumbnail`} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full" />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="font-medium truncate" title={v.title}>{v.title}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleString()}</div>
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" variant="glass" onClick={() => navigate(`/vod/${v.id}`)}>View VOD</Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedVod(v);
+                          setClipModalOpen(true);
+                        }}
+                      >
+                        Create Clip
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="clips" className="mt-4">
+          <div className="mb-2 font-medium">Your Clips</div>
+          {clips.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No clips yet. Create clips from your recordings!</div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {clips.map((clip) => (
+                <div key={clip.id} className="glass rounded-xl overflow-hidden">
+                  <div className="aspect-[16/9] bg-muted/20">
+                    {clip.thumbnail_url ? (
+                      <img src={clip.thumbnail_url} alt={`${clip.title} clip thumbnail`} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full" />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="font-medium truncate" title={clip.title}>{clip.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(clip.created_at).toLocaleString()} • {clip.end_seconds - clip.start_seconds}s
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      From: {clip.vods.title}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" variant="glass" onClick={() => navigate(`/clip/${clip.id}`)}>View Clip</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <ClipCreator 
+        open={clipModalOpen}
+        onOpenChange={setClipModalOpen}
+        vod={selectedVod}
+        onCreated={() => {
+          loadClips();
+          setSelectedVod(null);
+        }}
+      />
     </main>
   );
 };
