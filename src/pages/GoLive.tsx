@@ -262,21 +262,17 @@ const GoLive = () => {
       console.log('Creating/updating profile...');
       if (walletProfile) {
         try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: kaspaAddress,
-              display_name: walletProfile.username, // Map username to display_name
-              handle: walletProfile.username,       // Use username as handle
-              avatar_url: walletProfile.avatarUrl,  // Map avatarUrl to avatar_url
-              kaspa_address: kaspaAddress
-            }, { onConflict: 'id' });
+          const { data: userId, error: profileError } = await supabase.rpc('authenticate_wallet_user', {
+            wallet_address: kaspaAddress,
+            user_handle: walletProfile.username,
+            display_name: walletProfile.username
+          });
           
           if (profileError) {
             console.error('Profile creation error:', profileError);
             throw new Error(`Failed to create profile: ${profileError.message}`);
           }
-          console.log('Profile created/updated successfully');
+          console.log('Profile created/updated successfully, user ID:', userId);
         } catch (error) {
           console.error('Profile creation failed:', error);
           throw error;
