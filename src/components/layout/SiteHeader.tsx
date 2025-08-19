@@ -4,7 +4,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { User, LogOut } from "lucide-react";
 import WalletConnectModal from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
@@ -40,10 +41,11 @@ const SiteHeader = () => {
   }, []);
 
   const path = location.pathname;
-  const { identity, profile, ensureUsername } = useWallet();
+const wallet = useWallet();
+  const { identity, profile, ensureUsername } = wallet;
   const [walletOpen, setWalletOpen] = useState(false);
   const [usernameOpen, setUsernameOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     if (identity) {
@@ -86,11 +88,24 @@ const SiteHeader = () => {
                   {displayName}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[70]">
+              <DropdownMenuContent align="end" className="bg-background border border-border z-[70]">
+                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowProfileModal(true)}>
+                  <User className="size-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/channel/${wallet.identity?.id}`)}>
+                  <User className="size-4 mr-2" />
+                  My Channel
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setProfileOpen(true)}>Profile</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/recordings")}>My Recordings</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/following")}>My Following</DropdownMenuItem>
+                <DropdownMenuItem onClick={wallet.disconnect}>
+                  <LogOut className="size-4 mr-2" />
+                  Disconnect
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -112,9 +127,11 @@ const SiteHeader = () => {
                 ) : (
                   <div className="mt-2 grid gap-2">
                     <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
-                    <Button variant="secondary" onClick={() => setProfileOpen(true)}>Profile</Button>
+                    <Button variant="secondary" onClick={() => setShowProfileModal(true)}>Profile</Button>
+                    <Button variant="ghost" onClick={() => navigate(`/channel/${wallet.identity?.id}`)}>My Channel</Button>
                     <Button variant="ghost" onClick={() => navigate("/recordings")}>My Recordings</Button>
                     <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
+                    <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
                   </div>
                 )}
               </div>
@@ -124,7 +141,7 @@ const SiteHeader = () => {
       </nav>
       <WalletConnectModal open={walletOpen} onOpenChange={setWalletOpen} />
       <UsernameModal open={usernameOpen} onOpenChange={setUsernameOpen} />
-      <MyProfileModal open={profileOpen} onOpenChange={setProfileOpen} onEditUsername={() => { setProfileOpen(false); setUsernameOpen(true); }} />
+      <MyProfileModal open={showProfileModal} onOpenChange={setShowProfileModal} onEditUsername={() => { setShowProfileModal(false); setUsernameOpen(true); }} />
     </header>
   );
 };

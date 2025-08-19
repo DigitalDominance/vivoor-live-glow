@@ -19,6 +19,8 @@ import Vod from "@/pages/Vod";
 import Clip from "@/pages/Clip";
 import Following from "@/pages/Following";
 import Profile from "@/pages/Profile";
+import Channel from "@/pages/Channel";
+import ChannelEdit from "@/pages/ChannelEdit";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 
@@ -46,6 +48,8 @@ const App = () => (
                 <Route path="/clip/:id" element={<Clip />} />
                 <Route path="/following" element={<Following />} />
                 <Route path="/profile/:id" element={<Profile />} />
+                <Route path="/channel/:userId" element={<Channel />} />
+                <Route path="/channel/edit" element={<ChannelEdit />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

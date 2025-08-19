@@ -113,7 +113,8 @@ const AppDirectory: React.FC = () => {
           bio: profile.bio || '',
           followers: profile.follower_count || 0,
           following: profile.following_count || 0,
-          tags: []
+          tags: [],
+          avatar: profile.avatar_url
         });
         setProfileOpen(true);
       }
@@ -199,7 +200,14 @@ const AppDirectory: React.FC = () => {
       </section>
 
       {/* Modals */}
-      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={activeProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => {}} />
+      <ProfileModal 
+        open={profileOpen} 
+        onOpenChange={setProfileOpen} 
+        profile={activeProfile} 
+        isLoggedIn={isLoggedIn} 
+        onRequireLogin={onRequireLogin} 
+        onGoToChannel={() => {}} 
+      />
     </main>
   );
 };

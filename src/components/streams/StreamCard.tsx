@@ -36,18 +36,34 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
     if (!isLoggedIn) return onRequireLogin?.();
     
     try {
+      // Get wallet identity - we need to use a different approach for likes
+      // For now, just require proper login since we need the user ID for database operations
+      if (!isLoggedIn) {
+        onRequireLogin?.();
+        return;
+      }
+      
+      // TODO: Update this to use wallet-based user IDs once authentication is properly implemented
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+      
+      if (!userId) {
+        onRequireLogin?.();
+        return;
+      }
+
       if (liked) {
         // Remove like
         await supabase.from('likes').delete().match({ 
           stream_id: stream.id, 
-          user_id: (await supabase.auth.getUser()).data.user?.id 
+          user_id: userId
         });
         setLikeCount(prev => Math.max(0, prev - 1));
       } else {
         // Add like
         await supabase.from('likes').insert({ 
           stream_id: stream.id, 
-          user_id: (await supabase.auth.getUser()).data.user?.id 
+          user_id: userId
         });
         setLikeCount(prev => prev + 1);
       }
