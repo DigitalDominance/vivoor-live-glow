@@ -29,6 +29,8 @@ const Watch = () => {
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [liked, setLiked] = React.useState(false);
   const [followed, setFollowed] = React.useState(false);
+  const [likeCount, setLikeCount] = React.useState(0);
+  const [followerCount, setFollowerCount] = React.useState(0);
   const [isPlaying, setIsPlaying] = React.useState(true);
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
@@ -55,13 +57,55 @@ const Watch = () => {
     queryKey: ['streamer-profile', streamData?.user_id],
     queryFn: async () => {
       if (!streamData?.user_id) return null;
-      const { data } = await supabase.rpc('get_public_profile_display', { 
-        user_id: streamData.user_id 
+      const { data } = await supabase.rpc('get_profile_with_stats', { 
+        _user_id: streamData.user_id 
       });
       return data?.[0] || null;
     },
     enabled: !!streamData?.user_id
   });
+
+  // Check if user already likes/follows this stream/user
+  React.useEffect(() => {
+    if (!identity?.id || !streamData?.id || !streamData?.user_id) return;
+
+    const checkLikeStatus = async () => {
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', identity.id)
+        .eq('stream_id', streamData.id)
+        .maybeSingle();
+      setLiked(!!data);
+    };
+
+    const checkFollowStatus = async () => {
+      const { data } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', identity.id)
+        .eq('following_id', streamData.user_id)
+        .maybeSingle();
+      setFollowed(!!data);
+    };
+
+    const getLikeCount = async () => {
+      const { data } = await supabase.rpc('get_stream_like_count', { 
+        stream_id_param: streamData.id 
+      });
+      setLikeCount(data || 0);
+    };
+
+    checkLikeStatus();
+    checkFollowStatus();
+    getLikeCount();
+  }, [identity?.id, streamData?.id, streamData?.user_id]);
+
+  React.useEffect(() => {
+    if (streamerProfile?.follower_count !== undefined) {
+      setFollowerCount(streamerProfile.follower_count);
+    }
+  }, [streamerProfile?.follower_count]);
 
   // Get streamer's Kaspa address for tipping (secure function)
   const { data: streamerKaspaAddress } = useQuery({
@@ -234,21 +278,57 @@ const Watch = () => {
     }
   };
 
-  const handleFollow = () => {
-    if (!identity?.id) {
+  const handleFollow = async () => {
+    if (!identity?.id || !streamData?.user_id) {
       onRequireLogin();
       return;
     }
-    setFollowed(!followed);
-    toast.success(followed ? 'Unfollowed' : 'Followed!');
+
+    try {
+      if (followed) {
+        await supabase
+          .from('follows')
+          .delete()
+          .match({ follower_id: identity.id, following_id: streamData.user_id });
+        setFollowerCount(prev => Math.max(0, prev - 1));
+      } else {
+        await supabase
+          .from('follows')
+          .insert({ follower_id: identity.id, following_id: streamData.user_id });
+        setFollowerCount(prev => prev + 1);
+      }
+      setFollowed(!followed);
+      toast.success(followed ? 'Unfollowed' : 'Followed!');
+    } catch (error) {
+      console.error('Follow error:', error);
+      toast.error('Failed to update follow status');
+    }
   };
 
-  const handleLike = () => {
-    if (!identity?.id) {
+  const handleLike = async () => {
+    if (!identity?.id || !streamData?.id) {
       onRequireLogin();
       return;
     }
-    setLiked(!liked);
+
+    try {
+      if (liked) {
+        await supabase
+          .from('likes')
+          .delete()
+          .match({ user_id: identity.id, stream_id: streamData.id });
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        await supabase
+          .from('likes')
+          .insert({ user_id: identity.id, stream_id: streamData.id });
+        setLikeCount(prev => prev + 1);
+      }
+      setLiked(!liked);
+    } catch (error) {
+      console.error('Like error:', error);
+      toast.error('Failed to update like status');
+    }
   };
 
   const onRequireLogin = () => {
@@ -396,8 +476,8 @@ const Watch = () => {
                   onClick={handleLike}
                   className="flex-1 sm:flex-none"
                 >
-                  <Heart className={liked ? "fill-current" : ""} />
-                  Like
+                  <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
+                  <span className="ml-1">{likeCount}</span>
                 </Button>
                 <Button
                   variant={followed ? "secondary" : "hero"}
@@ -481,8 +561,8 @@ const Watch = () => {
           displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
           handle: streamerProfile.handle || 'streamer',
           bio: streamerProfile.bio || '',
-          followers: 0,
-          following: 0,
+          followers: followerCount,
+          following: streamerProfile.following_count || 0,
           tags: []
         } : undefined}
         isLoggedIn={!!identity}

@@ -49,6 +49,9 @@ const Following: React.FC = () => {
         .from('follows')
         .delete()
         .match({ follower_id: identity.id, following_id: userId });
+      
+      // Refetch the following list to update UI
+      window.location.reload();
     } catch (error) {
       console.error('Error unfollowing:', error);
     }
