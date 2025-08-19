@@ -28,23 +28,28 @@ const secondsToTs = (s: number) => {
 
 const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCreated }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [range, setRange] = useState<[number, number]>([0, Math.min(30, vod.duration_seconds || 30)]);
+  const [duration, setDuration] = useState<10 | 30 | 60>(10);
   const [title, setTitle] = useState("");
   const { toast } = useToast();
 
+  // Calculate the clip range from current time backwards
+  const currentTime = Math.min(vod.duration_seconds || 60, 60); // Default to 60s if no duration
+  const startTime = Math.max(0, currentTime - duration);
+  const endTime = currentTime;
+
   useEffect(() => {
     if (!open) {
-      setRange([0, Math.min(30, vod.duration_seconds || 30)]);
+      setDuration(10);
       setTitle("");
     }
-  }, [open, vod.duration_seconds]);
+  }, [open]);
 
   const captureThumbnail = async (): Promise<Blob | null> => {
     return new Promise((resolve) => {
       const video = document.createElement("video");
       video.crossOrigin = "anonymous";
       video.src = vod.src_url;
-      video.currentTime = range[0];
+      video.currentTime = startTime;
       video.muted = true;
       video.addEventListener("loadeddata", () => {
         const canvas = document.createElement("canvas");
@@ -76,8 +81,8 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
       return;
     }
 
-    const start = Math.max(0, Math.floor(range[0]));
-    const end = Math.max(start + 1, Math.floor(range[1]));
+    const start = Math.max(0, Math.floor(startTime));
+    const end = Math.max(start + 1, Math.floor(endTime));
 
     // Upload thumbnail
     let thumbnail_url: string | null = null;
@@ -96,7 +101,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     const insert = await supabase.from("clips").insert({
       vod_id: vod.id,
       user_id: user.user.id,
-      title: title || `${vod.title} — Clip (${secondsToTs(start)}-${secondsToTs(end)})`,
+      title: title || `${vod.title} — Clip (${duration}s)`,
       start_seconds: start,
       end_seconds: end,
       thumbnail_url: thumbnail_url,
@@ -112,16 +117,14 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     onCreated?.(insert.data.id);
   };
 
-  const maxDur = Math.max(vod.duration_seconds || 0, range[1]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Create a clip</DialogTitle>
+          <DialogTitle>Create a clip from the last {duration} seconds</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <VideoPlayer src={vod.src_url} startAt={range[0]} endAt={range[1]} loopRange className="rounded-lg" />
+          <VideoPlayer src={vod.src_url} startAt={startTime} endAt={endTime} loopRange className="rounded-lg" />
           <div>
             <label className="text-sm font-medium">Title</label>
             <input
@@ -132,18 +135,19 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
             />
           </div>
           <div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>{secondsToTs(range[0])}</span>
-              <span>{secondsToTs(range[1])}</span>
+            <label className="text-sm font-medium mb-2 block">Clip Duration</label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value) as 10 | 30 | 60)}
+              className="w-full rounded-md bg-background px-3 py-2 text-sm border border-border"
+            >
+              <option value={10}>Last 10 seconds</option>
+              <option value={30}>Last 30 seconds</option>
+              <option value={60}>Last 1 minute</option>
+            </select>
+            <div className="text-xs text-muted-foreground mt-2">
+              Clip will be from {secondsToTs(startTime)} to {secondsToTs(endTime)}
             </div>
-            <Slider
-              value={[range[0], range[1]]}
-              min={0}
-              max={Math.max(30, maxDur || 30)}
-              step={1}
-              onValueChange={(v) => setRange([v[0], v[1]] as [number, number])}
-            />
-            <div className="text-xs text-muted-foreground mt-1">Drag the handles to choose your moment.</div>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

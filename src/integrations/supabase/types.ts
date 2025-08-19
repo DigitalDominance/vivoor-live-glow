@@ -51,13 +51,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       clips: {
@@ -324,36 +317,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          bio: string | null
-          created_at: string | null
-          display_name: string | null
-          handle: string | null
-          id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          handle?: string | null
-          id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          handle?: string | null
-          id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       auto_end_disconnected_streams: {
@@ -396,6 +360,19 @@ export type Database = {
           decrypted_message: string
           masked_sender_address: string
           stream_id: string
+        }[]
+      }
+      get_profile_with_stats: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          follower_count: number
+          following_count: number
+          handle: string
+          id: string
         }[]
       }
       get_public_profile: {

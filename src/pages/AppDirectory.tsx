@@ -45,7 +45,7 @@ const AppDirectory: React.FC = () => {
   const { data: allStreams = [] } = useQuery({
     queryKey: ['all-streams'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_streams_with_profiles', { 
+      const { data, error } = await supabase.rpc('get_streams_with_profiles_and_likes', { 
         _limit: 100, 
         _offset: 0 
       });
@@ -59,12 +59,14 @@ const AppDirectory: React.FC = () => {
         id: stream.id,
         title: stream.title,
         category: stream.category || 'IRL',
-        live: stream.is_live,
-        viewers: stream.viewers,
+        live: !!stream.playback_url, // Stream is live if it has a playback URL
+        viewers: stream.viewers || 0,
         username: stream.profile_handle || stream.profile_display_name || 'unknown',
         userId: stream.user_id,
         thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
-        startedAt: stream.created_at
+        startedAt: stream.created_at,
+        likeCount: stream.like_count || 0,
+        avatar: stream.profile_avatar_url
       }));
     },
     refetchInterval: 5000 // Refresh every 5 seconds for live updates
@@ -101,7 +103,7 @@ const AppDirectory: React.FC = () => {
 
   const openProfile = async (userId: string) => {
     try {
-      const { data } = await supabase.rpc('get_public_profile', { _id: userId });
+      const { data } = await supabase.rpc('get_profile_with_stats', { _user_id: userId });
       const profile = Array.isArray(data) ? data[0] : data;
       if (profile) {
         setActiveProfile({
@@ -109,8 +111,8 @@ const AppDirectory: React.FC = () => {
           handle: profile.handle || 'user',
           displayName: profile.display_name || profile.handle || 'User',
           bio: profile.bio || '',
-          followers: 0,
-          following: 0,
+          followers: profile.follower_count || 0,
+          following: profile.following_count || 0,
           tags: []
         });
         setProfileOpen(true);

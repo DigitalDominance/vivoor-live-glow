@@ -67,8 +67,7 @@ const SiteHeader = () => {
         <div className="hidden md:flex items-center gap-1">
           <NavLink to="/">Home</NavLink>
           <NavLink to="/app">App</NavLink>
-          <a href="/#pricing" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover-scale rounded-md">Pricing</a>
-          <a href="/#faq" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover-scale rounded-md">FAQ</a>
+          <NavLink to="/go-live">Go Live</NavLink>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -91,6 +90,7 @@ const SiteHeader = () => {
                 <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setProfileOpen(true)}>Profile</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/recordings")}>My Recordings</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate("/following")}>My Following</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -104,8 +104,7 @@ const SiteHeader = () => {
               <div className="grid gap-2">
                 <Link to="/" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Home</Link>
                 <Link to="/app" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">App</Link>
-                <a href="/#pricing" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Pricing</a>
-                <a href="/#faq" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">FAQ</a>
+                <Link to="/go-live" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Go Live</Link>
                 {!identity ? (
                   <Button variant="gradientOutline" className="mt-2" onClick={() => (path === "/app" ? setWalletOpen(true) : navigate(cta.to))}>
                     {path === "/app" ? "Login" : cta.label}
@@ -115,6 +114,7 @@ const SiteHeader = () => {
                     <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
                     <Button variant="secondary" onClick={() => setProfileOpen(true)}>Profile</Button>
                     <Button variant="ghost" onClick={() => navigate("/recordings")}>My Recordings</Button>
+                    <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
                   </div>
                 )}
               </div>

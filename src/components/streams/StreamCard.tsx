@@ -4,6 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import React from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type StreamCardProps = {
   stream: {
@@ -17,6 +18,8 @@ export type StreamCardProps = {
     thumbnail?: string;
     startedAt?: string;
     duration?: string;
+    likeCount?: number;
+    avatar?: string;
   };
   isLoggedIn?: boolean;
   onOpenProfile?: (userId: string) => void;
@@ -26,11 +29,32 @@ export type StreamCardProps = {
 export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOpenProfile, onRequireLogin }) => {
   const navigate = useNavigate();
   const [liked, setLiked] = React.useState(false);
+  const [likeCount, setLikeCount] = React.useState(stream.likeCount || 0);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLoggedIn) return onRequireLogin?.();
-    setLiked((v) => !v);
+    
+    try {
+      if (liked) {
+        // Remove like
+        await supabase.from('likes').delete().match({ 
+          stream_id: stream.id, 
+          user_id: (await supabase.auth.getUser()).data.user?.id 
+        });
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Add like
+        await supabase.from('likes').insert({ 
+          stream_id: stream.id, 
+          user_id: (await supabase.auth.getUser()).data.user?.id 
+        });
+        setLikeCount(prev => prev + 1);
+      }
+      setLiked(!liked);
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
   };
 
   const handleClick = () => {
@@ -81,15 +105,21 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
               onClick={(e) => { e.stopPropagation(); onOpenProfile?.(stream.userId); }}
             >
               <Avatar className="size-4">
-                <AvatarImage src={""} alt={`@${stream.username} avatar`} />
+                <AvatarImage src={stream.avatar} alt={`@${stream.username} avatar`} />
                 <AvatarFallback className="text-[10px]">{stream.username[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span>@{stream.username}</span>
             </button>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLike} aria-label={liked ? 'Unlike' : 'Like'}>
-            <Heart className={liked ? "fill-current text-[hsl(var(--brand-pink))]" : ""} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Heart className="size-3" />
+              {likeCount}
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLike} aria-label={liked ? 'Unlike' : 'Like'}>
+              <Heart className={liked ? "fill-current text-[hsl(var(--brand-pink))]" : ""} />
+            </Button>
+          </div>
         </div>
       </div>
     </motion.article>

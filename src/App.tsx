@@ -17,6 +17,8 @@ import GoLive from "@/pages/GoLive";
 import Recordings from "@/pages/Recordings";
 import Vod from "@/pages/Vod";
 import Clip from "@/pages/Clip";
+import Following from "@/pages/Following";
+import Profile from "@/pages/Profile";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="/recordings" element={<Recordings />} />
                 <Route path="/vod/:id" element={<Vod />} />
                 <Route path="/clip/:id" element={<Clip />} />
+                <Route path="/following" element={<Following />} />
+                <Route path="/profile/:id" element={<Profile />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
