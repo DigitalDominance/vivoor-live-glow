@@ -76,7 +76,7 @@ const AppDirectory: React.FC = () => {
         viewers: stream.viewers,
         username: (stream.profiles as any)?.handle || (stream.profiles as any)?.display_name || 'unknown',
         userId: stream.user_id,
-        thumbnail: stream.thumbnail_url || `/src/assets/category-${(stream.category || 'irl').toLowerCase()}.jpg`,
+        thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
         startedAt: stream.created_at
       }));
     },

@@ -18,6 +18,7 @@ import ClipCreator from "@/components/modals/ClipCreator";
 import { toast } from "sonner";
 import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 
 const Watch = () => {
   const { streamId } = useParams();
@@ -98,7 +99,7 @@ const Watch = () => {
         viewers: stream.viewers || 0,
         username: stream.profiles?.handle || 'Unknown',
         userId: stream.user_id,
-        thumbnail: stream.thumbnail_url,
+        thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
         startedAt: stream.started_at,
       })) || [];
     },
