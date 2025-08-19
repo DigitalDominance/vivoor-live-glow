@@ -123,6 +123,10 @@ const AppDirectory: React.FC = () => {
     }
   };
 
+  const handleGoToChannel = (userId: string) => {
+    window.location.href = `/channel/${userId}`;
+  };
+
   const visibleItems = filtered.slice(0, visible);
 
   return (
@@ -206,7 +210,7 @@ const AppDirectory: React.FC = () => {
         profile={activeProfile} 
         isLoggedIn={isLoggedIn} 
         onRequireLogin={onRequireLogin} 
-        onGoToChannel={() => {}} 
+        onGoToChannel={() => activeProfile?.id && handleGoToChannel(activeProfile.id)} 
       />
     </main>
   );

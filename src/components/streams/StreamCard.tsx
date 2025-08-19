@@ -36,17 +36,26 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
     if (!isLoggedIn) return onRequireLogin?.();
     
     try {
-      // Get wallet identity - we need to use a different approach for likes
-      // For now, just require proper login since we need the user ID for database operations
-      if (!isLoggedIn) {
+      // Use wallet identity for likes - the identity.id is now the user UUID from authenticate_wallet_user
+      const walletData = JSON.parse(localStorage.getItem('vivoor.wallet.provider') || 'null');
+      if (!walletData) {
         onRequireLogin?.();
         return;
       }
-      
-      // TODO: Update this to use wallet-based user IDs once authentication is properly implemented
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-      
+
+      // Get current wallet address to get user ID
+      const kaswareAccounts = await (window as any).kasware?.getAccounts?.();
+      const walletAddress = kaswareAccounts?.[0];
+      if (!walletAddress) {
+        onRequireLogin?.();
+        return;
+      }
+
+      // Get user ID from wallet address
+      const { data: userId } = await supabase.rpc('authenticate_wallet_user', {
+        wallet_address: walletAddress
+      });
+
       if (!userId) {
         onRequireLogin?.();
         return;

@@ -7,7 +7,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { useQuery } from "@tanstack/react-query";
-import { Settings, Users, Video, Clock } from "lucide-react";
+import { Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
@@ -15,12 +15,11 @@ const Channel: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { identity } = useWallet();
-  const [following, setFollowing] = React.useState(false);
   const isOwnChannel = identity?.id === userId;
 
-  // Fetch channel profile data
+  // Fetch profile data
   const { data: profile } = useQuery({
-    queryKey: ['channel-profile', userId],
+    queryKey: ['profile', userId],
     queryFn: async () => {
       if (!userId) return null;
       const { data } = await supabase.rpc('get_profile_with_stats', { _user_id: userId });
@@ -29,46 +28,14 @@ const Channel: React.FC = () => {
     enabled: !!userId
   });
 
-  // Fetch channel streams
-  const { data: streams = [] } = useQuery({
-    queryKey: ['channel-streams', userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      const { data, error } = await supabase
-        .from('streams')
-        .select(`
-          id, title, category, is_live, viewers, thumbnail_url, created_at, playback_url,
-          profiles!inner(handle, display_name, avatar_url)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching channel streams:', error);
-        return [];
-      }
-
-      return (data || []).map((stream: any) => ({
-        id: stream.id,
-        title: stream.title,
-        category: stream.category || 'IRL',
-        live: !!stream.playback_url,
-        viewers: stream.viewers || 0,
-        username: stream.profiles?.handle || stream.profiles?.display_name || 'user',
-        userId: userId,
-        thumbnail: stream.thumbnail_url,
-        startedAt: stream.created_at,
-        likeCount: 0, // TODO: Add like count
-        avatar: stream.profiles?.avatar_url
-      }));
-    },
-    enabled: !!userId
-  });
-
   // Check if following
+  const [following, setFollowing] = React.useState(false);
   React.useEffect(() => {
     const checkFollowing = async () => {
-      if (!identity?.id || !userId || isOwnChannel) return;
+      if (!userId || !identity?.id || identity.id === userId) {
+        setFollowing(false);
+        return;
+      }
       
       const { data } = await supabase
         .from('follows')
@@ -81,11 +48,11 @@ const Channel: React.FC = () => {
     };
     
     checkFollowing();
-  }, [identity?.id, userId, isOwnChannel]);
+  }, [userId, identity?.id]);
 
   const handleFollow = async () => {
-    if (!identity?.id) {
-      toast({ title: "Connect your wallet to follow creators" });
+    if (!identity?.id || !userId) {
+      toast({ title: "Please connect your wallet first" });
       return;
     }
 
@@ -114,133 +81,112 @@ const Channel: React.FC = () => {
     }
   };
 
-  if (!userId || !profile) {
+  if (!profile) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-20">
-          <h1 className="text-2xl font-bold mb-4">Channel not found</h1>
-          <Button onClick={() => navigate('/app')}>Back to Directory</Button>
+        <div className="text-center">
+          <div className="text-lg font-medium">Channel not found</div>
+          <Button variant="outline" onClick={() => navigate(-1)} className="mt-4">
+            Go back
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen">
+    <div className="min-h-screen">
       <Helmet>
-        <title>{profile.display_name || profile.handle} - Vivoor Channel</title>
-        <meta name="description" content={`Watch ${profile.display_name || profile.handle}'s live streams and videos on Vivoor`} />
-        <link rel="canonical" href={`/channel/${userId}`} />
+        <title>{profile.display_name || profile.handle} - Channel | Vivoor</title>
+        <meta name="description" content={`Watch ${profile.display_name || profile.handle}'s streams and content on Vivoor. ${profile.bio || ''}`} />
       </Helmet>
 
       {/* Channel Header */}
-      <section className="relative">
+      <div className="relative">
         {/* Banner */}
-        <div className="h-32 md:h-48 bg-gradient-to-r from-primary/20 via-primary/30 to-primary/20 relative">
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_25%,rgba(255,255,255,0.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.05)_75%)] bg-[length:20px_20px] opacity-30" />
+        <div className="h-32 md:h-48 bg-grad-primary relative">
+          <div className="absolute inset-0 bg-background/10" />
           {isOwnChannel && (
             <Button
               variant="glass"
               size="sm"
               className="absolute top-4 right-4"
-              onClick={() => navigate('/channel/edit')}
+              onClick={() => navigate('/channel/settings')}
             >
               <Settings className="size-4 mr-2" />
               Edit Channel
             </Button>
           )}
         </div>
-
-        {/* Profile Info */}
-        <div className="container mx-auto px-4 -mt-16 relative z-10">
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-6">
-            <Avatar className="size-24 md:size-32 border-4 border-background shadow-lg">
-              <AvatarImage src={profile.avatar_url} alt={`${profile.display_name || profile.handle} avatar`} />
-              <AvatarFallback className="text-2xl">
-                {(profile.display_name || profile.handle || 'U')[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
-              <p className="text-muted-foreground">@{profile.handle}</p>
-              {profile.bio && (
-                <p className="mt-2 text-sm max-w-2xl">{profile.bio}</p>
-              )}
+        
+        {/* Profile Section */}
+        <div className="container mx-auto px-4">
+          <div className="relative -mt-16 pb-6">
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <Avatar className="size-24 md:size-32 border-4 border-background shadow-lg">
+                <AvatarImage src={profile.avatar_url || ''} alt={`${profile.display_name} avatar`} />
+                <AvatarFallback className="text-2xl bg-grad-primary text-[hsl(var(--on-gradient))]">
+                  {(profile.display_name || profile.handle || 'U')[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               
-              <div className="flex items-center gap-6 mt-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Users className="size-4" />
-                  <span>{profile.follower_count?.toLocaleString() || 0} followers</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
+                    <p className="text-muted-foreground">@{profile.handle}</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {!isOwnChannel && identity?.id && (
+                      <Button
+                        variant={following ? "secondary" : "hero"}
+                        onClick={handleFollow}
+                      >
+                        {following ? 'Following' : 'Follow'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Video className="size-4" />
-                  <span>{streams.length} streams</span>
+                
+                <div className="flex gap-6 text-sm mb-4">
+                  <div>
+                    <span className="font-semibold">{profile.follower_count || 0}</span>
+                    <span className="text-muted-foreground ml-1">followers</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">{profile.following_count || 0}</span>
+                    <span className="text-muted-foreground ml-1">following</span>
+                  </div>
                 </div>
+                
+                {profile.bio && (
+                  <p className="text-muted-foreground max-w-2xl">{profile.bio}</p>
+                )}
               </div>
-              
-              {!isOwnChannel && (
-                <div className="mt-4">
-                  <Button
-                    variant={following ? "secondary" : "hero"}
-                    onClick={handleFollow}
-                    className="min-w-[100px]"
-                  >
-                    {following ? 'Following' : 'Follow'}
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Channel Content */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-6">
-          <h2 className="text-xl font-semibold">Recent Streams</h2>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="size-4" />
-            <span>Latest first</span>
+      {/* Content placeholder */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="text-muted-foreground">
+            {isOwnChannel ? "You haven't streamed yet." : "No streams yet."}
           </div>
+          {isOwnChannel && (
+            <Button 
+              variant="hero" 
+              className="mt-4"
+              onClick={() => navigate('/go-live')}
+            >
+              Start Streaming
+            </Button>
+          )}
         </div>
-
-        {streams.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <Video className="size-12 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium mb-2">No streams yet</h3>
-            <p>This channel hasn't streamed anything yet.</p>
-            {isOwnChannel && (
-              <Button className="mt-4" onClick={() => navigate('/go-live')}>
-                Start your first stream
-              </Button>
-            )}
-          </div>
-        ) : (
-          <motion.div 
-            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {streams.map((stream, index) => (
-              <motion.div
-                key={stream.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <StreamCard 
-                  stream={stream} 
-                  isLoggedIn={!!identity}
-                  onRequireLogin={() => toast({ title: "Connect your wallet to interact" })}
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </section>
-    </main>
+      </div>
+    </div>
   );
 };
 
