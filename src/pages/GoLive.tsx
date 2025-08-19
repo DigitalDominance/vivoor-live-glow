@@ -29,12 +29,12 @@ const GoLive = () => {
   const [playerKey, setPlayerKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
 
-  // Get current user profile for display
+  // Get current user profile for display using secure function
   const { data: profile } = useQuery({
     queryKey: ['profile', identity?.id],
     queryFn: async () => {
       if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_public_profile', { _id: identity.id });
+      const { data } = await supabase.rpc('get_public_profile_display', { user_id: identity.id });
       return data?.[0] || null;
     },
     enabled: !!identity?.id

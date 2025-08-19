@@ -26,12 +26,12 @@ const Stream = () => {
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
 
-  // Get current user profile
+  // Get current user profile using secure function
   const { data: profile } = useQuery({
     queryKey: ['profile', identity?.id],
     queryFn: async () => {
       if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_public_profile', { _id: identity.id });
+      const { data } = await supabase.rpc('get_public_profile_display', { user_id: identity.id });
       return data?.[0] || null;
     },
     enabled: !!identity?.id
@@ -52,41 +52,28 @@ const Stream = () => {
     enabled: !!streamId
   });
 
-  // Fetch streamer profile
+  // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
     queryKey: ['streamer-profile', streamData?.user_id],
     queryFn: async () => {
       if (!streamData?.user_id) return null;
-      console.log('Fetching profile for user_id:', streamData.user_id);
-      
-      // Try direct query first
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', streamData.user_id)
-        .maybeSingle();
-      
-      console.log('Profile query result:', { data, error });
-      
-      if (error) {
-        console.error('Profile fetch error:', error);
-        return null;
-      }
-      
-      return data;
+      const { data } = await supabase.rpc('get_public_profile_display', { 
+        user_id: streamData.user_id 
+      });
+      return data?.[0] || null;
     },
     enabled: !!streamData?.user_id
   });
 
-  // Get streamer's Kaspa address for tipping
+  // Get streamer's Kaspa address for tipping using secure function
   const { data: streamerKaspaAddress } = useQuery({
-    queryKey: ['kaspa-address', streamData?.user_id],
+    queryKey: ['tip-address', streamData?.id],
     queryFn: async () => {
-      if (!streamData?.user_id || !identity?.id) return null;
-      const { data } = await supabase.rpc('get_kaspa_address', { _id: streamData.user_id });
+      if (!streamData?.id || !identity?.id) return null;
+      const { data } = await supabase.rpc('get_tip_address', { stream_id: streamData.id });
       return data;
     },
-    enabled: !!streamData?.user_id && !!identity?.id
+    enabled: !!streamData?.id && !!identity?.id
   });
 
   // Use localStorage as fallback for current user's own stream
@@ -154,61 +141,61 @@ const Stream = () => {
     checkAuth();
   }, [streamId, navigate, identity?.id]);
 
+  // Auto-end stream after 1 minute of disconnection and heartbeat monitoring
   React.useEffect(() => {
+    if (!streamData?.id || !isOwnStream) return;
+
+    let heartbeatInterval: number;
     let disconnectTimer: number;
-    let disconnectStartTime: number | null = null;
-    
-    const handleStreamEnd = async () => {
-      if (streamId) {
-        console.log('Auto-ending stream due to prolonged disconnection');
-        await supabase.from('streams').update({ is_live: false }).eq('id', streamId);
-        
-        // Clear local storage
-        localStorage.removeItem('currentIngestUrl');
-        localStorage.removeItem('currentStreamKey');
-        localStorage.removeItem('currentPlaybackUrl');
-        localStorage.removeItem('streamStartTime');
-        localStorage.removeItem('currentStreamId');
-        
-        toast.error('Stream ended due to extended disconnection');
-        navigate('/app');
-      }
-    };
+    let lastHeartbeat = Date.now();
 
-    const handlePlayerError = () => {
-      if (!disconnectStartTime) {
-        disconnectStartTime = Date.now();
-        setConnectionStatus('disconnected');
-        
-        // Auto-end stream after 2 minutes of disconnection
-        disconnectTimer = window.setTimeout(handleStreamEnd, 120000);
-      }
-    };
-
-    const handlePlayerRecover = () => {
-      if (disconnectStartTime) {
-        clearTimeout(disconnectTimer);
-        disconnectStartTime = null;
+    const sendHeartbeat = async () => {
+      try {
+        await supabase.rpc('update_stream_heartbeat', { stream_id: streamData.id });
+        lastHeartbeat = Date.now();
         setConnectionStatus('connected');
+      } catch (error) {
+        console.error('Failed to send heartbeat:', error);
+        setConnectionStatus('disconnected');
       }
     };
 
-    // Listen for HLS errors on the window to catch player disconnects
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'hls-error') {
-        handlePlayerError();
-      } else if (event.data?.type === 'hls-recover') {
-        handlePlayerRecover();
+    const checkAndEndStream = async () => {
+      const timeSinceLastHeartbeat = Date.now() - lastHeartbeat;
+      
+      if (timeSinceLastHeartbeat > 60000) { // 1 minute
+        console.log('Auto-ending stream due to 1 minute disconnection');
+        
+        try {
+          await supabase.rpc('auto_end_disconnected_streams', { timeout_minutes: 1 });
+          
+          // Clear local storage
+          localStorage.removeItem('currentIngestUrl');
+          localStorage.removeItem('currentStreamKey');
+          localStorage.removeItem('currentPlaybackUrl');
+          localStorage.removeItem('streamStartTime');
+          localStorage.removeItem('currentStreamId');
+          
+          toast.error('Stream ended due to 1 minute disconnection');
+          navigate('/app');
+        } catch (error) {
+          console.error('Failed to auto-end stream:', error);
+        }
       }
     };
 
-    window.addEventListener('message', handleMessage);
+    // Send heartbeat every 30 seconds
+    sendHeartbeat(); // Initial heartbeat
+    heartbeatInterval = window.setInterval(sendHeartbeat, 30000);
+    
+    // Check for disconnection every 30 seconds
+    disconnectTimer = window.setInterval(checkAndEndStream, 30000);
 
     return () => {
-      window.removeEventListener('message', handleMessage);
-      clearTimeout(disconnectTimer);
+      clearInterval(heartbeatInterval);
+      clearInterval(disconnectTimer);
     };
-  }, [streamId, navigate]);
+  }, [streamData?.id, isOwnStream, navigate]);
 
   React.useEffect(() => {
     const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;

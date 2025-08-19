@@ -1,282 +1,143 @@
 import React from "react";
-import { Helmet } from "react-helmet-async";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
-import ChatPanel, { ChatMessage } from "@/components/streams/ChatPanel";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
 import TipDisplay from "@/components/TipDisplay";
-import { Button } from "@/components/ui/button";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Volume2, Play, Settings, Heart } from "lucide-react";
+import ChatPanel from "@/components/streams/ChatPanel";
 import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Heart, Play, Pause, MoreVertical, Users } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
-const Watch: React.FC = () => {
-  const { id } = useParams();
+const Watch = () => {
+  const { streamId } = useParams();
   const navigate = useNavigate();
-
+  const { identity } = useWallet();
+  const [elapsed, setElapsed] = React.useState(0);
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [isFollowing, setIsFollowing] = React.useState(false);
-  const [isLiked, setIsLiked] = React.useState(false);
-  const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = React.useState('');
+  const [liked, setLiked] = React.useState(false);
+  const [followed, setFollowed] = React.useState(false);
+  const [isPlaying, setIsPlaying] = React.useState(true);
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
 
-  const { identity } = useWallet();
-  const isLoggedIn = !!identity;
-
-  const onRequireLogin = () => {
-    if (!isLoggedIn) {
-      toast.error('Please connect your wallet to continue');
-    }
-  };
-
-  // Fetch stream data from database
+  // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
-    queryKey: ['stream', id],
+    queryKey: ['stream', streamId],
     queryFn: async () => {
-      if (!id) return null;
-      
-      const { data: stream, error } = await supabase
+      if (!streamId) return null;
+      const { data } = await supabase
+        .from('streams')
+        .select('*')
+        .eq('id', streamId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!streamId,
+    refetchInterval: 30000 // Refetch every 30 seconds to check if stream is still live
+  });
+
+  // Fetch streamer profile using secure function
+  const { data: streamerProfile } = useQuery({
+    queryKey: ['streamer-profile', streamData?.user_id],
+    queryFn: async () => {
+      if (!streamData?.user_id) return null;
+      const { data } = await supabase.rpc('get_public_profile_display', { 
+        user_id: streamData.user_id 
+      });
+      return data?.[0] || null;
+    },
+    enabled: !!streamData?.user_id
+  });
+
+  // Get streamer's Kaspa address for tipping (secure function)
+  const { data: streamerKaspaAddress } = useQuery({
+    queryKey: ['tip-address', streamId],
+    queryFn: async () => {
+      if (!streamId || !identity?.id) return null;
+      const { data } = await supabase.rpc('get_tip_address', { 
+        stream_id: streamId 
+      });
+      return data;
+    },
+    enabled: !!streamId && !!identity?.id
+  });
+
+  // Fetch suggested streams
+  const { data: suggestedStreams } = useQuery({
+    queryKey: ['suggested-streams', streamData?.category],
+    queryFn: async () => {
+      const { data } = await supabase
         .from('streams')
         .select(`
           *,
-          profiles (
-            handle,
-            display_name,
-            avatar_url,
-            bio,
-            kaspa_address
-          )
+          profiles:user_id (display_name, handle, avatar_url)
         `)
-        .eq('id', id)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching stream:', error);
-        return null;
-      }
-      
-      return stream;
-    },
-    enabled: !!id,
-    refetchInterval: 5000 // Refresh every 5 seconds to update viewer count
-  });
-
-  // Fetch chat messages for this stream
-  const { data: chatData = [] } = useQuery({
-    queryKey: ['chat-messages', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          id,
-          message,
-          created_at,
-          profiles (
-            handle,
-            display_name
-          )
-        `)
-        .eq('stream_id', id)
-        .order('created_at', { ascending: true })
-        .limit(100);
-      
-      if (error) {
-        console.error('Error fetching chat messages:', error);
-        return [];
-      }
-      
-      return data.map(msg => ({
-        id: msg.id,
-        user: (msg.profiles as any)?.handle || (msg.profiles as any)?.display_name || 'Anonymous',
-        text: msg.message,
-        time: new Date(msg.created_at).toLocaleTimeString()
-      }));
-    },
-    enabled: !!id,
-    refetchInterval: 2000 // Refresh chat every 2 seconds
-  });
-
-  // Fetch suggested streams from database
-  const { data: suggestedStreams = [] } = useQuery({
-    queryKey: ['suggested-streams', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
-        .from('streams')
-        .select(`
-          id,
-          title,
-          category,
-          is_live,
-          viewers,
-          user_id,
-          thumbnail_url,
-          created_at,
-          profiles (
-            handle,
-            display_name,
-            avatar_url
-          )
-        `)
-        .neq('id', id)
         .eq('is_live', true)
+        .neq('id', streamId || '')
         .limit(6)
         .order('viewers', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching suggested streams:', error);
-        return [];
-      }
-      
-      return data.map(stream => ({
+      return data?.map(stream => ({
         id: stream.id,
         title: stream.title,
-        category: stream.category,
+        category: stream.category || 'IRL',
         live: stream.is_live,
-        viewers: stream.viewers,
-        username: (stream.profiles as any)?.handle || 'unknown',
+        viewers: stream.viewers || 0,
+        username: stream.profiles?.handle || 'Unknown',
         userId: stream.user_id,
         thumbnail: stream.thumbnail_url,
-        startedAt: stream.created_at
-      }));
+        startedAt: stream.started_at,
+      })) || [];
     },
-    enabled: !!id
+    enabled: !!streamData
   });
 
-  // Set up realtime subscription for chat messages
-  React.useEffect(() => {
-    if (!id) return;
-
-    const channel = supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `stream_id=eq.${id}`
-        },
-        async (payload) => {
-          console.log('New chat message:', payload);
-          
-          // Fetch the profile for the new message
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('handle, display_name')
-            .eq('id', payload.new.user_id)
-            .single();
-          
-          const newMsg: ChatMessage = {
-            id: payload.new.id,
-            user: profile?.handle || profile?.display_name || 'Anonymous',
-            text: payload.new.message,
-            time: new Date(payload.new.created_at).toLocaleTimeString()
-          };
-          
-          setChatMessages(prev => [...prev, newMsg]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
-
-  // Update chat messages when data changes
-  React.useEffect(() => {
-    setChatMessages(chatData);
-  }, [chatData]);
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !isLoggedIn || !id) return;
-    
-    try {
-      const { error } = await supabase
+  // Fetch chat messages
+  const { data: chatMessages } = useQuery({
+    queryKey: ['chat', streamId],
+    queryFn: async () => {
+      if (!streamId) return [];
+      const { data } = await supabase
         .from('chat_messages')
-        .insert({
-          stream_id: id,
-          user_id: identity?.id,
-          message: newMessage.trim()
-        });
+        .select(`
+          *,
+          profiles:user_id (display_name, handle, avatar_url)
+        `)
+        .eq('stream_id', streamId)
+        .order('created_at', { ascending: true })
+        .limit(100);
       
-      if (error) {
-        console.error('Error sending message:', error);
-        toast.error('Failed to send message');
-        return;
-      }
-      
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-    }
-  };
-
-  const handleFollow = () => {
-    if (!isLoggedIn) {
-      onRequireLogin();
-      return;
-    }
-    setIsFollowing(!isFollowing);
-    toast.success(isFollowing ? 'Unfollowed' : 'Followed!');
-  };
-
-  const handleLike = () => {
-    if (!isLoggedIn) {
-      onRequireLogin();
-      return;
-    }
-    setIsLiked(!isLiked);
-    toast.success('Liked!');
-  };
-
-  // Compute profile data (before any early returns to avoid undefined variables)
-  const profile = streamData?.profiles as any;
-  const computedProfile = profile
-    ? {
-        id: profile.id || streamData?.user_id,
-        handle: profile.handle || 'creator',
-        displayName: profile.display_name || profile.handle || 'Creator',
-        bio: profile.bio || '',
-        followers: 0,
-        following: 0,
-        tags: [] as string[],
-      }
-    : undefined;
-  const username = profile?.handle || profile?.display_name || 'creator';
-  const kaspaAddress = profile?.kaspa_address;
-  
-  // Debug logging for tip address
-  React.useEffect(() => {
-    if (streamData) {
-      console.log('Stream data:', streamData);
-      console.log('Profile data:', profile);
-      console.log('Streamer Kaspa address for tips:', kaspaAddress);
-    }
-  }, [streamData, profile, kaspaAddress]);
+      // Transform data to match ChatMessage interface
+      return data?.map(msg => ({
+        id: msg.id,
+        user: msg.profiles?.display_name || msg.profiles?.handle || 'Anonymous',
+        text: msg.message,
+        time: new Date(msg.created_at).toLocaleTimeString()
+      })) || [];
+    },
+    enabled: !!streamId,
+    refetchInterval: 2000 // Update chat every 2 seconds
+  });
 
   // Monitor tips for this stream
-  const { tips: allTips } = useTipMonitoring({
+  const { tips: allTips, totalAmountReceived } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: streamData?.profiles?.kaspa_address,
+    kaspaAddress: streamerKaspaAddress,
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
         setNewTips(prev => [...prev, tip]);
+        toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
       }
     }
   });
@@ -286,22 +147,119 @@ const Watch: React.FC = () => {
     setNewTips(prev => prev.filter(tip => tip.id !== tipId));
   };
 
-  // Loading state
+  // Set up realtime subscription for chat messages
+  React.useEffect(() => {
+    if (!streamId) return;
+
+    const channel = supabase
+      .channel('chat-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `stream_id=eq.${streamId}`
+        },
+        () => {
+          // Refetch chat messages when new ones arrive
+          // The query will automatically update
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [streamId]);
+
+  // Handle elapsed time calculation
+  React.useEffect(() => {
+    if (!streamData?.started_at) return;
+    
+    const startTime = new Date(streamData.started_at);
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [streamData?.started_at]);
+
+  const handleSendMessage = async (message: string) => {
+    if (!streamId || !identity?.id) {
+      toast.error('You must be logged in to chat');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          stream_id: streamId,
+          user_id: identity.id,
+          message: message.trim()
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error('Failed to send message');
+    }
+  };
+
+  const handleFollow = () => {
+    if (!identity?.id) {
+      onRequireLogin();
+      return;
+    }
+    setFollowed(!followed);
+    toast.success(followed ? 'Unfollowed' : 'Followed!');
+  };
+
+  const handleLike = () => {
+    if (!identity?.id) {
+      onRequireLogin();
+      return;
+    }
+    setLiked(!liked);
+  };
+
+  const onRequireLogin = () => {
+    toast.error('Please connect your wallet to continue');
+  };
+
+  const formatTime = (seconds: number) => {
+    return new Date(seconds * 1000).toISOString().substring(11, 19);
+  };
+
+  // Current user profile for display
+  const profile = React.useMemo(() => {
+    if (!identity?.id) return null;
+    // Use wallet context profile or create a basic one
+    return {
+      handle: identity.id.slice(0, 8),
+      display_name: identity.id.slice(0, 8)
+    };
+  }, [identity?.id]);
+
   if (isLoading) {
     return (
       <main className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading stream...</div>
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading stream...</div>
+        </div>
       </main>
     );
   }
 
-  // Stream not found state
   if (!streamData) {
     return (
       <main className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <div className="text-lg font-medium">Stream not found or ended</div>
-          <Button onClick={() => navigate('/app')} className="mt-4">Back to App</Button>
+          <div className="text-lg font-medium">Stream not found</div>
+          <Button onClick={() => navigate('/app')} className="mt-4">
+            Back to Directory
+          </Button>
         </div>
       </main>
     );
@@ -310,102 +268,191 @@ const Watch: React.FC = () => {
   return (
     <main className="container mx-auto px-4 py-6">
       <Helmet>
-        <title>{streamData?.title || 'Stream'} — Watch on Vivoor</title>
-        <meta name="description" content={`Watch ${streamData?.title || 'stream'} by @${username} on Vivoor.`} />
-        <link rel="canonical" href={`/watch/${streamData?.id || id}`} />
+        <title>{streamData.title} — Vivoor</title>
+        <meta name="description" content={`Watch ${streamData.title} live on Vivoor`} />
       </Helmet>
 
-      <div className="grid lg:grid-cols-3 gap-4 items-start">
-        <div className="lg:col-span-2">
-          {/* Video Player */}
-          {streamData?.playback_url ? (
-            <HlsPlayer 
-              src={streamData.playback_url} 
-              autoPlay 
-              controls 
-              isLiveStream={streamData.is_live}
-            />
-          ) : (
-            <PlayerPlaceholder />
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Main content */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Video player */}
+          <div className="relative">
+            {streamData.playback_url && streamData.is_live ? (
+              <HlsPlayer 
+                src={streamData.playback_url} 
+                autoPlay 
+                isLiveStream 
+                key={streamData.id}
+              />
+            ) : (
+              <PlayerPlaceholder />
+            )}
+            
+            {/* Video controls overlay */}
+            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="glass"
+                  size="icon"
+                  onClick={() => setIsPlaying(!isPlaying)}
+                >
+                  {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
+                </Button>
+                <span className="text-sm">
+                  {streamData.is_live ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-sm">
+                  <Users className="size-4" />
+                  {streamData.viewers || 0}
+                </span>
+                <Button variant="glass" size="icon">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stream info */}
+          <div className="glass rounded-xl p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <Avatar className="size-12">
+                  <AvatarImage src={streamerProfile?.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg font-semibold truncate">{streamData.title}</h1>
+                  <button 
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setProfileOpen(true)}
+                  >
+                    @{streamerProfile?.handle || 'streamer'}
+                  </button>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted">
+                      {streamData.category || 'IRL'}
+                    </span>
+                    {streamData.is_live && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white">
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={liked ? "hero" : "ghost"}
+                  size="sm"
+                  onClick={handleLike}
+                >
+                  <Heart className={liked ? "fill-current" : ""} />
+                  Like
+                </Button>
+                <Button
+                  variant={followed ? "secondary" : "hero"}
+                  size="sm"
+                  onClick={handleFollow}
+                >
+                  {followed ? 'Following' : 'Follow'}
+                </Button>
+                <Button
+                  variant="gradientOutline"
+                  size="sm"
+                  onClick={() => setTipOpen(true)}
+                  disabled={!identity?.id || !streamerKaspaAddress}
+                >
+                  Tip KAS
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Suggested streams */}
+          {suggestedStreams && suggestedStreams.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold">More Live Streams</h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {suggestedStreams.slice(0, 6).map((stream) => (
+                  <StreamCard
+                    key={stream.id}
+                    stream={stream}
+                    isLoggedIn={!!identity}
+                    onOpenProfile={() => setProfileOpen(true)}
+                    onRequireLogin={onRequireLogin}
+                  />
+                ))}
+              </div>
+            </div>
           )}
-          <div className="mt-3 flex items-center gap-2">
-            <Button variant="glass" size="sm" aria-label="Play/Pause"><Play /></Button>
-            <Button variant="glass" size="sm" aria-label="Mute"><Volume2 /></Button>
-            <Button variant="glass" size="sm" aria-label="Settings"><Settings /></Button>
-            <div className="ml-auto flex items-center gap-2">
-              <Button 
-                variant="glass" 
-                size="sm" 
-                onClick={handleLike}
-                className={isLiked ? "text-red-500" : ""}
-                aria-label="Like stream"
-              >
-                <Heart className={isLiked ? "fill-current" : ""} />
-              </Button>
-              <Button variant="gradientOutline" size="sm" onClick={() => setTipOpen(true)}>
-                Tip in KAS
-              </Button>
-              <Button 
-                variant={isFollowing ? "secondary" : "hero"} 
-                size="sm" 
-                onClick={handleFollow}
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
-            <div className="text-sm text-muted-foreground">
-              {streamData?.category} • {streamData?.viewers ?? 0} viewers
-              {streamData?.is_live && <span className="ml-2 inline-flex items-center gap-1 text-red-500">
-                <span className="size-2 bg-red-500 rounded-full animate-pulse"></span>
-                LIVE
-              </span>}
-            </div>
-            <div className="font-medium">{streamData?.title}</div>
-            <button className="story-link text-sm text-muted-foreground hover:text-foreground" onClick={() => setProfileOpen(true)}>
-              @{username}
-            </button>
-          </div>
-
-          <div className="mt-6">
-            <div className="mb-2 font-medium">Suggested streams</div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {suggestedStreams.map((s) => (
-                <StreamCard key={s.id} stream={s} isLoggedIn={isLoggedIn} onOpenProfile={()=>setProfileOpen(true)} onRequireLogin={onRequireLogin} />
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* Chat */}
-        <div className="lg:col-span-1 h-full">
-          <ChatPanel 
-            messages={chatMessages} 
-            canPost={isLoggedIn} 
-            onRequireLogin={onRequireLogin}
-            newMessage={newMessage}
-            onMessageChange={setNewMessage}
-            onSendMessage={handleSendMessage}
-          />
+        {/* Chat sidebar */}
+        <div className="lg:col-span-1">
+          <div className="h-[600px] glass rounded-xl p-4">
+            <h3 className="font-semibold mb-4">Chat</h3>
+            <div className="h-full flex flex-col gap-4">
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {chatMessages?.map(msg => (
+                  <div key={msg.id} className="text-sm">
+                    <span className="font-medium text-primary">{msg.user}:</span>
+                    <span className="ml-2">{msg.text}</span>
+                  </div>
+                ))}
+              </div>
+              {identity?.id ? (
+                <input 
+                  type="text" 
+                  placeholder="Type a message..."
+                  className="w-full px-3 py-2 rounded-md bg-background border border-border"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                      handleSendMessage(e.currentTarget.value.trim());
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+              ) : (
+                <Button onClick={onRequireLogin}>Connect wallet to chat</Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Modals */}
+      <ProfileModal 
+        open={profileOpen} 
+        onOpenChange={setProfileOpen} 
+        profile={streamerProfile ? {
+          id: streamerProfile.id,
+          displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
+          handle: streamerProfile.handle || 'streamer',
+          bio: streamerProfile.bio || '',
+          followers: 0,
+          following: 0,
+          tags: []
+        } : undefined}
+        isLoggedIn={!!identity}
+        onRequireLogin={onRequireLogin}
+        onGoToChannel={() => {}}
+      />
+      
       <TipModal 
         open={tipOpen} 
         onOpenChange={setTipOpen} 
-        isLoggedIn={isLoggedIn} 
+        isLoggedIn={!!identity} 
         onRequireLogin={onRequireLogin} 
-        toAddress={kaspaAddress}
+        toAddress={streamerKaspaAddress}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
-      {computedProfile && (
-        <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} profile={computedProfile} isLoggedIn={isLoggedIn} onRequireLogin={onRequireLogin} onGoToChannel={() => navigate(`/watch/${streamData?.id || id}`)} />
-      )}
       
-      {/* Tip notifications overlay */}
+      {/* Tip notifications overlay - positioned for fullscreen compatibility */}
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
     </main>
   );

@@ -39,7 +39,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown }) => {
   };
 
   return (
-    <div className="fixed top-0 right-0 z-50 p-4 space-y-2 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
       {activeTips.map(tip => (
         <TipNotification
           key={tip.id}

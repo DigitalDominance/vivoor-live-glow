@@ -34,7 +34,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
   };
 
   const handleClick = () => {
-    // Navigate to watch page for all streams - let the page handle authorization
+    // Navigate to watch page for all streams
     navigate(`/watch/${stream.id}`);
   };
 

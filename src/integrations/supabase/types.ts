@@ -329,6 +329,10 @@ export type Database = {
       }
     }
     Functions: {
+      auto_end_disconnected_streams: {
+        Args: { timeout_minutes?: number }
+        Returns: number
+      }
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number
@@ -363,6 +367,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_profile_display: {
+        Args: { user_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
       get_public_profile_safe: {
         Args: { _id: string }
         Returns: {
@@ -390,6 +405,10 @@ export type Database = {
         Args: { _stream_id: string }
         Returns: string
       }
+      get_tip_address: {
+        Args: { stream_id: string }
+        Returns: string
+      }
       is_stream_live: {
         Args: { stream_id_param: string }
         Returns: boolean
@@ -400,6 +419,10 @@ export type Database = {
       }
       stream_heartbeat: {
         Args: { _stream_id: string }
+        Returns: undefined
+      }
+      update_stream_heartbeat: {
+        Args: { stream_id: string }
         Returns: undefined
       }
       user_has_active_stream: {

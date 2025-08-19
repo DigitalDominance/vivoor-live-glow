@@ -3,49 +3,22 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Clean up streams that have been "live" for more than 6 hours
+ * Clean up streams that have been "live" for more than specified timeout
  * These are likely streams that were not properly ended
  */
-export async function cleanupStaleStreams() {
+export async function cleanupStaleStreams(timeoutMinutes: number = 1) {
   try {
-    // Calculate 6 hours ago
-    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase.rpc('auto_end_disconnected_streams', { 
+      timeout_minutes: timeoutMinutes 
+    });
     
-    const { data: staleStreams, error: fetchError } = await supabase
-      .from('streams')
-      .select('id, title, user_id, started_at')
-      .eq('is_live', true)
-      .lt('started_at', sixHoursAgo);
-    
-    if (fetchError) {
-      console.error('Error fetching stale streams:', fetchError);
-      return { cleaned: 0, error: fetchError };
+    if (error) {
+      console.error('Error cleaning up stale streams:', error);
+      return { cleaned: 0, error };
     }
 
-    if (!staleStreams || staleStreams.length === 0) {
-      console.log('No stale streams found');
-      return { cleaned: 0 };
-    }
-
-    console.log(`Found ${staleStreams.length} stale streams to clean up:`, staleStreams);
-
-    // Mark these streams as ended
-    const { error: updateError } = await supabase
-      .from('streams')
-      .update({ 
-        is_live: false, 
-        ended_at: new Date().toISOString() 
-      })
-      .eq('is_live', true)
-      .lt('started_at', sixHoursAgo);
-
-    if (updateError) {
-      console.error('Error updating stale streams:', updateError);
-      return { cleaned: 0, error: updateError };
-    }
-
-    console.log(`Successfully cleaned up ${staleStreams.length} stale streams`);
-    return { cleaned: staleStreams.length };
+    console.log(`Successfully cleaned up ${data || 0} stale streams`);
+    return { cleaned: data || 0 };
   } catch (error) {
     console.error('Unexpected error during stream cleanup:', error);
     return { cleaned: 0, error };
@@ -74,12 +47,12 @@ export async function cleanupUserStreams(userId: string) {
  */
 export function startStreamCleanupTimer() {
   // Run cleanup immediately
-  cleanupStaleStreams();
+  cleanupStaleStreams(1);
   
-  // Then run every 30 minutes
+  // Then run every 2 minutes to check for streams disconnected for 1+ minutes
   const intervalId = setInterval(() => {
-    cleanupStaleStreams();
-  }, 30 * 60 * 1000);
+    cleanupStaleStreams(1);
+  }, 2 * 60 * 1000);
   
   return intervalId;
 }

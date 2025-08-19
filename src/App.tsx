@@ -36,7 +36,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/app" element={<AppDirectory />} />
-                <Route path="/watch/:id" element={<Watch />} />
+                <Route path="/watch/:streamId" element={<Watch />} />
                 <Route path="/go-live" element={<GoLive />} />
                 <Route path="/stream/:streamId" element={<Stream />} />
                 <Route path="/recordings" element={<Recordings />} />
