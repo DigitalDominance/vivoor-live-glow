@@ -17,16 +17,37 @@ const Channel: React.FC = () => {
   const { identity } = useWallet();
 
   // Fetch profile data by username (handle)
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading, error } = useQuery({
     queryKey: ['profile-by-username', username],
     queryFn: async () => {
       if (!username) return null;
-      const { data } = await supabase
+      
+      // First get the basic profile
+      const { data: profileData } = await supabase
         .from('profiles')
-        .select('*, follower_count:follows!following_id(count), following_count:follows!follower_id(count)')
+        .select('*')
         .eq('handle', username)
-        .single();
-      return data;
+        .maybeSingle();
+      
+      if (!profileData) return null;
+      
+      // Then get follower counts separately
+      const [followerResult, followingResult] = await Promise.all([
+        supabase
+          .from('follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('following_id', profileData.id),
+        supabase
+          .from('follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('follower_id', profileData.id)
+      ]);
+      
+      return {
+        ...profileData,
+        follower_count: followerResult.count || 0,
+        following_count: followingResult.count || 0
+      };
     },
     enabled: !!username
   });
@@ -86,11 +107,24 @@ const Channel: React.FC = () => {
     }
   };
 
-  if (!profile) {
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading channel...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <div className="text-lg font-medium">Channel not found</div>
+          <p className="text-muted-foreground mt-2">
+            The channel "@{username}" doesn't exist or may have been removed.
+          </p>
           <Button variant="outline" onClick={() => navigate(-1)} className="mt-4">
             Go back
           </Button>
@@ -165,11 +199,11 @@ const Channel: React.FC = () => {
                 
                 <div className="flex gap-6 text-sm mb-4">
                   <div>
-                    <span className="font-semibold">{Array.isArray(profile.follower_count) ? profile.follower_count.length : (profile.follower_count || 0)}</span>
+                    <span className="font-semibold">{profile.follower_count || 0}</span>
                     <span className="text-muted-foreground ml-1">followers</span>
                   </div>
                   <div>
-                    <span className="font-semibold">{Array.isArray(profile.following_count) ? profile.following_count.length : (profile.following_count || 0)}</span>
+                    <span className="font-semibold">{profile.following_count || 0}</span>
                     <span className="text-muted-foreground ml-1">following</span>
                   </div>
                 </div>
