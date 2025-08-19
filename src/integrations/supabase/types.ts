@@ -189,22 +189,7 @@ export type Database = {
           user_id?: string
           viewers?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "streams_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "streams_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tips: {
         Row: {

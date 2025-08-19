@@ -259,38 +259,55 @@ const GoLive = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Ensure profile exists for this Kaspa address using wallet context profile
+      console.log('Creating/updating profile...');
       if (walletProfile) {
-        console.log('Upserting profile:', walletProfile);
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: kaspaAddress,
-            display_name: walletProfile.username, // Map username to display_name
-            handle: walletProfile.username,       // Use username as handle
-            avatar_url: walletProfile.avatarUrl,  // Map avatarUrl to avatar_url
-            kaspa_address: kaspaAddress
-          }, { onConflict: 'id' });
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: kaspaAddress,
+              display_name: walletProfile.username, // Map username to display_name
+              handle: walletProfile.username,       // Use username as handle
+              avatar_url: walletProfile.avatarUrl,  // Map avatarUrl to avatar_url
+              kaspa_address: kaspaAddress
+            }, { onConflict: 'id' });
+          
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw new Error(`Failed to create profile: ${profileError.message}`);
+          }
+          console.log('Profile created/updated successfully');
+        } catch (error) {
+          console.error('Profile creation failed:', error);
+          throw error;
+        }
       }
 
       // Handle thumbnail upload
       let thumbnailUrl = null;
       if (thumbnailFile) {
         console.log('Uploading custom thumbnail...');
-        const fileExt = thumbnailFile.name.split('.').pop();
-        const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('vods')
-          .upload(fileName, thumbnailFile);
-        
-        if (uploadError) {
-          console.error('Error uploading thumbnail:', uploadError);
-        } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from('vods')
-            .getPublicUrl(fileName);
-          thumbnailUrl = publicUrl;
-          console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+        try {
+          const fileExt = thumbnailFile.name.split('.').pop();
+          const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('thumbnails')  // Use dedicated thumbnails bucket
+            .upload(fileName, thumbnailFile);
+          
+          if (uploadError) {
+            console.error('Error uploading thumbnail:', uploadError);
+            throw new Error(`Thumbnail upload failed: ${uploadError.message}`);
+          } else {
+            const { data: { publicUrl } } = supabase.storage
+              .from('thumbnails')
+              .getPublicUrl(fileName);
+            thumbnailUrl = publicUrl;
+            console.log('Thumbnail uploaded successfully:', thumbnailUrl);
+          }
+        } catch (error) {
+          console.error('Thumbnail upload process failed:', error);
+          throw error;
         }
       } else if (category) {
         // Use category-based thumbnail if no custom thumbnail uploaded
@@ -300,45 +317,50 @@ const GoLive = () => {
 
       // Save stream to Supabase with treasury transaction info
       console.log('Creating stream in database...');
-      const { data: streamData, error } = await supabase
-        .from('streams')
-        .insert({
-          user_id: kaspaAddress,
-          title: title || 'Live Stream',
-          category: category,
-          playback_url: currentPlaybackUrl,
-          thumbnail_url: thumbnailUrl,
-          treasury_txid: treasuryTxid,
-          treasury_block_time: Date.now(), // Approximate block time
-          is_live: true
-        })
-        .select()
-        .single();
+      try {
+        const { data: streamData, error } = await supabase
+          .from('streams')
+          .insert({
+            user_id: kaspaAddress,
+            title: title || 'Live Stream',
+            category: category,
+            playback_url: currentPlaybackUrl,
+            thumbnail_url: thumbnailUrl,
+            treasury_txid: treasuryTxid,
+            treasury_block_time: Date.now(), // Approximate block time
+            is_live: true
+          })
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Failed to create stream in database:', error);
-        throw error;
+        if (error) {
+          console.error('Failed to create stream in database:', error);
+          throw new Error(`Database error: ${error.message}`);
+        }
+
+        const streamId = streamData.id;
+        console.log('Stream created successfully with ID:', streamId);
+        
+        // Store stream data in localStorage for persistence
+        localStorage.setItem('currentIngestUrl', currentIngestUrl || '');
+        localStorage.setItem('currentStreamKey', currentStreamKey || '');
+        localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
+        localStorage.setItem('streamStartTime', new Date().toISOString());
+        localStorage.setItem('currentStreamId', streamId);
+        
+        toast.success('Stream started! Use the RTMP details below in OBS.');
+        console.log('Stream ready, RTMP details:', {
+          ingestUrl: currentIngestUrl,
+          streamKey: currentStreamKey ? '***HIDDEN***' : null,
+          playbackUrl: currentPlaybackUrl
+        });
+        
+        // Don't navigate to stream page, keep user on go-live page to see RTMP details
+        // navigate(`/stream/${streamId}`);
+      } catch (streamError) {
+        console.error('Stream creation error:', streamError);
+        throw streamError;
       }
-
-      const streamId = streamData.id;
-      console.log('Stream created successfully with ID:', streamId);
-      
-      // Store stream data in localStorage for persistence
-      localStorage.setItem('currentIngestUrl', currentIngestUrl || '');
-      localStorage.setItem('currentStreamKey', currentStreamKey || '');
-      localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
-      localStorage.setItem('streamStartTime', new Date().toISOString());
-      localStorage.setItem('currentStreamId', streamId);
-      
-      toast.success('Stream started! Use the RTMP details below in OBS.');
-      console.log('Stream ready, RTMP details:', {
-        ingestUrl: currentIngestUrl,
-        streamKey: currentStreamKey ? '***HIDDEN***' : null,
-        playbackUrl: currentPlaybackUrl
-      });
-      
-      // Don't navigate to stream page, keep user on go-live page to see RTMP details
-      // navigate(`/stream/${streamId}`);
     } catch (error) {
       console.error('Failed to start stream:', error);
       toast.error(`Failed to start stream: ${error instanceof Error ? error.message : 'Unknown error'}`);

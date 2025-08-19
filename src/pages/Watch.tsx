@@ -83,25 +83,45 @@ const Watch = () => {
       const { data } = await supabase
         .from('streams')
         .select(`
-          *,
-          profiles:user_id (display_name, handle, avatar_url)
+          id,
+          title,
+          category,
+          is_live,
+          viewers,
+          user_id,
+          thumbnail_url,
+          started_at
         `)
         .eq('is_live', true)
         .neq('id', streamId || '')
         .limit(6)
         .order('viewers', { ascending: false });
       
-      return data?.map(stream => ({
-        id: stream.id,
-        title: stream.title,
-        category: stream.category || 'IRL',
-        live: stream.is_live,
-        viewers: stream.viewers || 0,
-        username: stream.profiles?.handle || 'Unknown',
-        userId: stream.user_id,
-        thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
-        startedAt: stream.started_at,
-      })) || [];
+      if (!data) return [];
+      
+      // Fetch profile data separately for each stream
+      const streamsWithProfiles = await Promise.all(
+        data.map(async (stream) => {
+          const { data: profileData } = await supabase.rpc('get_public_profile_display', { 
+            user_id: stream.user_id 
+          });
+          const profile = profileData?.[0];
+          
+          return {
+            id: stream.id,
+            title: stream.title,
+            category: stream.category || 'IRL',
+            live: stream.is_live,
+            viewers: stream.viewers || 0,
+            username: profile?.handle || profile?.display_name || 'Unknown',
+            userId: stream.user_id,
+            thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
+            startedAt: stream.started_at,
+          };
+        })
+      );
+      
+      return streamsWithProfiles;
     },
     enabled: !!streamData
   });
