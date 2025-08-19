@@ -46,12 +46,13 @@ serve(async (req: Request) => {
     }
 
     const payload: any = await createRes.json();
+    const streamId = payload.id; // Store the actual Livepeer stream ID
     const playbackId = payload.playbackId || payload.playback_id || payload.playback?.id;
     const ingestUrl = payload.rtmpIngestUrl || payload.ingest || payload.ingestUrl || "rtmp://rtmp.livepeer.com/live";
     const streamKey = payload.streamKey || payload.stream_key;
     const playbackUrl = playbackId ? `https://livepeercdn.com/hls/${playbackId}/index.m3u8` : null;
 
-    return new Response(JSON.stringify({ playbackId, ingestUrl, streamKey, playbackUrl }), {
+    return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

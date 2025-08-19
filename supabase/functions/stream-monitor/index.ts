@@ -25,18 +25,57 @@ serve(async (req: Request) => {
       try {
         const { data: liveStreams } = await supabase
           .from('streams')
-          .select('id, playback_url')
+          .select('id, livepeer_stream_id, playback_url')
           .eq('is_live', true);
 
         console.log(`Checking ${liveStreams?.length || 0} live streams against Livepeer API`);
 
         // Check each live stream against Livepeer API
         for (const stream of liveStreams || []) {
-          if (stream.playback_url) {
-            // Extract playback ID from URL
+          if (stream.livepeer_stream_id) {
+            // Use the actual Livepeer stream ID for accurate status checking
+            try {
+              const response = await fetch(`https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`, {
+                headers: {
+                  "Authorization": `Bearer ${livepeerApiKey}`,
+                },
+              });
+              
+              if (response.ok) {
+                const streamData = await response.json();
+                
+                // If stream is not active on Livepeer, mark as ended
+                if (!streamData.isActive) {
+                  console.log(`Stream ${stream.id} (${stream.livepeer_stream_id}) is not active on Livepeer, ending...`);
+                  await supabase
+                    .from('streams')
+                    .update({ is_live: false, ended_at: new Date().toISOString() })
+                    .eq('id', stream.id);
+                  cleanedCount++;
+                } else {
+                  console.log(`Stream ${stream.id} (${stream.livepeer_stream_id}) is active on Livepeer`);
+                }
+              } else {
+                console.error(`Error fetching Livepeer stream ${stream.livepeer_stream_id}: ${response.status}`);
+                // If stream doesn't exist on Livepeer, mark as ended
+                if (response.status === 404) {
+                  console.log(`Stream ${stream.id} (${stream.livepeer_stream_id}) not found on Livepeer, ending...`);
+                  await supabase
+                    .from('streams')
+                    .update({ is_live: false, ended_at: new Date().toISOString() })
+                    .eq('id', stream.id);
+                  cleanedCount++;
+                }
+              }
+            } catch (error) {
+              console.error(`Error checking Livepeer stream ${stream.livepeer_stream_id}:`, error);
+            }
+          } else if (stream.playback_url) {
+            // Fallback: Extract playback ID from URL for older streams
             const playbackIdMatch = stream.playback_url.match(/\/hls\/([^\/]+)\//);
             if (playbackIdMatch) {
               const playbackId = playbackIdMatch[1];
+              console.log(`Using fallback playback ID ${playbackId} for stream ${stream.id}`);
               
               try {
                 const response = await fetch(`https://livepeer.studio/api/stream/${playbackId}`, {
@@ -47,37 +86,29 @@ serve(async (req: Request) => {
                 
                 if (response.ok) {
                   const streamData = await response.json();
-                  
-                  // If stream is not active on Livepeer, mark as ended
                   if (!streamData.isActive) {
-                    console.log(`Stream ${stream.id} (${playbackId}) is not active on Livepeer, ending...`);
-                    await supabase
-                      .from('streams')
-                      .update({ is_live: false, ended_at: new Date().toISOString() })
-                      .eq('id', stream.id);
-                    cleanedCount++;
-                  } else {
-                    console.log(`Stream ${stream.id} (${playbackId}) is active on Livepeer`);
-                  }
-                } else {
-                  console.error(`Error fetching Livepeer stream ${playbackId}: ${response.status}`);
-                  // If stream doesn't exist on Livepeer, mark as ended
-                  if (response.status === 404) {
-                    console.log(`Stream ${stream.id} (${playbackId}) not found on Livepeer, ending...`);
+                    console.log(`Stream ${stream.id} (fallback ${playbackId}) is not active, ending...`);
                     await supabase
                       .from('streams')
                       .update({ is_live: false, ended_at: new Date().toISOString() })
                       .eq('id', stream.id);
                     cleanedCount++;
                   }
+                } else if (response.status === 404) {
+                  console.log(`Stream ${stream.id} (fallback ${playbackId}) not found, ending...`);
+                  await supabase
+                    .from('streams')
+                    .update({ is_live: false, ended_at: new Date().toISOString() })
+                    .eq('id', stream.id);
+                  cleanedCount++;
                 }
               } catch (error) {
-                console.error(`Error checking Livepeer stream ${playbackId}:`, error);
+                console.error(`Error checking fallback stream ${playbackId}:`, error);
               }
             }
           } else {
-            // Streams without playback_url should not be live
-            console.log(`Stream ${stream.id} has no playback_url, ending...`);
+            // Streams without livepeer_stream_id or playback_url should not be live
+            console.log(`Stream ${stream.id} has no Livepeer identifiers, ending...`);
             await supabase
               .from('streams')
               .update({ is_live: false, ended_at: new Date().toISOString() })
