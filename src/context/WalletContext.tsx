@@ -42,7 +42,7 @@ export type WalletState = {
   connecting: boolean;
   // Actions
   connectKasware: () => Promise<void>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   ensureUsername: () => { needsUsername: boolean; lastChange?: string };
   saveUsername: (username: string) => void;
   saveAvatarUrl: (url: string) => void;
@@ -107,9 +107,19 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
+    try {
+      // Try to disconnect from Kasware if available
+      if (window.kasware && window.kasware.disconnect) {
+        await window.kasware.disconnect(window.location.origin);
+      }
+    } catch (error) {
+      console.log('Kasware disconnect not supported or failed:', error);
+    }
+    
     setIdentity(null);
     setProfile(null);
+    localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
   }, []);
 
   const ensureUsername = useCallback(() => {
