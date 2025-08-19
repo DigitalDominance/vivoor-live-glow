@@ -52,7 +52,17 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
         canvas.height = 720;
         const ctx = canvas.getContext("2d");
         if (!ctx) return resolve(null);
+        
+        // Draw the video frame
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Add watermark
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(canvas.width - 150, canvas.height - 40, 140, 30);
+        ctx.fillStyle = 'white';
+        ctx.font = '16px Arial';
+        ctx.fillText('vivoor.xyz', canvas.width - 140, canvas.height - 20);
+        
         canvas.toBlob((b) => resolve(b), "image/jpeg", 0.8);
       });
       video.addEventListener("error", () => resolve(null));

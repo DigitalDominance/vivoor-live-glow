@@ -276,13 +276,14 @@ const Watch = () => {
       <Helmet>
         <title>{streamData.title} — Vivoor</title>
         <meta name="description" content={`Watch ${streamData.title} live on Vivoor`} />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Helmet>
 
       <div className="grid lg:grid-cols-4 gap-6">
         {/* Main content */}
         <div className="lg:col-span-3 space-y-4">
           {/* Video player */}
-          <div className="relative">
+          <div className="relative rounded-xl overflow-hidden">
             {streamData.playback_url && streamData.is_live ? (
               <HlsPlayer 
                 src={streamData.playback_url} 
@@ -294,24 +295,24 @@ const Watch = () => {
               <PlayerPlaceholder />
             )}
             
-             {/* Video controls overlay */}
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            {/* Video controls overlay - improved for mobile */}
+            <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Button
                   variant="glass"
                   size="icon"
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
+                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
                 >
-                  {isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
+                  {isPlaying ? <Pause className="size-3 sm:size-4" /> : <Play className="size-3 sm:size-4" />}
                 </Button>
-                <span className="text-sm bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-foreground border border-border/50">
+                <span className="text-xs sm:text-sm bg-background/80 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full text-foreground border border-border/50">
                   {streamData.is_live ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-sm bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-foreground border border-border/50">
-                  <Users className="size-4" />
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="flex items-center gap-1 text-xs sm:text-sm bg-background/80 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full text-foreground border border-border/50">
+                  <Users className="size-3 sm:size-4" />
                   {streamData.viewers || 0}
                 </span>
                 {streamData.is_live && (
@@ -320,17 +321,17 @@ const Watch = () => {
                     size="icon"
                     onClick={() => setClipModalOpen(true)}
                     title="Create Clip"
-                    className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
+                    className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
                   >
-                    <Scissors className="size-4" />
+                    <Scissors className="size-3 sm:size-4" />
                   </Button>
                 )}
                 <Button 
                   variant="glass" 
                   size="icon"
-                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50"
+                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
                 >
-                  <MoreVertical className="size-4" />
+                  <MoreVertical className="size-3 sm:size-4" />
                 </Button>
               </div>
             </div>
@@ -338,16 +339,16 @@ const Watch = () => {
 
           {/* Stream info */}
           <div className="glass rounded-xl p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <Avatar className="size-12">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
+                <Avatar className="size-10 sm:size-12 flex-shrink-0">
                   <AvatarImage src={streamerProfile?.avatar_url || undefined} />
                   <AvatarFallback>
                     {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-lg font-semibold truncate">{streamData.title}</h1>
+                  <h1 className="text-base sm:text-lg font-semibold truncate">{streamData.title}</h1>
                   <button 
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setProfileOpen(true)}
@@ -367,11 +368,12 @@ const Watch = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant={liked ? "hero" : "ghost"}
                   size="sm"
                   onClick={handleLike}
+                  className="flex-1 sm:flex-none"
                 >
                   <Heart className={liked ? "fill-current" : ""} />
                   Like
@@ -380,6 +382,7 @@ const Watch = () => {
                   variant={followed ? "secondary" : "hero"}
                   size="sm"
                   onClick={handleFollow}
+                  className="flex-1 sm:flex-none"
                 >
                   {followed ? 'Following' : 'Follow'}
                 </Button>
@@ -388,6 +391,7 @@ const Watch = () => {
                   size="sm"
                   onClick={() => setTipOpen(true)}
                   disabled={!identity?.id || !streamerKaspaAddress}
+                  className="flex-1 sm:flex-none"
                 >
                   Tip KAS
                 </Button>
@@ -416,7 +420,7 @@ const Watch = () => {
 
         {/* Chat sidebar */}
         <div className="lg:col-span-1">
-          <div className="h-[600px] glass rounded-xl p-4">
+          <div className="h-[400px] lg:h-[600px] glass rounded-xl p-4">
             <h3 className="font-semibold mb-4">Chat</h3>
             <div className="h-full flex flex-col gap-4">
               <div className="flex-1 overflow-y-auto space-y-2">
@@ -431,7 +435,7 @@ const Watch = () => {
                 <input 
                   type="text" 
                   placeholder="Type a message..."
-                  className="w-full px-3 py-2 rounded-md bg-background border border-border"
+                  className="w-full px-3 py-2 text-sm rounded-md bg-background border border-border"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                       handleSendMessage(e.currentTarget.value.trim());
@@ -440,7 +444,7 @@ const Watch = () => {
                   }}
                 />
               ) : (
-                <Button onClick={onRequireLogin}>Connect wallet to chat</Button>
+                <Button onClick={onRequireLogin} size="sm">Connect wallet to chat</Button>
               )}
             </div>
           </div>

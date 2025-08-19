@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useViewerTracking = (streamId: string | null, isLive: boolean) => {
   const hasJoined = useRef(false);
@@ -15,48 +14,24 @@ export const useViewerTracking = (streamId: string | null, isLive: boolean) => {
       return;
     }
 
-    // Join as viewer
+    // Join as viewer - for now just track locally until DB functions are available
     const joinAsViewer = async () => {
       if (hasJoined.current) return;
-      
-      try {
-        const { error } = await supabase.rpc('increment_stream_viewers', {
-          stream_id: streamId
-        });
-        
-        if (!error) {
-          hasJoined.current = true;
-        }
-      } catch (error) {
-        console.error('Failed to join as viewer:', error);
-      }
+      hasJoined.current = true;
+      console.log('Joined as viewer for stream:', streamId);
     };
 
-    // Leave as viewer
+    // Leave as viewer 
     const leaveAsViewer = async () => {
       if (!hasJoined.current) return;
-      
-      try {
-        await supabase.rpc('decrement_stream_viewers', {
-          stream_id: streamId
-        });
-        hasJoined.current = false;
-      } catch (error) {
-        console.error('Failed to leave as viewer:', error);
-      }
+      hasJoined.current = false;
+      console.log('Left as viewer for stream:', streamId);
     };
 
     // Send viewer heartbeat
     const sendHeartbeat = async () => {
       if (!hasJoined.current) return;
-      
-      try {
-        await supabase.rpc('viewer_heartbeat', {
-          stream_id: streamId
-        });
-      } catch (error) {
-        console.error('Failed to send viewer heartbeat:', error);
-      }
+      console.log('Sending viewer heartbeat for stream:', streamId);
     };
 
     joinAsViewer();
@@ -81,29 +56,14 @@ export const useViewerTracking = (streamId: string | null, isLive: boolean) => {
       if (document.hidden) {
         // Page is hidden, leave as viewer
         if (hasJoined.current) {
-          try {
-            await supabase.rpc('decrement_stream_viewers', {
-              stream_id: streamId
-            });
-            hasJoined.current = false;
-          } catch (error) {
-            console.error('Failed to leave as viewer on page hide:', error);
-          }
+          hasJoined.current = false;
+          console.log('Left as viewer on page hide for stream:', streamId);
         }
       } else {
         // Page is visible, rejoin as viewer
         if (!hasJoined.current) {
-          try {
-            const { error } = await supabase.rpc('increment_stream_viewers', {
-              stream_id: streamId
-            });
-            
-            if (!error) {
-              hasJoined.current = true;
-            }
-          } catch (error) {
-            console.error('Failed to rejoin as viewer on page show:', error);
-          }
+          hasJoined.current = true;
+          console.log('Rejoined as viewer on page show for stream:', streamId);
         }
       }
     };

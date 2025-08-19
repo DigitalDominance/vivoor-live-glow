@@ -333,6 +333,10 @@ export type Database = {
         Args: { timeout_minutes?: number }
         Returns: number
       }
+      decrement_stream_viewers: {
+        Args: { stream_id: string }
+        Returns: undefined
+      }
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number
@@ -409,6 +413,10 @@ export type Database = {
         Args: { stream_id: string }
         Returns: string
       }
+      increment_stream_viewers: {
+        Args: { stream_id: string }
+        Returns: undefined
+      }
       is_stream_live: {
         Args: { stream_id_param: string }
         Returns: boolean
@@ -444,6 +452,10 @@ export type Database = {
           block_time: number
           is_valid: boolean
         }[]
+      }
+      viewer_heartbeat: {
+        Args: { stream_id: string }
+        Returns: undefined
       }
     }
     Enums: {
