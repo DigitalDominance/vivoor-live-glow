@@ -18,8 +18,13 @@ const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) =>
 );
 
 const Wordmark = () => (
-  <Link to="/" aria-label="Vivoor home" className="flex items-center gap-2">
-    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">Viv</span>
+  <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
+    <img 
+      src="/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png" 
+      alt="Vivoor logo" 
+      className="h-8 w-auto"
+    />
+    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">iv</span>
     <span className="relative text-xl font-extrabold font-display tracking-tight text-gradient">
       oo
       <span className="absolute left-0 right-0 -bottom-1 h-0.5 rounded-full bg-grad-primary opacity-70" />
