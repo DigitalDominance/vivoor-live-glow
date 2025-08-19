@@ -127,7 +127,7 @@ const Profile: React.FC = () => {
 
   const isOwnProfile = identity?.id === id;
   const liveStreams = content.filter(item => item.type === 'stream' && (item as any).playback_url);
-  const recordings = content.filter(item => item.type === 'vod');
+  // Recordings removed to save storage costs
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -223,50 +223,13 @@ const Profile: React.FC = () => {
             </section>
           )}
 
-          {/* Recordings */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <Video className="size-5" />
-              <h2 className="text-lg font-semibold">Recordings</h2>
+          {/* All recordings functionality removed to save storage costs */}
+          {content.length === 0 && liveStreams.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Video className="size-12 mx-auto mb-4 opacity-50" />
+              <p>No content yet</p>
             </div>
-            {recordings.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Video className="size-12 mx-auto mb-4 opacity-50" />
-                <p>No recordings yet</p>
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {recordings.map((vod) => (
-                  <div
-                    key={vod.id}
-                    className="group glass rounded-xl overflow-hidden border border-border hover:shadow-lg transition-colors cursor-pointer"
-                    onClick={() => navigate(`/vod/${vod.id}`)}
-                  >
-                    <div className="relative aspect-video bg-muted/40">
-                      {vod.thumbnail_url ? (
-                        <img
-                          src={vod.thumbnail_url}
-                          alt={vod.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-[length:200%_100%] animate-shimmer bg-gradient-to-r from-foreground/10 via-transparent to-foreground/10" />
-                      )}
-                      <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-background/80 text-xs">
-                        {(vod as any).duration_seconds ? `${Math.floor((vod as any).duration_seconds / 60)}:${((vod as any).duration_seconds % 60).toString().padStart(2, '0')}` : 'VOD'}
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <div className="text-sm font-medium truncate">{vod.title}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {vod.category || 'IRL'} • {new Date(vod.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          )}
         </div>
       </div>
     </main>

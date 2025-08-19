@@ -14,7 +14,7 @@ import { ThemeProvider } from "@/theme/ThemeProvider";
 import AppDirectory from "@/pages/AppDirectory";
 import Watch from "@/pages/Watch";
 import GoLive from "@/pages/GoLive";
-import Recordings from "@/pages/Recordings";
+// Recordings removed to save storage costs
 import Vod from "@/pages/Vod";
 import Clip from "@/pages/Clip";
 import Following from "@/pages/Following";
@@ -43,7 +43,7 @@ const App = () => (
                 <Route path="/watch/:streamId" element={<Watch />} />
                 <Route path="/go-live" element={<GoLive />} />
                 <Route path="/stream/:streamId" element={<Stream />} />
-                <Route path="/recordings" element={<Recordings />} />
+                {/* Recordings removed to save storage costs */}
                 <Route path="/vod/:id" element={<Vod />} />
                 <Route path="/clip/:id" element={<Clip />} />
                 <Route path="/following" element={<Following />} />

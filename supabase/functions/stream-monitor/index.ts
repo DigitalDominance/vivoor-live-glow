@@ -103,8 +103,8 @@ serve(async (req: Request) => {
       cleanedCount = heartbeatCleaned || 0;
     }
 
-    // Clean up old ended streams (older than 7 days)
-    const { data: deletedCount, error: deleteError } = await supabase.rpc('cleanup_old_streams', { days_old: 7 });
+    // Clean up old ended streams more aggressively (1 day instead of 7)
+    const { data: deletedCount, error: deleteError } = await supabase.rpc('cleanup_old_streams', { days_old: 1 });
     
     if (deleteError) {
       console.error('Error cleaning up old streams:', deleteError);

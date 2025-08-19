@@ -100,7 +100,7 @@ const wallet = useWallet();
                   My Channel
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate("/recordings")}>My Recordings</DropdownMenuItem>
+                {/* Recordings removed to save storage costs */}
                 <DropdownMenuItem onSelect={() => navigate("/following")}>My Following</DropdownMenuItem>
                 <DropdownMenuItem onClick={wallet.disconnect}>
                   <LogOut className="size-4 mr-2" />
@@ -129,7 +129,7 @@ const wallet = useWallet();
                     <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
                     <Button variant="secondary" onClick={() => setShowProfileModal(true)}>Profile</Button>
                     <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>My Channel</Button>
-                    <Button variant="ghost" onClick={() => navigate("/recordings")}>My Recordings</Button>
+                    {/* Recordings removed to save storage costs */}
                     <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
                     <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
                   </div>
