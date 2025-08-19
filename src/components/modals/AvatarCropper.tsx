@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
-function getCroppedImage(src: string, crop: { width: number; height: number; x: number; y: number }, outSize = 512): Promise<Blob> {
+function getCroppedImage(src: string, crop: { width: number; height: number; x: number; y: number }, outWidth = 512, outHeight = 512): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -12,10 +12,10 @@ function getCroppedImage(src: string, crop: { width: number; height: number; x: 
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("No canvas context"));
-      canvas.width = outSize;
-      canvas.height = outSize;
+      canvas.width = outWidth;
+      canvas.height = outHeight;
 
-      // Draw the cropped area scaled to outSize x outSize
+      // Draw the cropped area scaled to outWidth x outHeight
       ctx.drawImage(
         image,
         crop.x,
@@ -24,16 +24,16 @@ function getCroppedImage(src: string, crop: { width: number; height: number; x: 
         crop.height,
         0,
         0,
-        outSize,
-        outSize
+        outWidth,
+        outHeight
       );
 
       canvas.toBlob((blob) => {
         if (!blob) return reject(new Error("Canvas is empty"));
         resolve(blob);
-      }, "image/png", 1);
+      }, "image/jpeg", 0.85);
     };
-    image.onerror = reject;
+    image.onerror = () => reject(new Error("Image load error"));
     image.src = src;
   });
 }
@@ -43,9 +43,10 @@ export type AvatarCropperProps = {
   src: string | null;
   onOpenChange: (v: boolean) => void;
   onConfirm: (blob: Blob) => void | Promise<void>;
+  aspect?: number; // Aspect ratio (width/height)
 };
 
-const AvatarCropper: React.FC<AvatarCropperProps> = ({ open, src, onOpenChange, onConfirm }) => {
+const AvatarCropper: React.FC<AvatarCropperProps> = ({ open, src, onOpenChange, onConfirm, aspect = 1 }) => {
   const [zoom, setZoom] = useState(1);
   const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [croppedPixels, setCroppedPixels] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
@@ -58,30 +59,38 @@ const AvatarCropper: React.FC<AvatarCropperProps> = ({ open, src, onOpenChange, 
 
   const handleSave = useCallback(async () => {
     if (!src || !croppedPixels) return;
-    const blob = await getCroppedImage(src, croppedPixels, 512);
+    
+    // Calculate output dimensions based on aspect ratio
+    const baseSize = 512;
+    const outWidth = aspect >= 1 ? baseSize * aspect : baseSize;
+    const outHeight = aspect >= 1 ? baseSize : baseSize / aspect;
+    
+    const blob = await getCroppedImage(src, croppedPixels, outWidth, outHeight);
     await onConfirm(blob);
-  }, [src, croppedPixels, onConfirm]);
+  }, [src, croppedPixels, onConfirm, aspect]);
+
+  const isRound = aspect === 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Adjust your profile photo</DialogTitle>
+          <DialogTitle>{isRound ? 'Adjust your profile photo' : 'Adjust your banner image'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="relative w-full h-[320px] rounded-md overflow-hidden bg-muted">
             {hasImage && (
               <Cropper
                 image={src!}
-                aspect={1}
-                cropShape="round"
+                aspect={aspect}
+                cropShape={isRound ? "round" : "rect"}
                 crop={crop}
                 onCropChange={setCrop}
                 zoom={zoom}
                 onZoomChange={setZoom}
                 onCropComplete={handleComplete}
                 restrictPosition={false}
-                showGrid={false}
+                showGrid={!isRound}
               />
             )}
           </div>

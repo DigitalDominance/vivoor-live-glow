@@ -24,13 +24,10 @@ const ChannelSettings: React.FC = () => {
   const [bio, setBio] = React.useState('');
   const [handle, setHandle] = React.useState('');
   
-  // Avatar states
-  const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
-  const [avatarSrc, setAvatarSrc] = React.useState<string | null>(null);
-  const [showCropper, setShowCropper] = React.useState(false);
-
   // Banner states
   const [bannerFile, setBannerFile] = React.useState<File | null>(null);
+  const [bannerSrc, setBannerSrc] = React.useState<string | null>(null);
+  const [showBannerCropper, setShowBannerCropper] = React.useState(false);
 
   // Redirect if not logged in
   React.useEffect(() => {
@@ -92,7 +89,8 @@ const ChannelSettings: React.FC = () => {
     });
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -101,71 +99,23 @@ const ChannelSettings: React.FC = () => {
       return;
     }
 
-    setAvatarFile(file);
+    setBannerFile(file);
     // Create URL for the file to pass to cropper
     const fileUrl = URL.createObjectURL(file);
-    setAvatarSrc(fileUrl);
-    setShowCropper(true);
+    setBannerSrc(fileUrl);
+    setShowBannerCropper(true);
   };
 
-  const handleCroppedUpload = async (croppedBlob: Blob) => {
+  const handleBannerCroppedUpload = async (croppedBlob: Blob) => {
     if (!identity?.id) return;
 
     try {
-      const fileName = `avatar-${identity.id}-${Date.now()}.jpg`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, croppedBlob, {
-          contentType: 'image/jpeg',
-          upsert: true
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', identity.id);
-
-      if (updateError) throw updateError;
-
-      queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
-      toast({ title: "Avatar updated successfully!" });
-      setShowCropper(false);
-      setAvatarFile(null);
-      setAvatarSrc(null);
-      
-      // Clean up the blob URL
-      if (avatarSrc) {
-        URL.revokeObjectURL(avatarSrc);
-      }
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      toast({ title: "Failed to upload avatar", variant: "destructive" });
-    }
-  };
-
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !identity?.id) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please select an image under 5MB", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const fileName = `banner-${identity.id}-${Date.now()}.jpg`;
+      const fileName = `${identity.id}/banner-${Date.now()}.jpg`;
       
       const { error: uploadError } = await supabase.storage
         .from('thumbnails')
-        .upload(fileName, file, {
-          contentType: file.type,
+        .upload(fileName, croppedBlob, {
+          contentType: 'image/jpeg',
           upsert: true
         });
 
@@ -184,6 +134,14 @@ const ChannelSettings: React.FC = () => {
 
       queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
       toast({ title: "Banner updated successfully!" });
+      setShowBannerCropper(false);
+      setBannerFile(null);
+      setBannerSrc(null);
+      
+      // Clean up the blob URL
+      if (bannerSrc) {
+        URL.revokeObjectURL(bannerSrc);
+      }
     } catch (error) {
       console.error('Error uploading banner:', error);
       toast({ title: "Failed to upload banner", variant: "destructive" });
@@ -259,45 +217,6 @@ const ChannelSettings: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Profile Picture */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Picture</CardTitle>
-            <CardDescription>Update your avatar image</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Avatar className="size-20">
-                <AvatarImage src={profile?.avatar_url || ''} alt="Profile picture" />
-                <AvatarFallback className="text-xl bg-grad-primary text-[hsl(var(--on-gradient))]">
-                  {(profile?.display_name || profile?.handle || 'U')[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <Label htmlFor="avatar-upload" className="cursor-pointer">
-                  <Button variant="outline" asChild>
-                    <span>
-                      <Upload className="size-4 mr-2" />
-                      Upload new picture
-                    </span>
-                  </Button>
-                </Label>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Recommended: Square image, at least 400x400px, under 5MB
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Profile Information */}
         <Card>
           <CardHeader>
@@ -362,12 +281,13 @@ const ChannelSettings: React.FC = () => {
         <VerificationSection />
       </div>
 
-      {/* Avatar Cropper Modal */}
+      {/* Banner Cropper Modal */}
       <AvatarCropper
-        open={showCropper}
-        onOpenChange={setShowCropper}
-        src={avatarSrc}
-        onConfirm={handleCroppedUpload}
+        open={showBannerCropper}
+        onOpenChange={setShowBannerCropper}
+        src={bannerSrc}
+        onConfirm={handleBannerCroppedUpload}
+        aspect={3} // 3:1 aspect ratio for banners
       />
     </div>
   );
