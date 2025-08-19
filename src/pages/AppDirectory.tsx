@@ -6,6 +6,7 @@ import ProfileModal from "@/components/modals/ProfileModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { startStreamCleanupTimer } from "@/lib/streamCleanup";
+import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { useQuery } from "@tanstack/react-query";
 
 const categories = ['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'];
