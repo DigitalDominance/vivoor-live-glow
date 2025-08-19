@@ -87,7 +87,8 @@ const ProfileModal: React.FC<{
 
   const handleGoToChannel = () => {
     if (profile) {
-      navigate(`/channel/${profile.id}`);
+      // Navigate using handle/username instead of ID
+      navigate(`/channel/${profile.handle || profile.id}`);
       onOpenChange(false);
     }
   };

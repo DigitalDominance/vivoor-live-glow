@@ -265,7 +265,7 @@ const GoLive = () => {
           const { data: userId, error: profileError } = await supabase.rpc('authenticate_wallet_user', {
             wallet_address: kaspaAddress,
             user_handle: walletProfile.username,
-            display_name: walletProfile.username
+            user_display_name: walletProfile.username
           });
           
           if (profileError) {

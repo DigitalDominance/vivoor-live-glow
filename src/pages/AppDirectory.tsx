@@ -123,8 +123,21 @@ const AppDirectory: React.FC = () => {
     }
   };
 
-  const handleGoToChannel = (userId: string) => {
-    window.location.href = `/channel/${userId}`;
+  const handleGoToChannel = async (userId: string) => {
+    try {
+      // Get the user's handle for routing
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('handle')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      const channelRoute = profile?.handle || userId;
+      window.location.href = `/channel/${channelRoute}`;
+    } catch (error) {
+      console.error('Error getting profile handle:', error);
+      window.location.href = `/channel/${userId}`;
+    }
   };
 
   const visibleItems = filtered.slice(0, visible);
@@ -210,7 +223,7 @@ const AppDirectory: React.FC = () => {
         profile={activeProfile} 
         isLoggedIn={isLoggedIn} 
         onRequireLogin={onRequireLogin} 
-        onGoToChannel={() => activeProfile?.id && handleGoToChannel(activeProfile.id)} 
+        onGoToChannel={() => activeProfile?.handle && handleGoToChannel(activeProfile.id)} 
       />
     </main>
   );

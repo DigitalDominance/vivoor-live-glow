@@ -88,7 +88,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const { data: userId, error } = await supabase.rpc('authenticate_wallet_user', {
         wallet_address: addr,
         user_handle: null,
-        display_name: null
+        user_display_name: null
       });
 
       if (error) {

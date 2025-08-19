@@ -364,7 +364,7 @@ export type Database = {
     Functions: {
       authenticate_wallet_user: {
         Args: {
-          display_name?: string
+          user_display_name?: string
           user_handle?: string
           wallet_address: string
         }
