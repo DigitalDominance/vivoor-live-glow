@@ -101,6 +101,48 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -334,6 +376,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_follower_count: {
+        Args: { user_id_param: string }
+        Returns: number
+      }
+      get_following_count: {
+        Args: { user_id_param: string }
+        Returns: number
+      }
       get_kaspa_address: {
         Args: { _id: string } | { _id: string }
         Returns: string
@@ -394,6 +444,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_stream_like_count: {
+        Args: { stream_id_param: string }
+        Returns: number
+      }
       get_stream_tip_address: {
         Args: { _stream_id: string }
         Returns: string
@@ -405,6 +459,24 @@ export type Database = {
           created_at: string
           id: string
           is_live: boolean
+          profile_avatar_url: string
+          profile_display_name: string
+          profile_handle: string
+          thumbnail_url: string
+          title: string
+          user_id: string
+          viewers: number
+        }[]
+      }
+      get_streams_with_profiles_and_likes: {
+        Args: { _limit?: number; _offset?: number }
+        Returns: {
+          category: string
+          created_at: string
+          id: string
+          is_live: boolean
+          like_count: number
+          playback_url: string
           profile_avatar_url: string
           profile_display_name: string
           profile_handle: string
@@ -442,8 +514,16 @@ export type Database = {
         Args: { stream_id: string }
         Returns: undefined
       }
+      user_follows_user: {
+        Args: { follower_id_param: string; following_id_param: string }
+        Returns: boolean
+      }
       user_has_active_stream: {
         Args: { user_id_param: string }
+        Returns: boolean
+      }
+      user_likes_stream: {
+        Args: { stream_id_param: string; user_id_param: string }
         Returns: boolean
       }
       user_owns_stream: {
