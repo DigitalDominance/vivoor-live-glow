@@ -30,11 +30,8 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         name: name || `vivoor-${Date.now()}`,
-        record: true,
+        record: false, // Disable recording to save storage costs
         profiles: [
-          { name: "2160p60", bitrate: 14000000, fps: 60, width: 3840, height: 2160 },
-          { name: "1440p60", bitrate: 10000000, fps: 60, width: 2560, height: 1440 },
-          { name: "1080p60", bitrate: 6000000, fps: 60, width: 1920, height: 1080 },
           { name: "720p60", bitrate: 3500000, fps: 60, width: 1280, height: 720 },
           { name: "720p30", bitrate: 2500000, fps: 30, width: 1280, height: 720 },
           { name: "480p30", bitrate: 1200000, fps: 30, width: 854, height: 480 },
