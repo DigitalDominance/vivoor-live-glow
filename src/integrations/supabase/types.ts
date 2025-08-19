@@ -183,6 +183,7 @@ export type Database = {
           id: string
           is_live: boolean
           last_heartbeat: string | null
+          livepeer_stream_id: string | null
           playback_url: string | null
           started_at: string
           thumbnail_url: string | null
@@ -200,6 +201,7 @@ export type Database = {
           id?: string
           is_live?: boolean
           last_heartbeat?: string | null
+          livepeer_stream_id?: string | null
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           id?: string
           is_live?: boolean
           last_heartbeat?: string | null
+          livepeer_stream_id?: string | null
           playback_url?: string | null
           started_at?: string
           thumbnail_url?: string | null
