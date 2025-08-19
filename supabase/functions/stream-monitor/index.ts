@@ -18,24 +18,17 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Monitor and clean up disconnected streams
-    const { data: cleanedCount, error: cleanupError } = await supabase.rpc('monitor_livepeer_streams');
-    
-    if (cleanupError) {
-      console.error('Error monitoring streams:', cleanupError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to monitor streams', details: cleanupError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    let cleanedCount = 0;
 
-    // Optional: Validate streams against Livepeer API if needed
-    if (livepeerApiKey && req.method === "POST") {
+    // Always check Livepeer API for accurate stream status
+    if (livepeerApiKey) {
       try {
         const { data: liveStreams } = await supabase
           .from('streams')
           .select('id, playback_url')
           .eq('is_live', true);
+
+        console.log(`Checking ${liveStreams?.length || 0} live streams against Livepeer API`);
 
         // Check each live stream against Livepeer API
         for (const stream of liveStreams || []) {
@@ -57,22 +50,57 @@ serve(async (req: Request) => {
                   
                   // If stream is not active on Livepeer, mark as ended
                   if (!streamData.isActive) {
-                    console.log(`Stream ${stream.id} is not active on Livepeer, ending...`);
+                    console.log(`Stream ${stream.id} (${playbackId}) is not active on Livepeer, ending...`);
                     await supabase
                       .from('streams')
                       .update({ is_live: false, ended_at: new Date().toISOString() })
                       .eq('id', stream.id);
+                    cleanedCount++;
+                  } else {
+                    console.log(`Stream ${stream.id} (${playbackId}) is active on Livepeer`);
+                  }
+                } else {
+                  console.error(`Error fetching Livepeer stream ${playbackId}: ${response.status}`);
+                  // If stream doesn't exist on Livepeer, mark as ended
+                  if (response.status === 404) {
+                    console.log(`Stream ${stream.id} (${playbackId}) not found on Livepeer, ending...`);
+                    await supabase
+                      .from('streams')
+                      .update({ is_live: false, ended_at: new Date().toISOString() })
+                      .eq('id', stream.id);
+                    cleanedCount++;
                   }
                 }
               } catch (error) {
                 console.error(`Error checking Livepeer stream ${playbackId}:`, error);
               }
             }
+          } else {
+            // Streams without playback_url should not be live
+            console.log(`Stream ${stream.id} has no playback_url, ending...`);
+            await supabase
+              .from('streams')
+              .update({ is_live: false, ended_at: new Date().toISOString() })
+              .eq('id', stream.id);
+            cleanedCount++;
           }
         }
       } catch (error) {
         console.error('Error validating streams against Livepeer:', error);
       }
+    } else {
+      console.warn('No Livepeer API key configured, falling back to heartbeat-based cleanup');
+      // Fallback to heartbeat-based cleanup if no API key
+      const { data: heartbeatCleaned, error: cleanupError } = await supabase.rpc('monitor_livepeer_streams');
+      
+      if (cleanupError) {
+        console.error('Error monitoring streams:', cleanupError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to monitor streams', details: cleanupError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      cleanedCount = heartbeatCleaned || 0;
     }
 
     // Clean up old ended streams (older than 7 days)
