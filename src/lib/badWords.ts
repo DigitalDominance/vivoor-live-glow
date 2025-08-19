@@ -1,17 +1,16 @@
-import { Filter } from 'bad-words';
+// Simple bad words filter implementation
+// Since the bad-words package has import issues, we'll create a basic implementation
 
-// Create a bad words filter instance
-const filter = new Filter();
-
-// Add additional inappropriate words to the filter
-const additionalWords = [
-  // Common inappropriate terms that might not be in the default list
+const badWordsList = [
+  // Common profanity
+  'fuck', 'shit', 'bitch', 'ass', 'damn', 'hell', 'crap', 'piss',
+  // Offensive terms
   'nazi', 'hitler', 'racist', 'hate', 'kill', 'die', 'suicide', 'rape',
-  // Add more specific terms as needed
-  'scam', 'fraud', 'ponzi', 'rugpull', 'spam'
+  // Scam-related terms
+  'scam', 'fraud', 'ponzi', 'rugpull', 'spam', 'fake', 'steal',
+  // Add more as needed
+  'idiot', 'stupid', 'retard', 'moron', 'dumb'
 ];
-
-additionalWords.forEach(word => filter.addWords(word));
 
 /**
  * Checks if a text contains inappropriate language
@@ -20,7 +19,11 @@ additionalWords.forEach(word => filter.addWords(word));
  */
 export function containsBadWords(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
-  return filter.isProfane(text);
+  
+  const lowerText = text.toLowerCase();
+  return badWordsList.some(badWord => 
+    lowerText.includes(badWord.toLowerCase())
+  );
 }
 
 /**
@@ -30,7 +33,14 @@ export function containsBadWords(text: string): boolean {
  */
 export function cleanText(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  return filter.clean(text);
+  
+  let cleanedText = text;
+  badWordsList.forEach(badWord => {
+    const regex = new RegExp(badWord, 'gi');
+    cleanedText = cleanedText.replace(regex, '*'.repeat(badWord.length));
+  });
+  
+  return cleanedText;
 }
 
 /**
