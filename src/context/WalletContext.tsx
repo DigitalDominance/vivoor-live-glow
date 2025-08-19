@@ -96,7 +96,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
 
-      const ident: WalletIdentity = { provider: "kasware", id: userId.toString(), address: addr };
+      // The function now returns the wallet address as the user ID
+      const ident: WalletIdentity = { provider: "kasware", id: userId, address: addr };
       setIdentity(ident);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
       const map = readProfiles();
