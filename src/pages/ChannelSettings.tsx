@@ -25,6 +25,7 @@ const ChannelSettings: React.FC = () => {
   
   // Avatar states
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
+  const [avatarSrc, setAvatarSrc] = React.useState<string | null>(null);
   const [showCropper, setShowCropper] = React.useState(false);
 
   // Redirect if not logged in
@@ -94,6 +95,9 @@ const ChannelSettings: React.FC = () => {
     }
 
     setAvatarFile(file);
+    // Create URL for the file to pass to cropper
+    const fileUrl = URL.createObjectURL(file);
+    setAvatarSrc(fileUrl);
     setShowCropper(true);
   };
 
@@ -127,6 +131,12 @@ const ChannelSettings: React.FC = () => {
       toast({ title: "Avatar updated successfully!" });
       setShowCropper(false);
       setAvatarFile(null);
+      setAvatarSrc(null);
+      
+      // Clean up the blob URL
+      if (avatarSrc) {
+        URL.revokeObjectURL(avatarSrc);
+      }
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({ title: "Failed to upload avatar", variant: "destructive" });
@@ -258,13 +268,12 @@ const ChannelSettings: React.FC = () => {
       </div>
 
       {/* Avatar Cropper Modal */}
-      {avatarFile && (
-        <AvatarCropper
-          open={showCropper}
-          onOpenChange={setShowCropper}
-          onCroppedUpload={handleCroppedUpload}
-        />
-      )}
+      <AvatarCropper
+        open={showCropper}
+        onOpenChange={setShowCropper}
+        src={avatarSrc}
+        onConfirm={handleCroppedUpload}
+      />
     </div>
   );
 };
