@@ -18,6 +18,23 @@
   filter: blur(0.2px);
 }
 
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .ring {
+    width: min(140vmin, 800px);
+    height: min(140vmin, 800px);
+    opacity: 0.25;
+  }
+}
+
+@media (max-width: 480px) {
+  .ring {
+    width: min(160vmin, 600px);
+    height: min(160vmin, 600px);
+    opacity: 0.3;
+  }
+}
+
 .ring-1 { animation: v2-orbit-slow 36s linear infinite; }
 .ring-2 { animation: v2-orbit-med  24s linear infinite reverse; }
 
@@ -35,6 +52,24 @@
 }
 .puff-a { top: 8%; left: 6%; clip-path: inset(0 60% 60% 0 round 24px); }
 .puff-b { bottom: 6%; right: 8%; clip-path: inset(40% 0 0 60% round 24px); animation-duration: 34s; }
+
+@media (max-width: 768px) {
+  .aurora-puff {
+    width: min(80vw, 500px);
+    height: min(50vh, 300px);
+    filter: blur(18px) saturate(100%);
+    opacity: 0.22;
+  }
+}
+
+@media (max-width: 480px) {
+  .aurora-puff {
+    width: min(90vw, 400px);
+    height: min(60vh, 250px);
+    filter: blur(16px) saturate(90%);
+    opacity: 0.25;
+  }
+}
 
 /* Particles */
 .particle {

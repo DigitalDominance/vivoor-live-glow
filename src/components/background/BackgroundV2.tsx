@@ -11,7 +11,25 @@ import "./background-v2.css";
 */
 
 const BackgroundV2: React.FC = () => {
-  const particles = Array.from({ length: 28 }).map((_, i) => ({
+  // Responsive particle count based on screen size
+  const getParticleCount = () => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 480) return 15; // Small mobile
+      if (window.innerWidth < 768) return 20; // Mobile
+      return 28; // Desktop
+    }
+    return 28;
+  };
+
+  const [particleCount, setParticleCount] = React.useState(getParticleCount);
+
+  React.useEffect(() => {
+    const handleResize = () => setParticleCount(getParticleCount());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const particles = Array.from({ length: particleCount }).map((_, i) => ({
     id: i,
     // Distribute particles around the viewport
     top: `${(i * 37) % 95 + 2}%`,
