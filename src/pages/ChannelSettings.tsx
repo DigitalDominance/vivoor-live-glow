@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { Upload, Save, ArrowLeft } from "lucide-react";
 import AvatarCropper from "@/components/modals/AvatarCropper";
 import VerificationSection from "@/components/VerificationSection";
+import { validateUsername, validateBio } from "@/lib/badWords";
 
 const ChannelSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -82,6 +83,21 @@ const ChannelSettings: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate username
+    const usernameValidation = validateUsername(handle);
+    if (!usernameValidation.isValid) {
+      toast({ title: "Invalid username", description: usernameValidation.error, variant: "destructive" });
+      return;
+    }
+    
+    // Validate bio
+    const bioValidation = validateBio(bio);
+    if (!bioValidation.isValid) {
+      toast({ title: "Invalid bio", description: bioValidation.error, variant: "destructive" });
+      return;
+    }
+    
     updateProfileMutation.mutate({
       display_name: displayName,
       bio: bio,

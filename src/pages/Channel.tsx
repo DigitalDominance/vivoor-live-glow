@@ -182,7 +182,11 @@ const Channel: React.FC = () => {
                 <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                   <div>
                     <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
-                    <p className="text-muted-foreground">@{profile.handle}</p>
+                    {profile.bio ? (
+                      <p className="text-muted-foreground">{profile.bio}</p>
+                    ) : (
+                      <p className="text-muted-foreground">@{profile.handle}</p>
+                    )}
                   </div>
                   
                   <div className="flex gap-2">
@@ -208,9 +212,6 @@ const Channel: React.FC = () => {
                   </div>
                 </div>
                 
-                {profile.bio && (
-                  <p className="text-muted-foreground max-w-2xl">{profile.bio}</p>
-                )}
               </div>
             </div>
           </div>
