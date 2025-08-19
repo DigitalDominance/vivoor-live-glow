@@ -305,11 +305,11 @@ const Watch = () => {
         <div className="lg:col-span-3 space-y-4">
           {/* Video player */}
           <div className="relative rounded-xl overflow-hidden">
-            {streamData.playback_url && streamData.is_live ? (
+            {streamData.playback_url ? (
               <HlsPlayer 
                 src={streamData.playback_url} 
                 autoPlay 
-                isLiveStream 
+                isLiveStream={streamData.is_live}
                 key={streamData.id}
               />
             ) : (
@@ -328,7 +328,7 @@ const Watch = () => {
                   {isPlaying ? <Pause className="size-3 sm:size-4" /> : <Play className="size-3 sm:size-4" />}
                 </Button>
                 <span className="text-xs sm:text-sm bg-background/80 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full text-foreground border border-border/50">
-                  {streamData.is_live ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
+                  {streamData.playback_url ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
                 </span>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
@@ -336,8 +336,8 @@ const Watch = () => {
                   <Users className="size-3 sm:size-4" />
                   {streamData.viewers || 0}
                 </span>
-                {streamData.is_live && (
-                  <Button 
+                {streamData.playback_url && (
+                  <Button
                     variant="glass" 
                     size="icon"
                     onClick={() => setClipModalOpen(true)}
@@ -380,7 +380,7 @@ const Watch = () => {
                     <span className="text-xs px-2 py-1 rounded-full bg-muted">
                       {streamData.category || 'IRL'}
                     </span>
-                    {streamData.is_live && (
+                    {streamData.playback_url && (
                       <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white">
                         LIVE
                       </span>
