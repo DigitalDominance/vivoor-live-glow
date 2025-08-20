@@ -20,14 +20,7 @@ const Following: React.FC = () => {
       const { data, error } = await supabase
         .from('follows')
         .select(`
-          following_id,
-          profiles:following_id (
-            id,
-            handle,
-            display_name,
-            avatar_url,
-            bio
-          )
+          following_id
         `)
         .eq('follower_id', identity.id);
       
@@ -35,8 +28,28 @@ const Following: React.FC = () => {
         console.error('Error fetching following:', error);
         return [];
       }
+
+      // Get the profile information for each following_id
+      const profileIds = data.map(follow => follow.following_id);
+      if (profileIds.length === 0) return [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          handle,
+          display_name,
+          avatar_url,
+          bio
+        `)
+        .in('id', profileIds);
       
-      return data.map((follow: any) => follow.profiles).filter(Boolean);
+      if (profileError) {
+        console.error('Error fetching profiles:', profileError);
+        return [];
+      }
+      
+      return profiles || [];
     },
     enabled: !!identity?.id
   });

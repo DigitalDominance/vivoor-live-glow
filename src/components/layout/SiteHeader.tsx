@@ -71,9 +71,9 @@ const SiteHeader = () => {
             <Grid3X3 className="h-4 w-4" />
             App
           </Link>
-          <Link to="/go-live" className="flex items-center gap-1 text-sm font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent hover:opacity-80">
-            <Zap className="h-4 w-4" />
-            GO LIVE
+          <Link to="/go-live" className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground">
+            <Zap className="h-4 w-4 text-brand-cyan" />
+            <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">GO LIVE</span>
           </Link>
         </div>
 
@@ -114,9 +114,9 @@ const SiteHeader = () => {
                   My Following
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />
-                <DropdownMenuItem onClick={() => navigate("/go-live")} className="cursor-pointer hover:bg-accent/20 font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                  <Zap className="h-4 w-4 mr-2" />
-                  GO LIVE
+                <DropdownMenuItem onClick={() => navigate("/go-live")} className="cursor-pointer hover:bg-accent/20">
+                  <Zap className="h-4 w-4 mr-2 text-brand-cyan" />
+                  <span className="font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">GO LIVE</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem onClick={wallet.disconnect} className="cursor-pointer hover:bg-destructive/10 text-destructive">

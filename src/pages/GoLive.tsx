@@ -164,6 +164,7 @@ const GoLive = () => {
       setPlaybackUrl(lp.playbackUrl || null);
       
       console.log('Stream details set:', {
+        streamId: lp.streamId,
         ingestUrl: lp.ingestUrl,
         streamKey: lp.streamKey ? '***' : null,
         playbackUrl: lp.playbackUrl
@@ -171,7 +172,7 @@ const GoLive = () => {
       
       setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
       toast.success('RTMP details ready');
-      return lp as { ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
+      return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
       console.error('Stream generation error:', e);
       setDebugInfo(`Error: ${e?.message || 'Failed to create stream'}`);
@@ -235,6 +236,7 @@ const GoLive = () => {
       let currentIngestUrl = ingestUrl;
       let currentStreamKey = streamKey;
       let currentPlaybackUrl = playbackUrl;
+      let currentLivepeerStreamId = null;
 
       if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
         console.log('Generating stream details...');
@@ -244,6 +246,7 @@ const GoLive = () => {
         currentIngestUrl = streamDetails.ingestUrl;
         currentStreamKey = streamDetails.streamKey;
         currentPlaybackUrl = streamDetails.playbackUrl;
+        currentLivepeerStreamId = streamDetails.streamId;
         
         if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
           throw new Error('Failed to generate valid stream details');
@@ -324,6 +327,7 @@ const GoLive = () => {
             thumbnail_url: thumbnailUrl,
             treasury_txid: treasuryTxid,
             treasury_block_time: Date.now(), // Approximate block time
+            livepeer_stream_id: currentLivepeerStreamId, // Save the Livepeer stream ID
             is_live: true
           })
           .select()
