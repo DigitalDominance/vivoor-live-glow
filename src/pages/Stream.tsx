@@ -219,10 +219,18 @@ const Stream = () => {
       
       // Update stream in Supabase
       if (streamData?.id) {
-        await supabase
+        const { error } = await supabase
           .from('streams')
-          .update({ is_live: false })
+          .update({ 
+            is_live: false,
+            ended_at: new Date().toISOString()
+          })
           .eq('id', streamData.id);
+          
+        if (error) {
+          console.error('Error updating stream in database:', error);
+          throw new Error(`Failed to end stream: ${error.message}`);
+        }
       }
       
       // Clear local storage
@@ -232,11 +240,11 @@ const Stream = () => {
       localStorage.removeItem('streamStartTime');
       localStorage.removeItem('currentStreamId');
       
-      toast.success('Stream ended');
+      toast.success('Stream ended successfully');
       navigate('/app');
     } catch (error) {
       console.error('Failed to end stream:', error);
-      toast.error('Failed to end stream');
+      toast.error(`Failed to end stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

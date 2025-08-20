@@ -83,7 +83,7 @@ const SiteHeader = () => {
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card">
+                <Button variant="gradientOutline" size="sm" className="hidden md:flex items-center gap-2 font-bold">
                   {profile?.username || "Anon"}
                   <ChevronDown className="h-3 w-3" />
                 </Button>
@@ -131,7 +131,7 @@ const SiteHeader = () => {
                   </Button>
                 ) : (
                   <div className="mt-2 grid gap-2">
-                    <Button variant="gradientOutline" onClick={() => navigate("/go-live")} className="font-bold">
+                    <Button variant="hero" onClick={() => navigate("/go-live")} className="font-bold">
                       GO LIVE
                     </Button>
                     <Button variant="secondary" onClick={() => setShowProfileModal(true)}>

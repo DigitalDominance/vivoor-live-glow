@@ -351,8 +351,8 @@ const GoLive = () => {
           playbackUrl: currentPlaybackUrl
         });
         
-        // Don't navigate to stream page, keep user on go-live page to see RTMP details
-        // navigate(`/stream/${streamId}`);
+        // Navigate to stream control page
+        navigate(`/stream/${streamId}`);
       } catch (streamError) {
         console.error('Stream creation error:', streamError);
         throw streamError;
@@ -463,9 +463,9 @@ const GoLive = () => {
             <Button 
               variant="hero" 
               onClick={handleStart} 
-              disabled={!kaspaAddress || !title.trim()}
+              disabled={!kaspaAddress || !title.trim() || !previewReady}
             >
-              {!kaspaAddress ? 'Connect Wallet First' : !title.trim() ? 'Enter Title First' : 'Start Stream & Pay Fee'}
+              {!kaspaAddress ? 'Connect Wallet First' : !title.trim() ? 'Enter Title First' : !previewReady ? 'Wait for Preview to be Live' : 'Start Stream & Pay Fee'}
             </Button>
           </div>
 

@@ -21,7 +21,7 @@ const Following: React.FC = () => {
         .from('follows')
         .select(`
           following_id,
-          profiles!follows_following_id_fkey (
+          profiles:following_id (
             id,
             handle,
             display_name,
