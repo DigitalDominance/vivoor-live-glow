@@ -103,7 +103,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     } catch {}
 
     const insert = await supabase.from("clips").insert({
-      vod_id: vod.id,
+      vod_id: vod.id === 'live-stream' ? null : vod.id, // Handle live streams with no VOD ID
       user_id: identity.id,
       title: title || `${vod.title} — Clip (${duration}s)`,
       start_seconds: start,

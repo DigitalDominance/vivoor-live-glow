@@ -62,7 +62,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           user_id: string
-          vod_id: string
+          vod_id: string | null
         }
         Insert: {
           created_at?: string
@@ -72,7 +72,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           user_id: string
-          vod_id: string
+          vod_id?: string | null
         }
         Update: {
           created_at?: string
@@ -82,7 +82,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           user_id?: string
-          vod_id?: string
+          vod_id?: string | null
         }
         Relationships: [
           {

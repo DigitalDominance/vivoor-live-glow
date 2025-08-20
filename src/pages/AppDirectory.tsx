@@ -41,10 +41,17 @@ const AppDirectory: React.FC = () => {
     }
   };
 
-  // Fetch all streams from database (both live and replays)
+  // Fetch all streams from database and check their live status
   const { data: allStreams = [] } = useQuery({
     queryKey: ['all-streams'],
     queryFn: async () => {
+      // First check Livepeer status for all live streams
+      try {
+        await supabase.functions.invoke('check-livepeer-status');
+      } catch (error) {
+        console.warn('Failed to check Livepeer status:', error);
+      }
+
       const { data, error } = await supabase.rpc('get_streams_with_profiles_and_likes', { 
         _limit: 100, 
         _offset: 0 
@@ -57,11 +64,11 @@ const AppDirectory: React.FC = () => {
       
       return (data || []).map((stream: any) => {
         // A stream is considered live if:
-        // 1. It has is_live = true AND
-        // 2. It has a playback_url AND  
-        // 3. It has recent activity (last_heartbeat within last 2 minutes) OR no heartbeat tracking
+        // 1. It has is_live = true (verified by Livepeer API above)
+        // 2. It has a playback_url
+        // 3. It has recent activity (last_heartbeat within last 5 minutes)
         const hasRecentHeartbeat = !stream.last_heartbeat || 
-          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 120000; // 2 minutes
+          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 300000; // 5 minutes
         
         const isLive = stream.is_live && 
                       !!stream.playback_url && 
@@ -82,7 +89,7 @@ const AppDirectory: React.FC = () => {
         };
       });
     },
-    refetchInterval: 5000 // Refresh every 5 seconds for live updates
+    refetchInterval: 30000 // Refresh every 30 seconds for live updates
   });
 
   const filtered = React.useMemo(() => {
