@@ -1,4 +1,4 @@
-import { Menu, Video, Clapperboard, User, LogOut, ChevronDown } from "lucide-react";
+import { Menu, Video, Clapperboard, User, LogOut, ChevronDown, Home, Grid3X3, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -63,9 +63,16 @@ const SiteHeader = () => {
         <Wordmark />
         
         <div className="hidden md:flex items-center gap-2">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
-          <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground">App</Link>
-          <Link to="/go-live" className="text-sm font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent hover:opacity-80">
+          <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <Home className="h-4 w-4" />
+            Home
+          </Link>
+          <Link to="/app" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <Grid3X3 className="h-4 w-4" />
+            App
+          </Link>
+          <Link to="/go-live" className="flex items-center gap-1 text-sm font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent hover:opacity-80">
+            <Zap className="h-4 w-4" />
             GO LIVE
           </Link>
         </div>
@@ -105,6 +112,11 @@ const SiteHeader = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/following")} className="cursor-pointer hover:bg-accent/50">
                   My Following
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem onClick={() => navigate("/go-live")} className="cursor-pointer hover:bg-accent/20 font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                  <Zap className="h-4 w-4 mr-2" />
+                  GO LIVE
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem onClick={wallet.disconnect} className="cursor-pointer hover:bg-destructive/10 text-destructive">
