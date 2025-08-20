@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.stream-monitor]
 verify_jwt = false
+
+[functions.livepeer-webhook]
+verify_jwt = false
