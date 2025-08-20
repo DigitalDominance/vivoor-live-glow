@@ -67,8 +67,18 @@ serve(async (req) => {
         }
 
         const livepeerStream = await response.json();
-        const isActuallyLive = livepeerStream.isActive === true;
-        console.log(`Stream ${stream.livepeer_stream_id}: isActive = ${livepeerStream.isActive}, DB is_live = ${stream.is_live}`);
+        
+        // Check if stream is actually live based on Livepeer status
+        // According to Livepeer docs: isActive indicates if stream is currently receiving data
+        // lastSeen should be recent (within last few minutes) for truly active streams
+        const now = Date.now();
+        const lastSeenTime = livepeerStream.lastSeen || 0;
+        const timeSinceLastSeen = now - lastSeenTime;
+        const maxIdleTime = 2 * 60 * 1000; // 2 minutes in milliseconds
+        
+        const isActuallyLive = livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime;
+        
+        console.log(`Stream ${stream.livepeer_stream_id}: isActive = ${livepeerStream.isActive}, lastSeen = ${livepeerStream.lastSeen}, timeSinceLastSeen = ${timeSinceLastSeen}ms, isActuallyLive = ${isActuallyLive}, DB is_live = ${stream.is_live}`);
 
         // Update our database based on actual Livepeer status
         if (isActuallyLive && !stream.is_live) {

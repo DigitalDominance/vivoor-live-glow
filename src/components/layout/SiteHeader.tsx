@@ -10,6 +10,7 @@ import WalletConnectModal from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
+import MyClipsModal from "@/components/modals/MyClipsModal";
 
 const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
   <Link to={to} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover-scale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
@@ -46,6 +47,7 @@ const wallet = useWallet();
   const [walletOpen, setWalletOpen] = useState(false);
   const [usernameOpen, setUsernameOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showClipsModal, setShowClipsModal] = useState(false);
 
   useEffect(() => {
     if (identity) {
@@ -99,6 +101,10 @@ const wallet = useWallet();
                   <User className="size-4 mr-2" />
                   My Channel
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowClipsModal(true)}>
+                  <User className="size-4 mr-2" />
+                  My Clips
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
                 {/* Recordings removed to save storage costs */}
                 <DropdownMenuItem onSelect={() => navigate("/following")}>My Following</DropdownMenuItem>
@@ -129,6 +135,7 @@ const wallet = useWallet();
                     <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
                     <Button variant="secondary" onClick={() => setShowProfileModal(true)}>Profile</Button>
                     <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>My Channel</Button>
+                    <Button variant="ghost" onClick={() => setShowClipsModal(true)}>My Clips</Button>
                     {/* Recordings removed to save storage costs */}
                     <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
                     <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
@@ -142,6 +149,7 @@ const wallet = useWallet();
       <WalletConnectModal open={walletOpen} onOpenChange={setWalletOpen} />
       <UsernameModal open={usernameOpen} onOpenChange={setUsernameOpen} />
       <MyProfileModal open={showProfileModal} onOpenChange={setShowProfileModal} onEditUsername={() => { setShowProfileModal(false); setUsernameOpen(true); }} />
+      <MyClipsModal open={showClipsModal} onOpenChange={setShowClipsModal} />
     </header>
   );
 };

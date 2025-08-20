@@ -123,7 +123,24 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
       return;
     }
 
-    toast({ title: "Clip created", description: "Your clip is ready to share." });
+    // Show success with download options
+    const clipUrl = `${window.location.origin}/clip/${insert.data.id}`;
+    
+    toast({ 
+      title: "Clip created successfully!", 
+      description: "Your clip is ready to share. Check 'My Clips' in your profile menu."
+    });
+    
+    // Auto-copy link to clipboard
+    try {
+      await navigator.clipboard.writeText(clipUrl);
+      setTimeout(() => {
+        toast({ title: "Link copied", description: "Clip link copied to clipboard." });
+      }, 1000);
+    } catch (error) {
+      console.log('Clipboard copy failed:', error);
+    }
+    
     onOpenChange(false);
     onCreated?.(insert.data.id);
   };

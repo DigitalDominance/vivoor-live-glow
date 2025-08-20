@@ -59,11 +59,11 @@ const AppDirectory: React.FC = () => {
       
       return (data || []).map((stream: any) => {
         // A stream is considered live if:
-        // 1. It has is_live = true
+        // 1. It has is_live = true (updated by Livepeer status check)
         // 2. It has a playback_url
-        // 3. It has recent activity (last_heartbeat within last 10 minutes) OR no heartbeat tracking yet
+        // 3. It has recent activity (last_heartbeat within last 5 minutes)
         const hasRecentHeartbeat = !stream.last_heartbeat || 
-          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 600000; // 10 minutes
+          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 300000; // 5 minutes
         
         const isLive = stream.is_live && 
                       !!stream.playback_url && 
