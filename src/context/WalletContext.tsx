@@ -44,8 +44,8 @@ export type WalletState = {
   connectKasware: () => Promise<void>;
   disconnect: () => Promise<void>;
   ensureUsername: () => { needsUsername: boolean; lastChange?: string };
-  saveUsername: (username: string) => void;
-  saveAvatarUrl: (url: string) => void;
+  saveUsername: (username: string) => Promise<void>;
+  saveAvatarUrl: (url: string) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -132,8 +132,25 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [identity]);
 
   const saveUsername = useCallback(
-    (username: string) => {
+    async (username: string) => {
       if (!identity) return;
+      
+      // Update Supabase database
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          handle: username,
+          display_name: username,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', identity.id);
+      
+      if (error) {
+        console.error('Failed to update username in database:', error);
+        throw error;
+      }
+      
+      // Update local storage
       const map = readProfiles();
       const nowIso = new Date().toISOString();
       const rec: ProfileRecord = {
@@ -149,8 +166,25 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
 const saveAvatarUrl = useCallback(
-    (url: string) => {
+    async (url: string) => {
       if (!identity) return;
+      
+      // Update Supabase database
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          avatar_url: url,
+          last_avatar_change: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', identity.id);
+      
+      if (error) {
+        console.error('Failed to update avatar in database:', error);
+        throw error;
+      }
+      
+      // Update local storage
       const map = readProfiles();
       const nowIso = new Date().toISOString();
       const rec: ProfileRecord = {

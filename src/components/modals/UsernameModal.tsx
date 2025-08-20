@@ -20,11 +20,15 @@ const UsernameModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => voi
 
   const canEdit = cooldownLeft === 0 || !profile?.username;
 
-  const onSave = () => {
+  const onSave = async () => {
     const clean = value.trim();
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(clean)) return alert("Username must be 3-20 characters (letters, numbers, underscore)");
-    saveUsername(clean);
-    onOpenChange(false);
+    try {
+      await saveUsername(clean);
+      onOpenChange(false);
+    } catch (error) {
+      alert("Failed to save username. Please try again.");
+    }
   };
 
   const fmt = (ms: number) => {
