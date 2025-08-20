@@ -246,7 +246,7 @@ const GoLive = () => {
         currentIngestUrl = streamDetails.ingestUrl;
         currentStreamKey = streamDetails.streamKey;
         currentPlaybackUrl = streamDetails.playbackUrl;
-        currentLivepeerStreamId = streamDetails.streamId;
+        currentLivepeerStreamId = streamDetails.streamId; // This is the actual Livepeer stream ID
         
         if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
           throw new Error('Failed to generate valid stream details');
@@ -327,7 +327,7 @@ const GoLive = () => {
             thumbnail_url: thumbnailUrl,
             treasury_txid: treasuryTxid,
             treasury_block_time: Date.now(), // Approximate block time
-            livepeer_stream_id: currentLivepeerStreamId, // Save the Livepeer stream ID
+            livepeer_stream_id: currentLivepeerStreamId || null, // Save the Livepeer stream ID from API response
             is_live: true
           })
           .select()

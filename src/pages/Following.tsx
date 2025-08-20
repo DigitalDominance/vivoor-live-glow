@@ -148,6 +148,13 @@ const Following: React.FC = () => {
                     View Profile
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/channel/${profile.handle || profile.id}`)}
+                  >
+                    View Channel
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleUnfollow(profile.id)}

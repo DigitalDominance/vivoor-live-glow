@@ -218,7 +218,63 @@ const Channel: React.FC = () => {
         </div>
       </div>
 
-      {/* Content placeholder */}
+      {/* User's Streams */}
+      <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} />
+    </div>
+  );
+};
+
+// Component to fetch and display user's streams
+const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean }> = ({ userId, isOwnChannel }) => {
+  const navigate = useNavigate();
+  
+  const { data: streams = [], isLoading } = useQuery({
+    queryKey: ['user-streams', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select(`
+          id,
+          title,
+          category,
+          is_live,
+          viewers,
+          thumbnail_url,
+          created_at,
+          playback_url
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) {
+        console.error('Error fetching streams:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!userId
+  });
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-xl p-4 animate-pulse">
+              <div className="aspect-video bg-muted rounded-lg mb-3" />
+              <div className="h-4 bg-muted rounded mb-2" />
+              <div className="h-3 bg-muted rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (streams.length === 0) {
+    return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <div className="text-muted-foreground">
@@ -234,6 +290,26 @@ const Channel: React.FC = () => {
             </Button>
           )}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h2 className="text-xl font-semibold mb-6">
+        {isOwnChannel ? 'Your Streams' : 'Recent Streams'}
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {streams.map((stream: any) => (
+          <StreamCard
+            key={stream.id}
+            stream={{
+              ...stream,
+              user: { id: userId, handle: '', display_name: '', avatar_url: '' }, // Minimal user data since it's the channel owner
+              like_count: 0 // We don't need likes for channel view
+            }}
+          />
+        ))}
       </div>
     </div>
   );
