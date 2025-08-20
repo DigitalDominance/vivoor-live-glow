@@ -31,52 +31,45 @@ export type StreamCardProps = {
 
 export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOpenProfile, onRequireLogin }) => {
   const navigate = useNavigate();
+  const { identity } = useWallet();
   const [liked, setLiked] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(stream.likeCount || 0);
 
+  // Check if user already likes this stream
+  React.useEffect(() => {
+    if (!identity?.id || !stream.id) return;
+
+    const checkLikeStatus = async () => {
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', identity.id)
+        .eq('stream_id', stream.id)
+        .maybeSingle();
+      setLiked(!!data);
+    };
+
+    checkLikeStatus();
+  }, [identity?.id, stream.id]);
+
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isLoggedIn) return onRequireLogin?.();
-    
+    if (!identity?.id) {
+      onRequireLogin?.();
+      return;
+    }
+
     try {
-      // Use wallet identity for likes - the identity.id is now the user UUID from authenticate_wallet_user
-      const walletData = JSON.parse(localStorage.getItem('vivoor.wallet.provider') || 'null');
-      if (!walletData) {
-        onRequireLogin?.();
-        return;
-      }
-
-      // Get current wallet address to get user ID
-      const kaswareAccounts = await (window as any).kasware?.getAccounts?.();
-      const walletAddress = kaswareAccounts?.[0];
-      if (!walletAddress) {
-        onRequireLogin?.();
-        return;
-      }
-
-      // Get user ID from wallet address
-      const { data: userId } = await supabase.rpc('authenticate_wallet_user', {
-        wallet_address: walletAddress
-      });
-
-      if (!userId) {
-        onRequireLogin?.();
-        return;
-      }
-
       if (liked) {
-        // Remove like
-        await supabase.from('likes').delete().match({ 
-          stream_id: stream.id, 
-          user_id: userId
-        });
+        await supabase
+          .from('likes')
+          .delete()
+          .match({ user_id: identity.id, stream_id: stream.id });
         setLikeCount(prev => Math.max(0, prev - 1));
       } else {
-        // Add like
-        await supabase.from('likes').insert({ 
-          stream_id: stream.id, 
-          user_id: userId
-        });
+        await supabase
+          .from('likes')
+          .insert({ user_id: identity.id, stream_id: stream.id });
         setLikeCount(prev => prev + 1);
       }
       setLiked(!liked);
