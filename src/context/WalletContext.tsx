@@ -100,8 +100,30 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const ident: WalletIdentity = { provider: "kasware", id: userId, address: addr };
       setIdentity(ident);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
-      const map = readProfiles();
-      setProfile(map[ident.id] || null);
+      
+      // Load profile from database to sync with local storage
+      const { data: dbProfile } = await supabase
+        .from('profiles')
+        .select('handle, display_name, avatar_url, last_avatar_change')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (dbProfile) {
+        const profileRecord: ProfileRecord = {
+          username: dbProfile.handle || '',
+          avatarUrl: dbProfile.avatar_url || undefined,
+          lastAvatarChange: dbProfile.last_avatar_change || undefined,
+        };
+        setProfile(profileRecord);
+        
+        // Update local storage to match database
+        const map = readProfiles();
+        map[ident.id] = profileRecord;
+        writeProfiles(map);
+      } else {
+        const map = readProfiles();
+        setProfile(map[ident.id] || null);
+      }
     } finally {
       setConnecting(false);
     }
