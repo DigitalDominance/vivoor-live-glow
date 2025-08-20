@@ -19,7 +19,7 @@ const AppDirectory: React.FC = () => {
   const [searchMode, setSearchMode] = React.useState<SearchMode>('title');
   const [query, setQuery] = React.useState('');
   const [activeCats, setActiveCats] = React.useState<string[]>([]);
-  const [showLive, setShowLive] = React.useState<'live' | 'replay' | 'all'>('all');
+  const [showLive, setShowLive] = React.useState<'live' | 'replay' | 'all'>('live');
   const [sort, setSort] = React.useState<SortMode>('viewers');
   const [visible, setVisible] = React.useState(9);
 
@@ -59,7 +59,7 @@ const AppDirectory: React.FC = () => {
         id: stream.id,
         title: stream.title,
         category: stream.category || 'IRL',
-        live: !!stream.playback_url, // Stream is live if it has a playback URL
+        live: stream.is_live && !!stream.playback_url, // Stream is live if is_live is true AND has playback URL
         viewers: stream.viewers || 0,
         username: stream.profile_handle || stream.profile_display_name || 'unknown',
         userId: stream.user_id,
