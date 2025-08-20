@@ -25,8 +25,10 @@ serve(async (req) => {
     // Get all streams that are marked as live in our database
     const { data: streams, error: streamsError } = await supabaseClient
       .from('streams')
-      .select('id, livepeer_stream_id, user_id, title')
-      .eq('is_live', true);
+      .select('id, livepeer_stream_id, user_id, title, is_live')
+      .neq('livepeer_stream_id', null);
+
+    console.log(`Found ${streams?.length || 0} streams with Livepeer IDs to check`);
 
     if (streamsError) {
       throw new Error(`Failed to fetch streams: ${streamsError.message}`);
@@ -34,7 +36,7 @@ serve(async (req) => {
 
     if (!streams || streams.length === 0) {
       return new Response(
-        JSON.stringify({ updated: 0, message: 'No live streams to check' }),
+        JSON.stringify({ updated: 0, message: 'No streams with Livepeer IDs to check' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -49,6 +51,8 @@ serve(async (req) => {
       }
 
       try {
+        console.log(`Checking Livepeer stream ${stream.livepeer_stream_id} for database stream ${stream.id}`);
+        
         // Check stream status with Livepeer API
         const response = await fetch(`https://livepeer.studio/api/stream/${stream.livepeer_stream_id}`, {
           headers: {
@@ -58,15 +62,33 @@ serve(async (req) => {
         });
 
         if (!response.ok) {
-          console.error(`Failed to fetch stream ${stream.livepeer_stream_id} from Livepeer: ${response.status}`);
+          console.error(`Failed to fetch stream ${stream.livepeer_stream_id} from Livepeer: ${response.status} ${response.statusText}`);
           continue;
         }
 
         const livepeerStream = await response.json();
         const isActuallyLive = livepeerStream.isActive === true;
+        console.log(`Stream ${stream.livepeer_stream_id}: isActive = ${livepeerStream.isActive}, DB is_live = ${stream.is_live}`);
 
-        // Update our database if the status doesn't match
-        if (!isActuallyLive) {
+        // Update our database based on actual Livepeer status
+        if (isActuallyLive && !stream.is_live) {
+          // Stream is live but marked as not live in DB - mark it as live
+          console.log(`Stream ${stream.id} is actually live, updating database`);
+          const { error: updateError } = await supabaseClient
+            .from('streams')
+            .update({
+              is_live: true,
+              last_heartbeat: new Date().toISOString()
+            })
+            .eq('id', stream.id);
+
+          if (updateError) {
+            console.error(`Failed to update stream ${stream.id}:`, updateError);
+          } else {
+            updatedCount++;
+          }
+        } else if (!isActuallyLive && stream.is_live) {
+          // Stream is not live but marked as live in DB - mark it as ended
           console.log(`Stream ${stream.id} (${stream.title}) is not actually live, marking as ended`);
           
           const { error: updateError } = await supabaseClient
@@ -83,8 +105,8 @@ serve(async (req) => {
           } else {
             updatedCount++;
           }
-        } else {
-          // Stream is live, update heartbeat
+        } else if (isActuallyLive) {
+          // Stream is live and correctly marked - just update heartbeat
           await supabaseClient
             .from('streams')
             .update({ last_heartbeat: new Date().toISOString() })

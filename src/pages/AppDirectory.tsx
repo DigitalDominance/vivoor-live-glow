@@ -45,13 +45,6 @@ const AppDirectory: React.FC = () => {
   const { data: allStreams = [] } = useQuery({
     queryKey: ['all-streams'],
     queryFn: async () => {
-      // First check Livepeer status for all live streams
-      try {
-        await supabase.functions.invoke('check-livepeer-status');
-      } catch (error) {
-        console.warn('Failed to check Livepeer status:', error);
-      }
-
       const { data, error } = await supabase.rpc('get_streams_with_profiles_and_likes', { 
         _limit: 100, 
         _offset: 0 
@@ -62,17 +55,21 @@ const AppDirectory: React.FC = () => {
         return [];
       }
       
+      console.log('Raw streams data:', data);
+      
       return (data || []).map((stream: any) => {
         // A stream is considered live if:
-        // 1. It has is_live = true (verified by Livepeer API above)
+        // 1. It has is_live = true
         // 2. It has a playback_url
-        // 3. It has recent activity (last_heartbeat within last 5 minutes)
+        // 3. It has recent activity (last_heartbeat within last 10 minutes) OR no heartbeat tracking yet
         const hasRecentHeartbeat = !stream.last_heartbeat || 
-          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 300000; // 5 minutes
+          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 600000; // 10 minutes
         
         const isLive = stream.is_live && 
                       !!stream.playback_url && 
                       hasRecentHeartbeat;
+        
+        console.log(`Stream ${stream.id}: is_live=${stream.is_live}, playback_url=${!!stream.playback_url}, hasRecentHeartbeat=${hasRecentHeartbeat}, final_live=${isLive}`);
         
         return {
           id: stream.id,
@@ -89,8 +86,32 @@ const AppDirectory: React.FC = () => {
         };
       });
     },
-    refetchInterval: 30000 // Refresh every 30 seconds for live updates
+    refetchInterval: 15000 // Refresh every 15 seconds for live updates
   });
+
+  // Trigger Livepeer status check every 30 seconds
+  React.useEffect(() => {
+    const checkLivepeerStatus = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-livepeer-status');
+        if (error) {
+          console.warn('Livepeer status check failed:', error);
+        } else {
+          console.log('Livepeer status check result:', data);
+        }
+      } catch (error) {
+        console.warn('Failed to invoke Livepeer status check:', error);
+      }
+    };
+
+    // Check immediately
+    checkLivepeerStatus();
+    
+    // Then check every 30 seconds
+    const interval = setInterval(checkLivepeerStatus, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const filtered = React.useMemo(() => {
     // Use only real database streams

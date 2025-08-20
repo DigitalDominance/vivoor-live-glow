@@ -84,15 +84,7 @@ export type Database = {
           user_id?: string
           vod_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "clips_vod_id_fkey"
-            columns: ["vod_id"]
-            isOneToOne: false
-            referencedRelation: "vods"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       follows: {
         Row: {

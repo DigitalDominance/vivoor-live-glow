@@ -55,13 +55,19 @@ const Recordings: React.FC = () => {
         created_at,
         thumbnail_url,
         start_seconds,
-        end_seconds,
-        vods!inner(title, src_url)
+        end_seconds
       `)
       .eq('user_id', user.user.id)
       .order("created_at", { ascending: false });
     
-    if (!error && data) setClips(data as Clip[]);
+    if (!error && data) {
+      // Transform data to match Clip interface since vod_id is now nullable
+      const clipsData = data.map(clip => ({
+        ...clip,
+        vods: { title: "Live Stream Clip", src_url: "" } // Default for clips without VODs
+      }));
+      setClips(clipsData as Clip[]);
+    }
   };
 
   useEffect(() => {

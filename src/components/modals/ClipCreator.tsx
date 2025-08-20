@@ -102,14 +102,21 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
       }
     } catch {}
 
-    const insert = await supabase.from("clips").insert({
-      vod_id: vod.id === 'live-stream' ? null : vod.id, // Handle live streams with no VOD ID
+    // Handle clips from live streams by not requiring a VOD ID
+    const clipData: any = {
       user_id: identity.id,
       title: title || `${vod.title} — Clip (${duration}s)`,
       start_seconds: start,
       end_seconds: end,
       thumbnail_url: thumbnail_url,
-    }).select("id").maybeSingle();
+    };
+
+    // Only add vod_id if it's a real VOD, not a live stream
+    if (vod.id && vod.id !== 'live-stream' && !vod.id.startsWith('live-')) {
+      clipData.vod_id = vod.id;
+    }
+
+    const insert = await supabase.from("clips").insert(clipData).select("id").maybeSingle();
 
     if (insert.error || !insert.data) {
       toast({ title: "Failed to create clip", description: insert.error?.message || "Try again.", variant: "destructive" });
