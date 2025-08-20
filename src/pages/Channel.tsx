@@ -219,13 +219,13 @@ const Channel: React.FC = () => {
       </div>
 
       {/* User's Streams */}
-      <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} />
+      <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
     </div>
   );
 };
 
 // Component to fetch and display user's streams
-const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean }> = ({ userId, isOwnChannel }) => {
+const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile: any }> = ({ userId, isOwnChannel, profile }) => {
   const navigate = useNavigate();
   
   const { data: streams = [], isLoading } = useQuery({
@@ -304,9 +304,16 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean }> = ({ u
           <StreamCard
             key={stream.id}
             stream={{
-              ...stream,
-              user: { id: userId, handle: '', display_name: '', avatar_url: '' }, // Minimal user data since it's the channel owner
-              like_count: 0 // We don't need likes for channel view
+              id: stream.id,
+              title: stream.title,
+              category: stream.category || 'General',
+              live: stream.is_live || false,
+              viewers: stream.viewers || 0,
+              username: profile?.handle || profile?.display_name || 'Unknown',
+              userId: userId,
+              thumbnail: stream.thumbnail_url,
+              likeCount: 0,
+              avatar: profile?.avatar_url
             }}
           />
         ))}
