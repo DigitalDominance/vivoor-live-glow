@@ -46,6 +46,7 @@ export type WalletState = {
   ensureUsername: () => { needsUsername: boolean; lastChange?: string };
   saveUsername: (username: string) => Promise<void>;
   saveAvatarUrl: (url: string) => Promise<void>;
+  saveProfile: (updates: { handle?: string; display_name?: string; bio?: string; banner_url?: string }) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -227,9 +228,44 @@ const saveAvatarUrl = useCallback(
     [identity, profile?.username]
   );
 
+  const saveProfile = useCallback(
+    async (updates: { handle?: string; display_name?: string; bio?: string; banner_url?: string }) => {
+      if (!identity) return;
+      
+      // Update Supabase database
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', identity.id);
+      
+      if (error) {
+        console.error('Failed to update profile in database:', error);
+        throw error;
+      }
+      
+      // Update local storage if username changed
+      if (updates.handle) {
+        const map = readProfiles();
+        const nowIso = new Date().toISOString();
+        const rec: ProfileRecord = {
+          username: updates.handle,
+          avatarUrl: map[identity.id]?.avatarUrl,
+          lastUsernameChange: nowIso,
+        };
+        map[identity.id] = rec;
+        writeProfiles(map);
+        setProfile(rec);
+      }
+    },
+    [identity]
+  );
+
   const value = useMemo<WalletState>(
-    () => ({ identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl }),
-    [identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl]
+    () => ({ identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile }),
+    [identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
