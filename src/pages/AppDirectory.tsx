@@ -55,19 +55,32 @@ const AppDirectory: React.FC = () => {
         return [];
       }
       
-      return (data || []).map((stream: any) => ({
-        id: stream.id,
-        title: stream.title,
-        category: stream.category || 'IRL',
-        live: !!stream.playback_url, // Stream is live if it has a playback URL (simplified check)
-        viewers: stream.viewers || 0,
-        username: stream.profile_handle || stream.profile_display_name || 'unknown',
-        userId: stream.user_id,
-        thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
-        startedAt: stream.created_at,
-        likeCount: stream.like_count || 0,
-        avatar: stream.profile_avatar_url
-      }));
+      return (data || []).map((stream: any) => {
+        // A stream is considered live if:
+        // 1. It has is_live = true AND
+        // 2. It has a playback_url AND  
+        // 3. It has recent activity (last_heartbeat within last 2 minutes) OR no heartbeat tracking
+        const hasRecentHeartbeat = !stream.last_heartbeat || 
+          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 120000; // 2 minutes
+        
+        const isLive = stream.is_live && 
+                      !!stream.playback_url && 
+                      hasRecentHeartbeat;
+        
+        return {
+          id: stream.id,
+          title: stream.title,
+          category: stream.category || 'IRL',
+          live: isLive,
+          viewers: stream.viewers || 0,
+          username: stream.profile_handle || stream.profile_display_name || 'unknown',
+          userId: stream.user_id,
+          thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
+          startedAt: stream.created_at,
+          likeCount: stream.like_count || 0,
+          avatar: stream.profile_avatar_url
+        };
+      });
     },
     refetchInterval: 5000 // Refresh every 5 seconds for live updates
   });
