@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import VideoPlayer from "@/components/players/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useWallet } from "@/context/WalletContext";
 
 interface VodLike {
   id: string;
@@ -31,6 +32,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
   const [duration, setDuration] = useState<10 | 30 | 60>(10);
   const [title, setTitle] = useState("");
   const { toast } = useToast();
+  const { identity } = useWallet();
 
   // Calculate the clip range from current time backwards
   const currentTime = Math.min(vod.duration_seconds || 60, 60); // Default to 60s if no duration
@@ -75,9 +77,8 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
   };
 
   const createClip = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      toast({ title: "Login required", description: "Sign in to create clips.", variant: "destructive" });
+    if (!identity?.id) {
+      toast({ title: "Login required", description: "Connect your wallet to create clips.", variant: "destructive" });
       return;
     }
 
@@ -89,7 +90,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     try {
       const blob = await captureThumbnail();
       if (blob) {
-        const path = `${user.user.id}/thumbnails/${vod.id}-${Date.now()}.jpg`;
+        const path = `${identity.id}/thumbnails/${vod.id}-${Date.now()}.jpg`;
         const up = await supabase.storage.from("clips").upload(path, blob, { contentType: "image/jpeg", upsert: true });
         if (up.data) {
           const { data: pub } = supabase.storage.from("clips").getPublicUrl(path);
@@ -100,7 +101,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
 
     const insert = await supabase.from("clips").insert({
       vod_id: vod.id,
-      user_id: user.user.id,
+      user_id: identity.id,
       title: title || `${vod.title} — Clip (${duration}s)`,
       start_seconds: start,
       end_seconds: end,
