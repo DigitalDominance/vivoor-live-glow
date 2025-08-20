@@ -1,22 +1,15 @@
-import { Menu } from "lucide-react";
+import { Menu, Video, Clapperboard, User, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, LogOut } from "lucide-react";
 import WalletConnectModal from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
 import MyClipsModal from "@/components/modals/MyClipsModal";
-
-const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => (
-  <Link to={to} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover-scale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
-    {children}
-  </Link>
-);
 
 const Wordmark = () => (
   <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
@@ -42,7 +35,7 @@ const SiteHeader = () => {
   }, []);
 
   const path = location.pathname;
-const wallet = useWallet();
+  const wallet = useWallet();
   const { identity, profile, ensureUsername } = wallet;
   const [walletOpen, setWalletOpen] = useState(false);
   const [usernameOpen, setUsernameOpen] = useState(false);
@@ -68,11 +61,15 @@ const wallet = useWallet();
     <header className={`${scrolled ? "bg-background/95 border-b border-border/60" : "backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b border-border/60"} sticky top-0 z-40`}>
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         <Wordmark />
-        <div className="hidden md:flex items-center gap-1">
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/app">App</NavLink>
-          <NavLink to="/go-live">Go Live</NavLink>
+        
+        <div className="hidden md:flex items-center gap-2">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Home</Link>
+          <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground">App</Link>
+          <Link to="/go-live" className="text-sm font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent hover:opacity-80">
+            GO LIVE
+          </Link>
         </div>
+
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {!identity ? (
@@ -86,35 +83,37 @@ const wallet = useWallet();
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="gradientOutline" className="hidden sm:inline-flex z-[60]" aria-label="Account menu">
-                  {displayName}
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 bg-card/80 backdrop-blur-sm border border-border/50 hover:bg-card">
+                  {profile?.username || "Anon"}
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-background border border-border z-[70]">
-                <DropdownMenuLabel>Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowProfileModal(true)}>
-                  <User className="size-4 mr-2" />
+              <DropdownMenuContent align="end" className="w-56 bg-card/95 backdrop-blur-sm border border-border/50">
+                <DropdownMenuLabel className="text-foreground">My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem onClick={() => setShowProfileModal(true)} className="cursor-pointer hover:bg-accent/50">
+                  <User className="h-4 w-4 mr-2" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>
-                  <User className="size-4 mr-2" />
+                <DropdownMenuItem onClick={() => navigate(`/channel/${profile?.username || identity?.id}`)} className="cursor-pointer hover:bg-accent/50">
+                  <Video className="h-4 w-4 mr-2" />
                   My Channel
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowClipsModal(true)}>
-                  <User className="size-4 mr-2" />
+                <DropdownMenuItem onClick={() => setShowClipsModal(true)} className="cursor-pointer hover:bg-accent/50">
+                  <Clapperboard className="h-4 w-4 mr-2" />
                   My Clips
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate("/go-live")} className="uppercase">GO LIVE</DropdownMenuItem>
-                {/* Recordings removed to save storage costs */}
-                <DropdownMenuItem onSelect={() => navigate("/following")}>My Following</DropdownMenuItem>
-                <DropdownMenuItem onClick={wallet.disconnect}>
-                  <LogOut className="size-4 mr-2" />
+                <DropdownMenuItem onClick={() => navigate("/following")} className="cursor-pointer hover:bg-accent/50">
+                  My Following
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem onClick={wallet.disconnect} className="cursor-pointer hover:bg-destructive/10 text-destructive">
                   Disconnect
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="glass" size="icon" className="md:hidden" aria-label="Open menu">
@@ -132,11 +131,21 @@ const wallet = useWallet();
                   </Button>
                 ) : (
                   <div className="mt-2 grid gap-2">
-                    <Button variant="gradientOutline" onClick={() => navigate("/go-live")}>GO LIVE</Button>
-                    <Button variant="secondary" onClick={() => setShowProfileModal(true)}>Profile</Button>
-                    <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>My Channel</Button>
-                    <Button variant="ghost" onClick={() => setShowClipsModal(true)}>My Clips</Button>
-                    {/* Recordings removed to save storage costs */}
+                    <Button variant="gradientOutline" onClick={() => navigate("/go-live")} className="font-bold">
+                      GO LIVE
+                    </Button>
+                    <Button variant="secondary" onClick={() => setShowProfileModal(true)}>
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Button>
+                    <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>
+                      <Video className="h-4 w-4 mr-2" />
+                      My Channel
+                    </Button>
+                    <Button variant="ghost" onClick={() => setShowClipsModal(true)}>
+                      <Clapperboard className="h-4 w-4 mr-2" />
+                      My Clips
+                    </Button>
                     <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
                     <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
                   </div>
