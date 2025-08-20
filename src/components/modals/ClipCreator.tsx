@@ -77,10 +77,13 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
   };
 
   const createClip = async () => {
+    console.log('Identity check:', identity);
     if (!identity?.id) {
+      console.log('No identity found, showing login required');
       toast({ title: "Login required", description: "Connect your wallet to create clips.", variant: "destructive" });
       return;
     }
+    console.log('Identity found, proceeding with clip creation:', identity.id);
 
     const start = Math.max(0, Math.floor(startTime));
     const end = Math.max(start + 1, Math.floor(endTime));
