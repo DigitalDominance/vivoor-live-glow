@@ -35,18 +35,27 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
   const [liked, setLiked] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(stream.likeCount || 0);
 
+  // Update likeCount when stream.likeCount changes
+  React.useEffect(() => {
+    setLikeCount(stream.likeCount || 0);
+  }, [stream.likeCount]);
+
   // Check if user already likes this stream
   React.useEffect(() => {
     if (!identity?.id || !stream.id) return;
 
     const checkLikeStatus = async () => {
-      const { data } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('user_id', identity.id)
-        .eq('stream_id', stream.id)
-        .maybeSingle();
-      setLiked(!!data);
+      try {
+        const { data } = await supabase
+          .from('likes')
+          .select('id')
+          .eq('user_id', identity.id)
+          .eq('stream_id', stream.id)
+          .maybeSingle();
+        setLiked(!!data);
+      } catch (error) {
+        console.error('Error checking like status:', error);
+      }
     };
 
     checkLikeStatus();
