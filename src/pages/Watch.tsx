@@ -14,7 +14,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
-import ClipCreator from "@/components/modals/ClipCreator";
+import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import { toast } from "sonner";
 import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
 import { Helmet } from "react-helmet-async";
@@ -583,18 +583,11 @@ const Watch = () => {
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
       
       {/* Clip Creator Modal */}
-      <ClipCreator 
+      <LivepeerClipCreator 
         open={clipModalOpen}
         onOpenChange={setClipModalOpen}
-        vod={streamData ? {
-          id: streamData.id,
-          src_url: streamData.playback_url || '',
-          title: streamData.title,
-          duration_seconds: elapsed
-        } : null}
-        onCreated={() => {
-          toast.success('Clip created successfully!');
-        }}
+        playbackId={streamData?.livepeer_stream_id || streamData?.id || ''}
+        streamTitle={streamData?.title || 'Stream'}
       />
     </main>
   );

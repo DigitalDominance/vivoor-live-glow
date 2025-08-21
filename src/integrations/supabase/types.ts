@@ -56,8 +56,11 @@ export type Database = {
       clips: {
         Row: {
           created_at: string
+          download_url: string | null
           end_seconds: number
           id: string
+          livepeer_asset_id: string | null
+          playback_id: string | null
           start_seconds: number
           thumbnail_url: string | null
           title: string
@@ -66,8 +69,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          download_url?: string | null
           end_seconds: number
           id?: string
+          livepeer_asset_id?: string | null
+          playback_id?: string | null
           start_seconds: number
           thumbnail_url?: string | null
           title: string
@@ -76,8 +82,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          download_url?: string | null
           end_seconds?: number
           id?: string
+          livepeer_asset_id?: string | null
+          playback_id?: string | null
           start_seconds?: number
           thumbnail_url?: string | null
           title?: string

@@ -48,6 +48,9 @@ image_transformation = { enabled = true }
 enabled = true
 port = 54329
 
+[functions.livepeer-create-clip]
+verify_jwt = false
+
 [functions.livepeer-create-stream]
 verify_jwt = false
 
