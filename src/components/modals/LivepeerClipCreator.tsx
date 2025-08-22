@@ -185,7 +185,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                   <Scissors className="h-6 w-6 text-white" />
                 </div>
                 <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                  Create Epic Clip
+                  Create Clip
                 </DialogTitle>
               </motion.div>
             </DialogHeader>
