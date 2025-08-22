@@ -59,31 +59,57 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
 
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
 
-      // Call our edge function to create the clip
-      const response = await supabase.functions.invoke('livepeer-create-clip', {
+      // 1. Create clip via our app backend
+      const clipResponse = await supabase.functions.invoke('livepeer-create-clip', {
         body: {
           playbackId: livepeerPlaybackId,
           startTime,
           endTime,
-          title: clipTitle,
-          userId: identity.id
+          seconds: selectedDuration
         }
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to create clip');
+      if (clipResponse.error) {
+        throw new Error(clipResponse.error.message || 'Failed to create clip');
       }
 
-      const clipData = response.data;
-      console.log('Clip created successfully:', clipData);
+      const { downloadUrl } = clipResponse.data;
+      console.log('Clip created, starting watermarking...');
 
-      // Show preview modal
-      setClipPreview(clipData);
+      // 2. Send the clip to watermark service
+      const formData = new FormData();
+      formData.append('videoUrl', downloadUrl);
+      formData.append('position', 'br');
+      formData.append('margin', '24');
+      formData.append('wmWidth', '180');
+      formData.append('filename', `${clipTitle.replace(/[^a-zA-Z0-9]/g, '-')}.mp4`);
+
+      const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!watermarkResponse.ok) {
+        throw new Error('Watermarking failed');
+      }
+
+      // 3. Get watermarked video as blob and create download
+      const watermarkedBlob = await watermarkResponse.blob();
+      const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
+
+      // Show preview modal with watermarked clip
+      setClipPreview({
+        clipId: `temp-${Date.now()}`,
+        downloadUrl: watermarkedUrl,
+        playbackUrl: watermarkedUrl,
+        title: clipTitle,
+        isWatermarked: true
+      });
       setShowPreview(true);
       
       toast({
         title: "Clip created!",
-        description: `Your ${selectedDuration}-second clip is ready.`
+        description: `Your ${selectedDuration}-second watermarked clip is ready.`
       });
 
     } catch (error: any) {
