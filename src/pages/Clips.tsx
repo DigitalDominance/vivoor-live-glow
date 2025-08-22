@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { useWallet } from "@/context/WalletContext";
 import WalletConnectModal from "@/components/modals/WalletConnectModal";
@@ -50,6 +51,7 @@ const ClipsPage = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [likedClips, setLikedClips] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   // Fetch clips with profiles
   const { data: clips, isLoading } = useQuery({
@@ -82,6 +84,31 @@ const ClipsPage = () => {
       if (error) throw error;
       return data as any;
     },
+    refetchInterval: 10000 // Refetch every 10 seconds to pick up new clips
+  });
+
+  // Fetch clip like counts
+  const { data: clipLikeCounts } = useQuery({
+    queryKey: ['clip-like-counts', clips?.map(c => c.id)],
+    queryFn: async () => {
+      if (!clips || clips.length === 0) return {};
+      
+      const clipIds = clips.map(c => c.id);
+      const { data } = await supabase
+        .from('clip_likes')
+        .select('clip_id')
+        .in('clip_id', clipIds);
+      
+      // Count likes per clip
+      const counts: Record<string, number> = {};
+      clipIds.forEach(id => counts[id] = 0);
+      data?.forEach(like => {
+        counts[like.clip_id] = (counts[like.clip_id] || 0) + 1;
+      });
+      
+      return counts;
+    },
+    enabled: !!clips && clips.length > 0
   });
 
   // Check which clips the user has liked
@@ -92,13 +119,13 @@ const ClipsPage = () => {
       try {
         const clipIds = clips.map(clip => clip.id);
         const { data } = await supabase
-          .from('likes')
-          .select('stream_id')
+          .from('clip_likes')
+          .select('clip_id')
           .eq('user_id', identity.id)
-          .in('stream_id', clipIds);
+          .in('clip_id', clipIds);
         
         if (data) {
-          setLikedClips(new Set(data.map(like => like.stream_id)));
+          setLikedClips(new Set(data.map(like => like.clip_id)));
         }
       } catch (error) {
         console.error('Error checking liked clips:', error);
@@ -117,9 +144,9 @@ const ClipsPage = () => {
     try {
       if (isLiked) {
         await supabase
-          .from('likes')
+          .from('clip_likes')
           .delete()
-          .match({ user_id: identity.id, stream_id: clipId });
+          .match({ user_id: identity.id, clip_id: clipId });
         setLikedClips(prev => {
           const newSet = new Set(prev);
           newSet.delete(clipId);
@@ -127,10 +154,13 @@ const ClipsPage = () => {
         });
       } else {
         await supabase
-          .from('likes')
-          .insert({ user_id: identity.id, stream_id: clipId });
+          .from('clip_likes')
+          .insert({ user_id: identity.id, clip_id: clipId });
         setLikedClips(prev => new Set([...prev, clipId]));
       }
+      
+      // Invalidate clip like counts to refresh
+      queryClient.invalidateQueries({ queryKey: ['clip-like-counts'] });
     } catch (error) {
       console.error('Error toggling like:', error);
       toast.error('Failed to update like status');
@@ -247,6 +277,7 @@ const ClipsPage = () => {
             {clips.map((clip, index) => {
               const isLiked = likedClips.has(clip.id);
               const profile = Array.isArray(clip.profiles) ? clip.profiles[0] : clip.profiles;
+              const likeCount = clipLikeCounts?.[clip.id] || 0;
               return (
                 <motion.div
                   key={clip.id}
@@ -315,6 +346,10 @@ const ClipsPage = () => {
                         <div className="flex items-center gap-1">
                           <Eye className="size-3" />
                           {clip.views || 0}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Heart className="size-3" />
+                          {likeCount}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/context/WalletContext";
 import ClipPreviewModal from "./ClipPreviewModal";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Scissors } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -36,6 +37,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
   const { identity } = useWallet();
+  const queryClient = useQueryClient();
 
   const createClip = async () => {
     if (!identity?.id) {
@@ -124,6 +126,9 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         isWatermarked: true
       });
       setShowPreview(true);
+      
+      // Invalidate clips queries to refresh the clips page
+      queryClient.invalidateQueries({ queryKey: ['clips'] });
       
       toast({
         title: "Clip created!",

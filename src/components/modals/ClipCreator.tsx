@@ -6,6 +6,7 @@ import VideoPlayer from "@/components/players/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useWallet } from "@/context/WalletContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface VodLike {
   id: string;
@@ -33,6 +34,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
   const [title, setTitle] = useState("");
   const { toast } = useToast();
   const { identity } = useWallet();
+  const queryClient = useQueryClient();
 
   // Calculate the clip range from current time backwards
   const currentTime = Math.min(vod.duration_seconds || 60, 60); // Default to 60s if no duration
@@ -143,6 +145,9 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     
     onOpenChange(false);
     onCreated?.(insert.data.id);
+    
+    // Invalidate clips queries to refresh the clips page
+    queryClient.invalidateQueries({ queryKey: ['clips'] });
   };
 
   return (

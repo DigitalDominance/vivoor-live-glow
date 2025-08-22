@@ -14,6 +14,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
+import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import { toast } from "sonner";
 import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
@@ -35,6 +36,10 @@ const Watch = () => {
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
+  const [newMessage, setNewMessage] = React.useState('');
+
+  // WebSocket chat
+  const { messages: wsMessages, sendChat, isConnected } = useStreamChat(streamId || '');
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
@@ -170,32 +175,15 @@ const Watch = () => {
     enabled: !!streamData
   });
 
-  // Fetch chat messages
-  const { data: chatMessages } = useQuery({
-    queryKey: ['chat', streamId],
-    queryFn: async () => {
-      if (!streamId) return [];
-      const { data } = await supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          profiles:user_id (display_name, handle, avatar_url)
-        `)
-        .eq('stream_id', streamId)
-        .order('created_at', { ascending: true })
-        .limit(100);
-      
-      // Transform data to match ChatMessage interface
-      return data?.map(msg => ({
-        id: msg.id,
-        user: msg.profiles?.display_name || msg.profiles?.handle || 'Anonymous',
-        text: msg.message,
-        time: new Date(msg.created_at).toLocaleTimeString()
-      })) || [];
-    },
-    enabled: !!streamId,
-    refetchInterval: 2000 // Update chat every 2 seconds
-  });
+  // Transform WebSocket messages to chat format
+  const chatMessages = React.useMemo(() => {
+    return wsMessages.map(msg => ({
+      id: `${msg.serverTs}-${msg.user?.id || 'system'}`,
+      user: msg.user?.name || 'Anonymous',
+      text: msg.text,
+      time: new Date(msg.serverTs).toLocaleTimeString()
+    }));
+  }, [wsMessages]);
 
   // Monitor tips for this stream
   const { tips: allTips, totalAmountReceived } = useTipMonitoring({
@@ -220,28 +208,7 @@ const Watch = () => {
 
   // Set up realtime subscription for chat messages
   React.useEffect(() => {
-    if (!streamId) return;
-
-    const channel = supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `stream_id=eq.${streamId}`
-        },
-        () => {
-          // Refetch chat messages when new ones arrive
-          // The query will automatically update
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // WebSocket handles real-time chat now
   }, [streamId]);
 
   // Handle elapsed time calculation
@@ -256,25 +223,35 @@ const Watch = () => {
     return () => clearInterval(interval);
   }, [streamData?.started_at]);
 
-  const handleSendMessage = async (message: string) => {
-    if (!streamId || !identity?.id) {
-      toast.error('You must be logged in to chat');
+  const handleSendMessage = () => {
+    if (!identity?.id || !newMessage.trim()) {
+      toast.error('Please connect your wallet to chat');
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert({
-          stream_id: streamId,
-          user_id: identity.id,
-          message: message.trim()
-        });
+    // Get current user profile for display
+    const profile = React.useMemo(() => {
+      if (!identity?.id) return null;
+      return {
+        handle: identity.id.slice(0, 8),
+        display_name: identity.id.slice(0, 8)
+      };
+    }, [identity?.id]);
 
-      if (error) throw error;
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      toast.error('Failed to send message');
+    const user = {
+      id: identity.id,
+      name: profile?.handle || identity.id.slice(0, 8),
+      avatar: undefined // Could add avatar URL here
+    };
+
+    sendChat(newMessage.trim(), user);
+    setNewMessage('');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -341,12 +318,8 @@ const Watch = () => {
 
   // Current user profile for display
   const profile = React.useMemo(() => {
-    if (!identity?.id) return null;
-    // Use wallet context profile or create a basic one
-    return {
-      handle: identity.id.slice(0, 8),
-      display_name: identity.id.slice(0, 8)
-    };
+    // Moved this logic into handleSendMessage
+    return null;
   }, [identity?.id]);
 
   if (isLoading) {
@@ -521,34 +494,19 @@ const Watch = () => {
 
         {/* Chat sidebar */}
         <div className="lg:col-span-1">
-          <div className="h-[400px] lg:h-[600px] glass rounded-xl p-4">
-            <h3 className="font-semibold mb-4">Chat</h3>
-            <div className="h-full flex flex-col gap-4">
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {chatMessages?.map(msg => (
-                  <div key={msg.id} className="text-sm">
-                    <span className="font-medium text-primary">{msg.user}:</span>
-                    <span className="ml-2">{msg.text}</span>
-                  </div>
-                ))}
-              </div>
-              {identity?.id ? (
-                <input 
-                  type="text" 
-                  placeholder="Type a message..."
-                  className="w-full px-3 py-2 text-sm rounded-md bg-background border border-border"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                      handleSendMessage(e.currentTarget.value.trim());
-                      e.currentTarget.value = '';
-                    }
-                  }}
-                />
-              ) : (
-                <Button onClick={onRequireLogin} size="sm">Connect wallet to chat</Button>
-              )}
+          <ChatPanel
+            messages={chatMessages}
+            canPost={!!identity?.id}
+            onRequireLogin={onRequireLogin}
+            newMessage={newMessage}
+            onMessageChange={setNewMessage}
+            onSendMessage={handleSendMessage}
+          />
+          {!isConnected && (
+            <div className="text-xs text-muted-foreground mt-2 text-center">
+              Connecting to chat...
             </div>
-          </div>
+          )}
         </div>
       </div>
 

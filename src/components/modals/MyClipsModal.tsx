@@ -56,6 +56,29 @@ const MyClipsModal: React.FC<MyClipsModalProps> = ({ open, onOpenChange }) => {
     if (open && identity?.id) {
       fetchClips();
     }
+    
+    // Set up real-time subscription for new clips
+    if (open && identity?.id) {
+      const channel = supabase
+        .channel('user-clips')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'clips',
+            filter: `user_id=eq.${identity.id}`
+          },
+          () => {
+            fetchClips(); // Refresh clips when new ones are added
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [open, identity?.id]);
 
   const downloadClip = async (clip: Clip) => {

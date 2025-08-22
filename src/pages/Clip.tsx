@@ -2,18 +2,56 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Share2, Play } from "lucide-react";
+import { Download, Share2, Play, Heart, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { useWallet } from "@/context/WalletContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const ClipPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { identity } = useWallet();
+  const queryClient = useQueryClient();
   const [clip, setClip] = React.useState<any | null>(null);
   const [vod, setVod] = React.useState<any | null>(null);
   const [stream, setStream] = React.useState<any | null>(null);
+  const [creator, setCreator] = React.useState<any | null>(null);
+  const [liked, setLiked] = React.useState(false);
   const { toast } = useToast();
+
+  // Fetch clip like count
+  const { data: likeCount = 0 } = useQuery({
+    queryKey: ['clip-like-count', id],
+    queryFn: async () => {
+      if (!id) return 0;
+      const { data } = await supabase
+        .from('clip_likes')
+        .select('id', { count: 'exact', head: true })
+        .eq('clip_id', id);
+      return data || 0;
+    },
+    enabled: !!id
+  });
+
+  // Check if user has liked this clip
+  React.useEffect(() => {
+    if (!identity?.id || !id) return;
+    
+    const checkLikeStatus = async () => {
+      const { data } = await supabase
+        .from('clip_likes')
+        .select('id')
+        .eq('user_id', identity.id)
+        .eq('clip_id', id)
+        .maybeSingle();
+      setLiked(!!data);
+    };
+    
+    checkLikeStatus();
+  }, [identity?.id, id]);
 
   React.useEffect(() => {
     (async () => {
@@ -21,6 +59,14 @@ const ClipPage: React.FC = () => {
       const c = await supabase.from("clips").select("*").eq("id", id).maybeSingle();
       if (c.data && !c.error) {
         setClip(c.data);
+        
+        // Fetch creator profile
+        const { data: creatorData } = await supabase.rpc('get_public_profile_display', { 
+          user_id: c.data.user_id 
+        });
+        if (creatorData?.[0]) {
+          setCreator(creatorData[0]);
+        }
         
         // Try to get VOD first, if that fails, get stream
         if (c.data.vod_id) {
@@ -38,6 +84,31 @@ const ClipPage: React.FC = () => {
       }
     })();
   }, [id]);
+
+  const handleLike = async () => {
+    if (!identity?.id) {
+      toast.error('Please connect your wallet to like clips');
+      return;
+    }
+
+    try {
+      if (liked) {
+        await supabase
+          .from('clip_likes')
+          .delete()
+          .match({ user_id: identity.id, clip_id: id });
+      } else {
+        await supabase
+          .from('clip_likes')
+          .insert({ user_id: identity.id, clip_id: id });
+      }
+      setLiked(!liked);
+      queryClient.invalidateQueries({ queryKey: ['clip-like-count', id] });
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast.error('Failed to update like status');
+    }
+  };
 
   const downloadClip = async () => {
     if (!clip.download_url) {
@@ -121,8 +192,42 @@ const ClipPage: React.FC = () => {
             >
               <h2 className="text-2xl font-bold text-gradient">{clip.title}</h2>
               
+              {/* Creator Info */}
+              {creator && (
+                <div className="flex items-center gap-3 p-3 bg-background/30 rounded-lg border border-border/20">
+                  <Avatar className="size-10">
+                    <AvatarImage src={creator.avatar_url} alt={`@${creator.handle} avatar`} />
+                    <AvatarFallback>
+                      {(creator.display_name || creator.handle || 'U')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium">{creator.display_name || creator.handle}</div>
+                    <div className="text-sm text-muted-foreground">@{creator.handle}</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/channel/${creator.handle || creator.id}`)}
+                    className="ml-auto"
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    View Channel
+                  </Button>
+                </div>
+              )}
+              
               {/* Action Buttons */}
               <div className="flex items-center gap-3 flex-wrap">
+                <Button 
+                  variant={liked ? "hero" : "outline"}
+                  onClick={handleLike}
+                  className="transition-all duration-300"
+                >
+                  <Heart className={`h-4 w-4 mr-2 ${liked ? "fill-current" : ""}`} />
+                  {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+                </Button>
+                
                 <Button 
                   onClick={downloadClip}
                   className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink hover:shadow-lg hover:shadow-brand-iris/20 transition-all duration-300"
