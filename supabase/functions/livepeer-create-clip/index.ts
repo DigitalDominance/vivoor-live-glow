@@ -10,17 +10,21 @@ const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-// Kaspa logo SVG as base64 (animated spinning effect)
-const KASPA_LOGO_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+// Animated V logo SVG (matching the one in SiteHeader)
+const ANIMATED_V_LOGO_SVG = `<svg width="48" height="48" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
   <defs>
+    <linearGradient id="vGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d8ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f472b6;stop-opacity:1" />
+    </linearGradient>
     <animateTransform attributeName="transform" attributeType="XML" type="rotate" 
-                      from="0 32 32" to="360 32 32" dur="2s" repeatCount="indefinite"/>
+                      values="0 16 16;360 16 16" dur="3s" repeatCount="indefinite"/>
   </defs>
-  <g fill="#00D8CC" transform-origin="32 32">
+  <g fill="url(#vGradient)" transform-origin="16 16">
     <animateTransform attributeName="transform" attributeType="XML" type="rotate" 
-                      from="0 32 32" to="360 32 32" dur="2s" repeatCount="indefinite"/>
-    <path d="M32 4l24 14v28L32 60 8 46V18L32 4zm0 6L14 20v24l18 10 18-10V20L32 10z"/>
-    <path d="M22 40l8-8-8-8h8l8 8-8 8h-8z"/>
+                      values="0 16 16;360 16 16" dur="3s" repeatCount="indefinite"/>
+    <path d="M8 6l8 20 8-20h-4l-4 10-4-10H8z" stroke="url(#vGradient)" stroke-width="0.5"/>
   </g>
 </svg>`
 

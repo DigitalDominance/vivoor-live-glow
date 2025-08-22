@@ -121,7 +121,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     <>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl border-0 bg-background/95 backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20 rounded-lg -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/10 to-brand-pink/20 rounded-lg -z-10" />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -137,10 +137,10 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                 transition={{ delay: 0.1 }}
                 className="flex items-center justify-center gap-2"
               >
-                <div className="p-3 rounded-full bg-gradient-to-r from-primary to-accent">
+                <div className="p-3 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris">
                   <Scissors className="h-6 w-6 text-white" />
                 </div>
-                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
                   Create Epic Clip
                 </DialogTitle>
               </motion.div>
@@ -193,8 +193,8 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                       className={`
                         relative p-4 rounded-lg border-2 transition-all duration-300 text-left
                         ${selectedDuration === duration.value
-                          ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
-                          : 'border-border/50 bg-background/30 hover:border-primary/30'
+                          ? 'border-brand-iris/60 bg-brand-iris/10 shadow-lg shadow-brand-iris/20'
+                          : 'border-border/50 bg-background/30 hover:border-brand-iris/30'
                         }
                       `}
                     >
@@ -208,7 +208,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             exit={{ scale: 0 }}
-                            className="absolute top-2 right-2 w-3 h-3 bg-gradient-to-r from-primary to-accent rounded-full"
+                            className="absolute top-2 right-2 w-3 h-3 bg-gradient-to-r from-brand-cyan to-brand-iris rounded-full"
                           />
                         )}
                       </AnimatePresence>
@@ -235,7 +235,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                 <Button
                   onClick={createClip}
                   disabled={isCreating}
-                  className="bg-gradient-to-r from-primary via-accent to-secondary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 min-w-[140px]"
+                  className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink hover:shadow-lg hover:shadow-brand-iris/20 transition-all duration-300 min-w-[140px]"
                 >
                   <AnimatePresence mode="wait">
                     {isCreating ? (
