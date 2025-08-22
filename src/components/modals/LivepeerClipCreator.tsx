@@ -3,12 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import * as Player from '@livepeer/react/player';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/context/WalletContext";
 import ClipPreviewModal from "./ClipPreviewModal";
-import { Loader2 } from "lucide-react";
+import { Loader2, Scissors } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LivepeerClipCreatorProps {
   open: boolean;
@@ -30,13 +30,14 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   streamTitle
 }) => {
   const [title, setTitle] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState<10 | 30 | 60>(30);
   const [isCreating, setIsCreating] = useState(false);
   const [clipPreview, setClipPreview] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
   const { identity } = useWallet();
 
-  const createClipFromCurrentTime = async (duration: 10 | 30 | 60) => {
+  const createClip = async () => {
     if (!identity?.id) {
       toast({
         title: "Login required",
@@ -52,9 +53,11 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       // Use current time as endTime and calculate startTime
       const now = Date.now();
       const endTime = now;
-      const startTime = Math.max(0, endTime - (duration * 1000));
+      const startTime = Math.max(0, endTime - (selectedDuration * 1000));
 
-      console.log(`Creating ${duration}s clip from ${startTime}ms to ${endTime}ms`);
+      console.log(`Creating ${selectedDuration}s clip from ${startTime}ms to ${endTime}ms`);
+
+      const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
 
       // Call our edge function to create the clip
       const response = await supabase.functions.invoke('livepeer-create-clip', {
@@ -62,7 +65,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           playbackId: livepeerPlaybackId,
           startTime,
           endTime,
-          title: title || `${streamTitle} - ${duration}s Clip`,
+          title: clipTitle,
           userId: identity.id
         }
       });
@@ -80,7 +83,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       
       toast({
         title: "Clip created!",
-        description: `Your ${duration}-second clip is ready.`
+        description: `Your ${selectedDuration}-second clip is ready.`
       });
 
     } catch (error: any) {
@@ -95,66 +98,10 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     }
   };
 
-  const createClip = async (duration: 10 | 30 | 60, clipCtx: ClipContext) => {
-    if (!identity?.id) {
-      toast({
-        title: "Login required",
-        description: "Connect your wallet to create clips.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsCreating(true);
-
-    try {
-      // Adjust times for "last N seconds"
-      const endTime = clipCtx.endTime;
-      const startTime = Math.max(0, endTime - (duration * 1000));
-
-      console.log(`Creating ${duration}s clip from ${startTime}ms to ${endTime}ms`);
-
-      // Call our edge function to create the clip
-      const response = await supabase.functions.invoke('livepeer-create-clip', {
-        body: {
-          playbackId: livepeerPlaybackId,
-          startTime,
-          endTime,
-          title: title || `${streamTitle} - ${duration}s Clip`,
-          userId: identity.id
-        }
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to create clip');
-      }
-
-      const clipData = response.data;
-      console.log('Clip created successfully:', clipData);
-
-      // Show preview modal
-      setClipPreview(clipData);
-      setShowPreview(true);
-      
-      toast({
-        title: "Clip created!",
-        description: `Your ${duration}-second clip is ready.`
-      });
-
-    } catch (error: any) {
-      console.error('Error creating clip:', error);
-      toast({
-        title: "Failed to create clip",
-        description: error.message || "Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   const handleClose = () => {
     setTitle("");
+    setSelectedDuration(30);
     onOpenChange(false);
   };
 
@@ -164,82 +111,161 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     handleClose();
   };
 
+  const durations = [
+    { value: 10, label: "10 Seconds", description: "Quick highlights" },
+    { value: 30, label: "30 Seconds", description: "Extended moments" },
+    { value: 60, label: "60 Seconds", description: "Full sequences" }
+  ] as const;
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Create Clip</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl border-0 bg-background/95 backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20 rounded-lg -z-10" />
           
-          <div className="space-y-6">
-            {/* Video Player with Clip Buttons */}
-            <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
-              <video
-                src={`https://lp-playback.com/hls/${livepeerPlaybackId}/index.m3u8`}
-                controls
-                className="w-full h-full object-contain"
-                autoPlay
-                muted
-              />
-              
-              {/* Custom Clip Controls Overlay */}
-              <div className="absolute bottom-16 left-4 flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="relative"
+          >
+            <DialogHeader className="text-center space-y-4">
+              <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center justify-center gap-2"
+              >
+                <div className="p-3 rounded-full bg-gradient-to-r from-primary to-accent">
+                  <Scissors className="h-6 w-6 text-white" />
+                </div>
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
+                  Create Epic Clip
+                </DialogTitle>
+              </motion.div>
+            </DialogHeader>
+            
+            <div className="space-y-6 mt-6">
+              {/* Clip Title Input */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="clip-title" className="text-sm font-medium">
+                  Clip Title
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="clip-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={`${streamTitle} - Epic ${selectedDuration}s Clip`}
+                    disabled={isCreating}
+                    className="bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: title ? 1 : 0 }}
+                    className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary to-accent origin-left"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Duration Selection */}
+              <motion.div
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-3"
+              >
+                <Label className="text-sm font-medium">Duration</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {durations.map((duration) => (
+                    <motion.button
+                      key={duration.value}
+                      onClick={() => setSelectedDuration(duration.value)}
+                      disabled={isCreating}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`
+                        relative p-4 rounded-lg border-2 transition-all duration-300 text-left
+                        ${selectedDuration === duration.value
+                          ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
+                          : 'border-border/50 bg-background/30 hover:border-primary/30'
+                        }
+                      `}
+                    >
+                      <div className="font-semibold text-sm">{duration.label}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {duration.description}
+                      </div>
+                      <AnimatePresence>
+                        {selectedDuration === duration.value && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            className="absolute top-2 right-2 w-3 h-3 bg-gradient-to-r from-primary to-accent rounded-full"
+                          />
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Action Buttons */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="flex justify-end gap-3 pt-4"
+              >
+                <Button 
+                  variant="ghost" 
+                  onClick={handleClose} 
                   disabled={isCreating}
-                  onClick={() => createClipFromCurrentTime(10)}
+                  className="hover:bg-background/50"
                 >
-                  {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Clip 10s"}
+                  Cancel
                 </Button>
-
                 <Button
-                  variant="secondary"
-                  size="sm"
+                  onClick={createClip}
                   disabled={isCreating}
-                  onClick={() => createClipFromCurrentTime(30)}
+                  className="bg-gradient-to-r from-primary via-accent to-secondary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 min-w-[140px]"
                 >
-                  {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Clip 30s"}
+                  <AnimatePresence mode="wait">
+                    {isCreating ? (
+                      <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating Clip...
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="create"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Scissors className="h-4 w-4" />
+                        Create Clip
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Button>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={isCreating}
-                  onClick={() => createClipFromCurrentTime(60)}
-                >
-                  {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Clip 60s"}
-                </Button>
-              </div>
+              </motion.div>
             </div>
-
-            {/* Clip Settings */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="clip-title">Clip Title (Optional)</Label>
-                <Input
-                  id="clip-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={`${streamTitle} - Clip`}
-                  disabled={isCreating}
-                />
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                <p>• Click "Clip 10s", "Clip 30s", or "Clip 60s" to create a clip of the last N seconds from the current playback position.</p>
-                <p>• The clip will be processed and saved to your account with a watermark.</p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={handleClose} disabled={isCreating}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          </motion.div>
         </DialogContent>
       </Dialog>
 

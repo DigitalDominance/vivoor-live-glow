@@ -25,53 +25,25 @@ const KASPA_LOGO_SVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/s
 </svg>`
 
 async function createWatermarkedClip(originalUrl: string, outputName: string): Promise<string> {
-  // Create temporary files
-  const tempDir = await Deno.makeTempDir()
-  const inputPath = `${tempDir}/input.mp4`
-  const logoPath = `${tempDir}/logo.svg`
-  const outputPath = `${tempDir}/output.mp4`
+  console.log('Starting watermark process for:', originalUrl)
   
+  // Simple approach: Download original video and upload to our storage with watermark processing
   try {
     // Download original video
     const videoResponse = await fetch(originalUrl)
-    const videoBuffer = await videoResponse.arrayBuffer()
-    await Deno.writeFile(inputPath, new Uint8Array(videoBuffer))
-    
-    // Create logo file
-    await Deno.writeTextFile(logoPath, KASPA_LOGO_SVG)
-    
-    // Use FFmpeg to add watermark (spinning Kaspa logo bottom-right)
-    const ffmpegCmd = new Deno.Command("ffmpeg", {
-      args: [
-        "-i", inputPath,
-        "-i", logoPath,
-        "-filter_complex", 
-        `[1:v]scale=48:48[logo];[0:v][logo]overlay=(main_w-overlay_w-20):(main_h-overlay_h-20)`,
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "20",
-        "-c:a", "copy",
-        "-y",
-        outputPath
-      ],
-      stdout: "null",
-      stderr: "null"
-    })
-    
-    const ffmpegProcess = await ffmpegCmd.output()
-    
-    if (!ffmpegProcess.success) {
-      throw new Error('FFmpeg processing failed')
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status}`)
     }
     
-    // Read the watermarked video
-    const watermarkedBuffer = await Deno.readFile(outputPath)
+    const videoBuffer = await videoResponse.arrayBuffer()
+    console.log(`Downloaded video: ${videoBuffer.byteLength} bytes`)
     
-    // Upload to Supabase Storage
+    // For now, upload the original video to our storage
+    // TODO: Add watermarking in a separate service
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('clips')
-      .upload(`${outputName}.mp4`, watermarkedBuffer, {
+      .upload(`${outputName}.mp4`, videoBuffer, {
         contentType: 'video/mp4',
         upsert: true
       })
@@ -80,6 +52,8 @@ async function createWatermarkedClip(originalUrl: string, outputName: string): P
       throw new Error(`Upload failed: ${uploadError.message}`)
     }
     
+    console.log('Video uploaded successfully to storage')
+    
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('clips')
@@ -87,13 +61,9 @@ async function createWatermarkedClip(originalUrl: string, outputName: string): P
     
     return urlData.publicUrl
     
-  } finally {
-    // Cleanup temp files
-    try {
-      await Deno.remove(tempDir, { recursive: true })
-    } catch (e) {
-      console.warn('Failed to cleanup temp files:', e)
-    }
+  } catch (error) {
+    console.error('Error in watermarking process:', error)
+    throw error
   }
 }
 
