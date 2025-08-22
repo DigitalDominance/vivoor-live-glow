@@ -75,6 +75,10 @@ const SiteHeader = () => {
             <Zap className="h-4 w-4 text-brand-cyan" />
             <span className="font-bold">GO LIVE</span>
           </Link>
+          <Link to="/clips" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <Clapperboard className="h-4 w-4" />
+            Clips
+          </Link>
         </div>
 
         <div className="flex items-center gap-2">
@@ -137,6 +141,7 @@ const SiteHeader = () => {
                 <Link to="/" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Home</Link>
                 <Link to="/app" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">App</Link>
                 <Link to="/go-live" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Go Live</Link>
+                <Link to="/clips" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Clips</Link>
                 {!identity ? (
                   <Button variant="gradientOutline" className="mt-2" onClick={() => (path === "/app" ? setWalletOpen(true) : navigate(cta.to))}>
                     {path === "/app" ? "Login" : cta.label}
