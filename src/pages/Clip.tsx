@@ -2,10 +2,10 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
-import VideoPlayer from "@/components/players/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Share2 } from "lucide-react";
+import { Download, Share2, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 const ClipPage: React.FC = () => {
   const { id } = useParams();
@@ -40,60 +40,21 @@ const ClipPage: React.FC = () => {
   }, [id]);
 
   const downloadClip = async () => {
-    try {
-      // Create a watermarked version of the clip
-      const videoSrc = vod?.src_url || stream?.playback_url;
-      if (!videoSrc) {
-        toast({ title: "Error", description: "Video source not available", variant: "destructive" });
-        return;
-      }
+    if (!clip.download_url) {
+      toast({ title: "Error", description: "Download URL not available", variant: "destructive" });
+      return;
+    }
 
-      // Create a canvas to capture the video frame and add watermark
-      const video = document.createElement("video");
-      video.crossOrigin = "anonymous";
-      video.src = videoSrc;
-      video.currentTime = clip.start_seconds;
-      video.muted = true;
+    try {
+      // Download the watermarked MP4 clip
+      const link = document.createElement('a');
+      link.href = clip.download_url;
+      link.download = `${clip.title.replace(/[^a-zA-Z0-9]/g, '_')}_vivoor_clip.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      video.addEventListener("loadeddata", () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        
-        // Draw the video frame
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Add watermark background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(canvas.width - 200, canvas.height - 60, 180, 40);
-        
-        // Add vivoor.xyz text with gradient effect
-        const gradient = ctx.createLinearGradient(canvas.width - 190, canvas.height - 45, canvas.width - 30, canvas.height - 25);
-        gradient.addColorStop(0, '#60a5fa'); // cyan
-        gradient.addColorStop(0.5, '#a855f7'); // purple  
-        gradient.addColorStop(1, '#ec4899'); // pink
-        
-        ctx.fillStyle = gradient;
-        ctx.font = 'bold 18px Arial';
-        ctx.fillText('vivoor.xyz', canvas.width - 180, canvas.height - 30);
-        
-        // Convert to blob and download
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `${clip.title.replace(/[^a-zA-Z0-9]/g, '_')}_vivoor_clip.jpg`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          
-          toast({ title: "Downloaded", description: "Clip thumbnail downloaded successfully!" });
-        }, "image/jpeg", 0.9);
-      });
+      toast({ title: "Downloaded", description: "Clip downloaded successfully!" });
     } catch (error) {
       toast({ title: "Download failed", description: "Unable to download clip", variant: "destructive" });
     }
@@ -108,43 +69,105 @@ const ClipPage: React.FC = () => {
   const duration = Math.max(1, (clip.end_seconds ?? 0) - (clip.start_seconds ?? 0));
 
   return (
-    <main className="container mx-auto px-4 py-6">
-      <Helmet>
-        <title>{clip.title} — Clip on Vivoor</title>
-        <meta name="description" content={`Watch clip: ${clip.title}`} />
-        <link rel="canonical" href={`/clip/${clip.id}`} />
-      </Helmet>
-      <h1 className="sr-only">{clip.title}</h1>
+    <div className="min-h-screen bg-background">
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/5 via-brand-iris/5 to-brand-pink/5 -z-10" />
+      
+      <main className="container mx-auto px-4 py-6">
+        <Helmet>
+          <title>{clip.title} — Clip on Vivoor</title>
+          <meta name="description" content={`Watch clip: ${clip.title}`} />
+          <link rel="canonical" href={`/clip/${clip.id}`} />
+        </Helmet>
+        <h1 className="sr-only">{clip.title}</h1>
 
-      <section>
-        <VideoPlayer
-          src={vod?.src_url || stream?.playback_url}
-          poster={clip.thumbnail_url || vod?.thumbnail_url || undefined}
-          startAt={clip.start_seconds}
-          endAt={clip.end_seconds}
-          loopRange
-          className="rounded-xl"
-        />
-        <div className="mt-3 flex items-center gap-2">
-          <Button variant="glass" onClick={downloadClip}>
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-          {vod && (
-            <Button variant="secondary" onClick={() => navigate(`/vod/${vod.id}`)}>
-              View Full VOD
-            </Button>
-          )}
-          <Button variant="gradientOutline" onClick={() => navigator.share ? navigator.share({ title: clip.title, url: window.location.href }) : navigator.clipboard.writeText(window.location.href)}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        </div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          {duration}s clip{vod ? ` from "${vod.title}"` : ' from live stream'}.
-        </div>
-      </section>
-    </main>
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto"
+        >
+          {/* Video Container */}
+          <div className="glass rounded-xl p-6 border border-border/50">
+            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-4">
+              {clip.download_url ? (
+                <video
+                  src={clip.download_url}
+                  controls
+                  className="w-full h-full object-contain"
+                  poster={clip.thumbnail_url}
+                  preload="metadata"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.2 }}
+                    className="text-center"
+                  >
+                    <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Video not available</p>
+                  </motion.div>
+                </div>
+              )}
+            </div>
+
+            {/* Clip Info */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-4"
+            >
+              <h2 className="text-2xl font-bold text-gradient">{clip.title}</h2>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button 
+                  onClick={downloadClip}
+                  className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink hover:shadow-lg hover:shadow-brand-iris/20 transition-all duration-300"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download MP4
+                </Button>
+                
+                {vod && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate(`/vod/${vod.id}`)}
+                    className="border-brand-iris/30 hover:bg-brand-iris/10 hover:border-brand-iris/50 transition-all duration-300"
+                  >
+                    View Full VOD
+                  </Button>
+                )}
+                
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const shareData = { title: clip.title, url: window.location.href };
+                    if (navigator.share) {
+                      navigator.share(shareData);
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                      toast({ title: "Link copied", description: "Clip link copied to clipboard" });
+                    }
+                  }}
+                  className="border-brand-cyan/30 hover:bg-brand-cyan/10 hover:border-brand-cyan/50 transition-all duration-300"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground p-4 bg-background/30 rounded-lg border border-border/20">
+                <p>⏱️ {duration}s clip{vod ? ` from "${vod.title}"` : ' from live stream'}</p>
+                <p className="mt-1">💎 Watermarked with Vivoor branding</p>
+              </div>
+            </motion.div>
+          </div>
+        </motion.section>
+      </main>
+    </div>
   );
 };
 

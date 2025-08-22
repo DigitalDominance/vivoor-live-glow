@@ -40,7 +40,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const createClip = async () => {
     if (!identity?.id) {
       toast({
-        title: "Login required",
+        title: "Login required", 
         description: "Connect your wallet to create clips.",
         variant: "destructive"
       });
@@ -97,9 +97,27 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const watermarkedBlob = await watermarkResponse.blob();
       const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
 
+      // Save clip to database
+      const { data: savedClip, error: saveError } = await supabase
+        .from('clips')
+        .insert({
+          title: clipTitle,
+          user_id: identity.id,
+          start_seconds: Math.floor(startTime / 1000),
+          end_seconds: Math.floor(endTime / 1000),
+          download_url: watermarkedUrl,
+          playback_id: livepeerPlaybackId
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('Error saving clip:', saveError);
+      }
+
       // Show preview modal with watermarked clip
       setClipPreview({
-        clipId: `temp-${Date.now()}`,
+        clipId: savedClip?.id || `temp-${Date.now()}`,
         downloadUrl: watermarkedUrl,
         playbackUrl: watermarkedUrl,
         title: clipTitle,
