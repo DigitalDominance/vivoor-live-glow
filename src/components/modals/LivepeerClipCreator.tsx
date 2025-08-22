@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 interface LivepeerClipCreatorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  playbackId: string;
+  livepeerPlaybackId: string;
   streamTitle: string;
 }
 
@@ -26,7 +26,7 @@ interface ClipContext {
 const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   open,
   onOpenChange,
-  playbackId,
+  livepeerPlaybackId,
   streamTitle
 }) => {
   const [title, setTitle] = useState("");
@@ -59,7 +59,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       // Call our edge function to create the clip
       const response = await supabase.functions.invoke('livepeer-create-clip', {
         body: {
-          playbackId,
+          playbackId: livepeerPlaybackId,
           startTime,
           endTime,
           title: title || `${streamTitle} - ${duration}s Clip`,
@@ -117,7 +117,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       // Call our edge function to create the clip
       const response = await supabase.functions.invoke('livepeer-create-clip', {
         body: {
-          playbackId: clipCtx.playbackId,
+          playbackId: livepeerPlaybackId,
           startTime,
           endTime,
           title: title || `${streamTitle} - ${duration}s Clip`,
@@ -176,7 +176,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
             {/* Video Player with Clip Buttons */}
             <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
               <video
-                src={`https://lp-playback.com/hls/${playbackId}/index.m3u8`}
+                src={`https://lp-playback.com/hls/${livepeerPlaybackId}/index.m3u8`}
                 controls
                 className="w-full h-full object-contain"
                 autoPlay

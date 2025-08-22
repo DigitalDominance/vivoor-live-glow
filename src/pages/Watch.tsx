@@ -586,7 +586,7 @@ const Watch = () => {
       <LivepeerClipCreator 
         open={clipModalOpen}
         onOpenChange={setClipModalOpen}
-        playbackId={streamData?.livepeer_stream_id || streamData?.id || ''}
+        livepeerPlaybackId={streamData?.playback_url?.split('/hls/')[1]?.split('/')[0] || ''}
         streamTitle={streamData?.title || 'Stream'}
       />
     </main>
