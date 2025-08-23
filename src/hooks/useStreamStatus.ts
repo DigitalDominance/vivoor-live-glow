@@ -158,19 +158,21 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
     // Fetch initial stream status
     fetchInitialStatus();
     
-    // Start polling Livepeer status every 15 seconds
+    // Start polling Livepeer status every 30 seconds (reduced frequency to prevent glitching)
     const statusInterval = setInterval(() => {
       checkLivepeerStatus();
-    }, 15000);
+    }, 30000);
     
-    // Check immediately
-    checkLivepeerStatus();
+    // Check immediately but delayed to avoid conflicts
+    const initialCheck = setTimeout(() => {
+      checkLivepeerStatus();
+    }, 2000);
     
-    // Set up viewer heartbeat every 30 seconds
+    // Set up viewer heartbeat every 45 seconds
     heartbeatInterval.current = setInterval(() => {
       sendViewerHeartbeat();
       fetchViewerCount();
-    }, 30000);
+    }, 45000);
 
     // Handle page visibility change
     const handleVisibilityChange = () => {
@@ -189,6 +191,10 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
       
       if (statusInterval) {
         clearInterval(statusInterval);
+      }
+      
+      if (initialCheck) {
+        clearTimeout(initialCheck);
       }
       
       if (heartbeatInterval.current) {
