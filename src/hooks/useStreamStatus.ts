@@ -19,79 +19,31 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Connect to Livepeer WebSocket for real-time stream status
-  const connectToLivepeerWebSocket = () => {
+  // Poll Livepeer API for stream status (since WebSocket isn't available)
+  const checkLivepeerStatus = async () => {
     if (!livepeerStreamId) {
-      console.log('No Livepeer stream ID available for WebSocket connection');
+      console.log('No Livepeer stream ID available for status check');
       return;
     }
 
-    // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
     try {
-      console.log('Connecting to Livepeer WebSocket for stream ID:', livepeerStreamId);
+      console.log('Polling Livepeer API for stream status:', livepeerStreamId);
       
-      // Connect to Livepeer WebSocket API for real-time stream status
-      // Using Livepeer's WebSocket endpoint for stream status monitoring
-      const wsUrl = `wss://livepeer.studio/api/stream/${livepeerStreamId}/status`;
-      wsRef.current = new WebSocket(wsUrl);
+      // Use our edge function to check Livepeer status (avoids CORS and API key exposure)
+      const { data, error } = await supabase.functions.invoke('check-livepeer-status');
+      
+      if (error) {
+        console.error('Error checking Livepeer status:', error);
+        return;
+      }
 
-      wsRef.current.onopen = () => {
-        console.log('Livepeer WebSocket connected');
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('Livepeer WebSocket message received:', data);
-          
-          // Update stream status based on Livepeer WebSocket data
-          if (data.isActive !== undefined) {
-            const isCurrentlyLive = data.isActive === true;
-            console.log(`Stream ${livepeerStreamId} status update: isActive = ${data.isActive}`);
-            
-            setStreamStatus(prev => ({
-              ...prev,
-              isLive: isCurrentlyLive,
-              lastHeartbeat: new Date().toISOString()
-            }));
-
-            // Update database with real-time status
-            updateDatabaseStatus(isCurrentlyLive);
-          }
-        } catch (error) {
-          console.error('Error parsing Livepeer WebSocket message:', error);
-        }
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('Livepeer WebSocket error:', error);
-        setIsConnected(false);
-      };
-
-      wsRef.current.onclose = (event) => {
-        console.log('Livepeer WebSocket disconnected');
-        setIsConnected(false);
-        
-        // Attempt to reconnect if not intentionally closed
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.pow(2, reconnectAttempts.current) * 1000; // Exponential backoff
-          console.log(`Attempting to reconnect to Livepeer... (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-          
-          reconnectTimeout.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connectToLivepeerWebSocket();
-          }, delay);
-        }
-      };
+      console.log('Livepeer status check result:', data);
+      
+      // Fetch updated stream status from database after check
+      fetchInitialStatus();
+      
     } catch (error) {
-      console.error('Error creating Livepeer WebSocket connection:', error);
-      setIsConnected(false);
+      console.error('Error polling Livepeer status:', error);
     }
   };
 
@@ -206,8 +158,13 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
     // Fetch initial stream status
     fetchInitialStatus();
     
-    // Connect to Livepeer WebSocket for real-time status
-    connectToLivepeerWebSocket();
+    // Start polling Livepeer status every 15 seconds
+    const statusInterval = setInterval(() => {
+      checkLivepeerStatus();
+    }, 15000);
+    
+    // Check immediately
+    checkLivepeerStatus();
     
     // Set up viewer heartbeat every 30 seconds
     heartbeatInterval.current = setInterval(() => {
@@ -230,8 +187,8 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
       // Cleanup
       leaveAsViewer();
       
-      if (wsRef.current) {
-        wsRef.current.close();
+      if (statusInterval) {
+        clearInterval(statusInterval);
       }
       
       if (heartbeatInterval.current) {
@@ -249,6 +206,6 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
   return {
     isLive: streamStatus.isLive,
     viewerCount: streamStatus.viewerCount,
-    isConnected
+    isConnected: true // Always connected since we're using polling
   };
 };

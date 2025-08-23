@@ -172,9 +172,42 @@ const Index = () => {
   return (
     <main id="top">
       <Helmet>
-        <title>Vivoor — Go live in seconds. Replay forever.</title>
-        <meta name="description" content="Built on Kaspa. Stream live with instant replays and one‑tap clips." />
-        <link rel="canonical" href="/" />
+        <title>Vivoor - Kaspa Live Streaming Platform | Stream & Earn KAS</title>
+        <meta name="description" content="Join the premier live streaming platform built for the Kaspa community. Stream live, receive KAS tips from viewers, and discover amazing content creators. Start earning with your streams today." />
+        <meta name="keywords" content="Kaspa streaming, KAS tips, crypto streaming, live streaming, blockchain streaming, kaspa community, earn crypto streaming, kaspa live, vivoor streaming" />
+        <link rel="canonical" href="https://vivoor.live/" />
+        
+        {/* Additional Open Graph for home page */}
+        <meta property="og:title" content="Vivoor - Kaspa Live Streaming Platform | Stream & Earn KAS" />
+        <meta property="og:description" content="Join the premier live streaming platform built for the Kaspa community. Stream live, receive KAS tips, and discover amazing content creators." />
+        <meta property="og:url" content="https://vivoor.live/" />
+        
+        {/* JSON-LD for home page */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "Vivoor",
+            "description": "Live streaming platform for the Kaspa community with integrated KAS tipping",
+            "url": "https://vivoor.live",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Web Browser",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "Live Streaming",
+              "KAS Cryptocurrency Tips",
+              "Real-time Chat",
+              "Stream Recording",
+              "Clip Creation",
+              "Multi-category Content"
+            ],
+            "softwareRequirements": "Web Browser with JavaScript enabled"
+          })}
+        </script>
       </Helmet>
       {/* Hero */}
       <section className="container mx-auto px-4 pt-12 md:pt-20">
