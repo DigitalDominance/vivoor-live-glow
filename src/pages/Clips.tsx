@@ -47,7 +47,7 @@ const ClipsPage = () => {
   const navigate = useNavigate();
   const { identity } = useWallet();
   const [searchQuery, setSearchQuery] = useState("");
-  const [orderBy, setOrderBy] = useState("created_at");
+  const [orderBy, setOrderBy] = useState("views");
   const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -210,14 +210,14 @@ const ClipsPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-8 relative z-50"
         >
           <h1 className="text-5xl font-bold mb-2">
             <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient">
               Discover Clips
             </span>
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-foreground text-lg">
             Watch the most popular moments from our community
           </p>
         </motion.div>
@@ -260,6 +260,12 @@ const ClipsPage = () => {
                   <div className="flex items-center gap-2">
                     <Eye className="size-4" />
                     Most Viewed
+                  </div>
+                </SelectItem>
+                <SelectItem value="likes">
+                  <div className="flex items-center gap-2">
+                    <Heart className="size-4" />
+                    Most Liked
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -310,39 +316,22 @@ const ClipsPage = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group relative rounded-xl overflow-hidden backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500"
-                    style={{
-                      background: `linear-gradient(135deg, 
-                        hsl(var(--background) / 0.8) 0%, 
-                        hsl(var(--background) / 0.6) 50%, 
-                        hsl(var(--background) / 0.8) 100%)`,
-                      border: `2px solid transparent`,
-                      backgroundClip: 'padding-box'
-                    }}
+                    className="group relative rounded-xl backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink"
                   >
-                    {/* Gradient border */}
-                    <div 
-                      className="absolute inset-0 rounded-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500 -z-10"
-                      style={{
-                        background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
-                        padding: '2px'
-                      }}
+                    {/* Inner content container */}
+                    <div className="relative rounded-[11px] overflow-hidden bg-background h-full"
+                         style={{
+                           background: `linear-gradient(135deg, 
+                             hsl(var(--background) / 0.95) 0%, 
+                             hsl(var(--background) / 0.8) 50%, 
+                             hsl(var(--background) / 0.95) 100%)`
+                         }}
                     >
-                      <div 
-                        className="w-full h-full rounded-xl"
-                        style={{
-                          background: `linear-gradient(135deg, 
-                            hsl(var(--background) / 0.95) 0%, 
-                            hsl(var(--background) / 0.8) 50%, 
-                            hsl(var(--background) / 0.95) 100%)`
-                        }}
-                      />
-                    </div>
-                    {/* Thumbnail */}
-                    <div
-                      className="relative aspect-video cursor-pointer overflow-hidden"
-                      onClick={() => handleClipClick(clip.id)}
-                    >
+                      {/* Thumbnail */}
+                      <div
+                        className="relative aspect-video cursor-pointer overflow-hidden rounded-t-[11px]"
+                        onClick={() => handleClipClick(clip.id)}
+                      >
                       {clip.download_url ? (
                         <video
                           className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
@@ -371,84 +360,71 @@ const ClipsPage = () => {
                       {/* Gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
-                      {/* Play button overlay */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/90 backdrop-blur-sm hover:bg-background scale-75 group-hover:scale-100"
-                        >
-                          <Play className="size-5 fill-current" />
-                        </Button>
-                      </div>
-                      
-                      {/* Duration */}
-                      <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/90 text-white text-xs font-medium backdrop-blur-sm">
-                        {Math.floor((clip.end_seconds - clip.start_seconds) / 60)}:
-                        {String((clip.end_seconds - clip.start_seconds) % 60).padStart(2, '0')}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-4">
-                      <h3 className="font-medium text-sm mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors" 
-                          onClick={() => handleClipClick(clip.id)}>
-                        {clip.title}
-                      </h3>
-                      
-                      {/* Creator Info */}
-                      <button
-                        onClick={() => handleProfileClick(clip.user_id)}
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
-                      >
-                        <Avatar className="size-5">
-                          <AvatarImage src={clip.profile_avatar_url || ''} alt={`@${clip.profile_handle} avatar`} />
-                          <AvatarFallback className="text-[10px]">
-                            {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>@{clip.profile_handle || 'Unknown'}</span>
-                      </button>
-
-                      {/* Stats and Actions */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Eye className="size-3" />
-                            {clip.views || 0}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Heart className="size-3" />
-                            {likeCount}
-                          </div>
+                        {/* Play button overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/90 backdrop-blur-sm hover:bg-background scale-75 group-hover:scale-100"
+                          >
+                            <Play className="size-5 fill-current" />
+                          </Button>
                         </div>
-                        <div className="flex items-center gap-1">
-                          {clip.download_url && (
+                      
+                        {/* Duration */}
+                        <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/90 text-white text-xs font-medium backdrop-blur-sm z-10">
+                          {Math.floor((clip.end_seconds - clip.start_seconds) / 60)}:
+                          {String((clip.end_seconds - clip.start_seconds) % 60).padStart(2, '0')}
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4">
+                        <h3 className="font-medium text-sm mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors text-foreground" 
+                            onClick={() => handleClipClick(clip.id)}>
+                          {clip.title}
+                        </h3>
+                      
+                        {/* Creator Info */}
+                        <button
+                          onClick={() => handleProfileClick(clip.user_id)}
+                          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
+                        >
+                          <Avatar className="size-5">
+                            <AvatarImage src={clip.profile_avatar_url || ''} alt={`@${clip.profile_handle} avatar`} />
+                            <AvatarFallback className="text-[10px]">
+                              {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>@{clip.profile_handle || 'Unknown'}</span>
+                        </button>
+
+                        {/* Stats and Actions */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Eye className="size-3" />
+                              {clip.views || 0}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Heart className="size-3" />
+                              {likeCount}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="size-8 hover:bg-brand-cyan/10 hover:text-brand-cyan transition-all duration-200"
+                              className="size-8 hover:bg-brand-pink/10 hover:text-brand-pink transition-all duration-200 relative z-20"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(clip.download_url!, '_blank');
+                                handleLike(clip.id, isLiked);
                               }}
-                              aria-label="Download clip"
+                              aria-label={isLiked ? 'Unlike' : 'Like'}
                             >
-                              <Download className="size-3" />
+                              <Heart className={`size-3 transition-all duration-200 ${isLiked ? "fill-current text-brand-pink" : ""}`} />
                             </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 hover:bg-brand-pink/10 hover:text-brand-pink transition-all duration-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLike(clip.id, isLiked);
-                            }}
-                            aria-label={isLiked ? 'Unlike' : 'Like'}
-                          >
-                            <Heart className={`size-3 transition-all duration-200 ${isLiked ? "fill-current text-brand-pink" : ""}`} />
-                          </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -463,7 +439,7 @@ const ClipsPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-12 flex justify-center"
+                className="mt-12 flex justify-center relative z-50"
               >
                 <Pagination>
                   <PaginationContent className="gap-2">
