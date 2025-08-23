@@ -22,6 +22,7 @@ export class StreamChat {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
+      console.log('WebSocket connected to stream:', this.url);
       this.retry = 0;
       // optional app-level keepalive
       this.send({ type: "ping" as const });

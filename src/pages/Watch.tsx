@@ -177,12 +177,14 @@ const Watch = () => {
 
   // Transform WebSocket messages to chat format
   const chatMessages = React.useMemo(() => {
-    return wsMessages.map(msg => ({
-      id: `${msg.serverTs}-${msg.user?.id || 'system'}`,
-      user: msg.user?.name || 'Anonymous',
-      text: msg.text,
-      time: new Date(msg.serverTs).toLocaleTimeString()
-    }));
+    return wsMessages
+      .filter(msg => msg.type === 'chat') // Only show chat messages
+      .map(msg => ({
+        id: `${msg.serverTs}-${msg.user.id}`,
+        user: msg.user.name,
+        text: msg.text,
+        time: new Date(msg.serverTs).toLocaleTimeString()
+      }));
   }, [wsMessages]);
 
   // Monitor tips for this stream
@@ -229,18 +231,9 @@ const Watch = () => {
       return;
     }
 
-    // Get current user profile for display
-    const profile = React.useMemo(() => {
-      if (!identity?.id) return null;
-      return {
-        handle: identity.id.slice(0, 8),
-        display_name: identity.id.slice(0, 8)
-      };
-    }, [identity?.id]);
-
     const user = {
       id: identity.id,
-      name: profile?.handle || identity.id.slice(0, 8),
+      name: identity.id.slice(0, 8), // Use wallet ID as name for now
       avatar: undefined // Could add avatar URL here
     };
 

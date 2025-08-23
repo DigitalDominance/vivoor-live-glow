@@ -53,6 +53,35 @@ export type Database = {
           },
         ]
       }
+      clip_likes: {
+        Row: {
+          clip_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          clip_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          clip_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clip_likes_clip_id_fkey"
+            columns: ["clip_id"]
+            isOneToOne: false
+            referencedRelation: "clips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clips: {
         Row: {
           created_at: string
@@ -65,6 +94,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           user_id: string
+          views: number
           vod_id: string | null
         }
         Insert: {
@@ -78,6 +108,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           user_id: string
+          views?: number
           vod_id?: string | null
         }
         Update: {
@@ -91,6 +122,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           user_id?: string
+          views?: number
           vod_id?: string | null
         }
         Relationships: []
@@ -394,6 +426,33 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: number
       }
+      get_clip_like_count: {
+        Args: { clip_id_param: string }
+        Returns: number
+      }
+      get_clips_with_profiles_and_stats: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _order_by?: string
+          _search?: string
+        }
+        Returns: {
+          created_at: string
+          download_url: string
+          end_seconds: number
+          id: string
+          like_count: number
+          profile_avatar_url: string
+          profile_display_name: string
+          profile_handle: string
+          start_seconds: number
+          thumbnail_url: string
+          title: string
+          user_id: string
+          views: number
+        }[]
+      }
       get_current_user_kaspa_address: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -533,6 +592,10 @@ export type Database = {
           is_verified: boolean
         }[]
       }
+      increment_clip_views: {
+        Args: { clip_id_param: string }
+        Returns: undefined
+      }
       increment_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
@@ -567,6 +630,10 @@ export type Database = {
       }
       user_has_active_stream: {
         Args: { user_id_param: string }
+        Returns: boolean
+      }
+      user_likes_clip: {
+        Args: { clip_id_param: string; user_id_param: string }
         Returns: boolean
       }
       user_likes_stream: {

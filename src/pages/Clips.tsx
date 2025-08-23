@@ -87,26 +87,24 @@ const ClipsPage = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to pick up new clips
   });
 
-  // Fetch clip like counts
+  // Fetch clip like counts using database function
   const { data: clipLikeCounts } = useQuery({
     queryKey: ['clip-like-counts', clips?.map(c => c.id)],
     queryFn: async () => {
       if (!clips || clips.length === 0) return {};
       
-      const clipIds = clips.map(c => c.id);
-      const { data } = await supabase
-        .from('clip_likes')
-        .select('clip_id')
-        .in('clip_id', clipIds);
+      // Get like counts for each clip
+      const likeCounts: Record<string, number> = {};
+      await Promise.all(
+        clips.map(async (clip) => {
+          const { data } = await supabase.rpc('get_clip_like_count', { 
+            clip_id_param: clip.id 
+          });
+          likeCounts[clip.id] = data || 0;
+        })
+      );
       
-      // Count likes per clip
-      const counts: Record<string, number> = {};
-      clipIds.forEach(id => counts[id] = 0);
-      data?.forEach(like => {
-        counts[like.clip_id] = (counts[like.clip_id] || 0) + 1;
-      });
-      
-      return counts;
+      return likeCounts;
     },
     enabled: !!clips && clips.length > 0
   });

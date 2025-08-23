@@ -22,15 +22,14 @@ const ClipPage: React.FC = () => {
   const [liked, setLiked] = React.useState(false);
   const { toast } = useToast();
 
-  // Fetch clip like count
+  // Fetch clip like count using database function
   const { data: likeCount = 0 } = useQuery({
     queryKey: ['clip-like-count', id],
     queryFn: async () => {
       if (!id) return 0;
-      const { data } = await supabase
-        .from('clip_likes')
-        .select('id', { count: 'exact', head: true })
-        .eq('clip_id', id);
+      const { data } = await supabase.rpc('get_clip_like_count', { 
+        clip_id_param: id 
+      });
       return data || 0;
     },
     enabled: !!id
@@ -41,12 +40,10 @@ const ClipPage: React.FC = () => {
     if (!identity?.id || !id) return;
     
     const checkLikeStatus = async () => {
-      const { data } = await supabase
-        .from('clip_likes')
-        .select('id')
-        .eq('user_id', identity.id)
-        .eq('clip_id', id)
-        .maybeSingle();
+      const { data } = await supabase.rpc('user_likes_clip', {
+        clip_id_param: id,
+        user_id_param: identity.id
+      });
       setLiked(!!data);
     };
     
@@ -87,7 +84,7 @@ const ClipPage: React.FC = () => {
 
   const handleLike = async () => {
     if (!identity?.id) {
-      toast.error('Please connect your wallet to like clips');
+      toast({ title: "Connect Wallet", description: "Please connect your wallet to like clips" });
       return;
     }
 
@@ -106,7 +103,7 @@ const ClipPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['clip-like-count', id] });
     } catch (error) {
       console.error('Error toggling like:', error);
-      toast.error('Failed to update like status');
+      toast({ title: "Error", description: "Failed to update like status", variant: "destructive" });
     }
   };
 
@@ -225,7 +222,7 @@ const ClipPage: React.FC = () => {
                   className="transition-all duration-300"
                 >
                   <Heart className={`h-4 w-4 mr-2 ${liked ? "fill-current" : ""}`} />
-                  {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+                  {typeof likeCount === 'number' ? likeCount : 0} {likeCount === 1 ? 'Like' : 'Likes'}
                 </Button>
                 
                 <Button 
