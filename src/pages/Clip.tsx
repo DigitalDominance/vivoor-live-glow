@@ -178,29 +178,37 @@ const ClipPage: React.FC = () => {
         >
           {/* Video Container */}
           <div className="glass rounded-xl p-6 border border-border/50">
-            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-12 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
-              <div className="aspect-video bg-background rounded-lg overflow-hidden">
-                {clip.download_url ? (
-                  <video
-                    src={clip.download_url}
-                    controls
-                    className="w-full h-full object-contain rounded-lg"
-                    poster={clip.thumbnail_url}
-                    preload="metadata"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", delay: 0.2 }}
-                      className="text-center"
-                    >
-                      <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Video not available</p>
-                    </motion.div>
-                  </div>
-                )}
+            <div className="aspect-video bg-background rounded-lg overflow-hidden mb-8 relative">
+              <div 
+                className="absolute inset-0 rounded-lg"
+                style={{
+                  background: 'linear-gradient(to right, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+                  padding: '2px'
+                }}
+              >
+                <div className="aspect-video bg-background rounded-lg overflow-hidden h-full">
+                  {clip.download_url ? (
+                    <video
+                      src={clip.download_url}
+                      controls
+                      className="w-full h-full object-contain rounded-lg"
+                      poster={clip.thumbnail_url}
+                      preload="metadata"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", delay: 0.2 }}
+                        className="text-center"
+                      >
+                        <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">Video not available</p>
+                      </motion.div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
