@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Share2, Play, Heart, User } from "lucide-react";
+import { Download, Share2, Play, Heart, User, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useWallet } from "@/context/WalletContext";
@@ -89,6 +89,11 @@ const ClipPage: React.FC = () => {
     }
 
     try {
+      // First authenticate the wallet user with Supabase
+      const { data: authData } = await supabase.rpc('authenticate_wallet_user', {
+        wallet_address: identity.id
+      });
+
       if (liked) {
         await supabase
           .from('clip_likes')
@@ -156,28 +161,30 @@ const ClipPage: React.FC = () => {
         >
           {/* Video Container */}
           <div className="glass rounded-xl p-6 border border-border/50">
-            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-4">
-              {clip.download_url ? (
-                <video
-                  src={clip.download_url}
-                  controls
-                  className="w-full h-full object-contain"
-                  poster={clip.thumbnail_url}
-                  preload="metadata"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", delay: 0.2 }}
-                    className="text-center"
-                  >
-                    <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Video not available</p>
-                  </motion.div>
-                </div>
-              )}
+            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-4 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+              <div className="aspect-video bg-background rounded-lg overflow-hidden">
+                {clip.download_url ? (
+                  <video
+                    src={clip.download_url}
+                    controls
+                    className="w-full h-full object-contain rounded-lg"
+                    poster={clip.thumbnail_url}
+                    preload="metadata"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.2 }}
+                      className="text-center"
+                    >
+                      <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Video not available</p>
+                    </motion.div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Clip Info */}
@@ -187,7 +194,15 @@ const ClipPage: React.FC = () => {
               transition={{ delay: 0.3 }}
               className="space-y-4"
             >
-              <h2 className="text-2xl font-bold text-gradient">{clip.title}</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gradient">{clip.title}</h2>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Eye className="size-4" />
+                    {clip.views || 0} views
+                  </div>
+                </div>
+              </div>
               
               {/* Creator Info */}
               {creator && (

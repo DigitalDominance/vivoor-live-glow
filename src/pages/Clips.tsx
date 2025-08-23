@@ -316,10 +316,10 @@ const ClipsPage = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group relative rounded-xl backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink"
-                  >
-                    {/* Inner content container */}
-                    <div className="relative rounded-[11px] overflow-hidden bg-background h-full"
+                     className="group relative rounded-xl backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink"
+                   >
+                     {/* Inner content container */}
+                     <div className="relative rounded-xl overflow-hidden bg-background h-full"
                          style={{
                            background: `linear-gradient(135deg, 
                              hsl(var(--background) / 0.95) 0%, 
@@ -327,11 +327,11 @@ const ClipsPage = () => {
                              hsl(var(--background) / 0.95) 100%)`
                          }}
                     >
-                      {/* Thumbnail */}
-                      <div
-                        className="relative aspect-video cursor-pointer overflow-hidden rounded-t-[11px]"
-                        onClick={() => handleClipClick(clip.id)}
-                      >
+                       {/* Thumbnail */}
+                       <div
+                         className="relative aspect-video cursor-pointer overflow-hidden rounded-t-xl"
+                         onClick={() => handleClipClick(clip.id)}
+                       >
                       {clip.download_url ? (
                         <video
                           className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
@@ -439,7 +439,7 @@ const ClipsPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-12 flex justify-center relative z-50"
+                className="mt-16 flex justify-center relative z-50"
               >
                 <Pagination>
                   <PaginationContent className="gap-2">
