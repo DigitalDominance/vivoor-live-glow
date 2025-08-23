@@ -52,17 +52,24 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     setIsCreating(true);
 
     try {
-      // For live streams, we clip from the current live edge going backwards
-      // Livepeer expects the clip to be from the last X seconds of the stream
+      // Get stream tracking data from local storage
+      const { getStreamClipData } = await import('@/lib/streamLocal');
+      const clipData = getStreamClipData(livepeerPlaybackId, selectedDuration);
+      
+      if (!clipData) {
+        throw new Error('Stream tracking data not found. Please refresh and try again.');
+      }
+
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
+      console.log(`Creating ${selectedDuration}s clip from tracked stream data:`, clipData);
 
-      console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
-
-      // 1. Create clip via our app backend
+      // 1. Create clip via our app backend with tracked timing
       const clipResponse = await supabase.functions.invoke('livepeer-create-clip', {
         body: {
           playbackId: livepeerPlaybackId,
-          seconds: selectedDuration
+          seconds: selectedDuration,
+          startSeconds: clipData.startSeconds,
+          endSeconds: clipData.endSeconds
         }
       });
 

@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
 import TipDisplay from "@/components/TipDisplay";
@@ -13,14 +14,15 @@ import ChatPanel from "@/components/streams/ChatPanel";
 import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
-import { useViewerTracking } from "@/hooks/useViewerTracking";
+import { useStreamStatus } from "@/hooks/useStreamStatus";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import { toast } from "sonner";
-import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
+import { Heart, Volume2, VolumeX } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { containsBadWords, cleanText } from "@/lib/badWords";
+import { startStreamTracking, updateStreamStatus, stopStreamTracking } from "@/lib/streamLocal";
 
 const Watch = () => {
   const { streamId } = useParams();
@@ -38,9 +40,15 @@ const Watch = () => {
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
   const [newMessage, setNewMessage] = React.useState('');
+  const [volume, setVolume] = React.useState(1);
+  const [isMuted, setIsMuted] = React.useState(false);
+  const [showControls, setShowControls] = React.useState(true);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const playerContainerRef = React.useRef<HTMLDivElement>(null);
 
   // WebSocket chat
-  const { messages: wsMessages, sendChat, isConnected } = useStreamChat(streamId || '');
+  const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || '');
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
@@ -222,8 +230,11 @@ const Watch = () => {
     }
   });
 
-  // Track viewer count
-  useViewerTracking(streamData?.id || null, streamData?.is_live || false);
+  // Use new stream status tracking
+  const { isLive: livepeerIsLive, viewerCount, isConnected } = useStreamStatus(
+    streamData?.id || null, 
+    streamData?.playback_url?.split('/').pop()
+  );
 
   const handleTipShown = (tipId: string) => {
     setShownTipIds(prev => new Set([...prev, tipId]));
@@ -235,17 +246,33 @@ const Watch = () => {
     // WebSocket handles real-time chat now
   }, [streamId]);
 
-  // Handle elapsed time calculation
+  // Handle stream tracking and elapsed time calculation
   React.useEffect(() => {
-    if (!streamData?.started_at) return;
+    if (!streamData?.started_at || !streamData?.id) return;
+    
+    // Start tracking this stream in local storage
+    const livepeerPlaybackId = streamData.playback_url?.split('/').pop();
+    startStreamTracking(streamData.id, livepeerPlaybackId);
     
     const startTime = new Date(streamData.started_at);
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [streamData?.started_at]);
+    return () => {
+      clearInterval(interval);
+      if (streamData.id) {
+        stopStreamTracking(streamData.id);
+      }
+    };
+  }, [streamData?.started_at, streamData?.id, streamData?.playback_url]);
+
+  // Update stream status based on Livepeer connection
+  React.useEffect(() => {
+    if (streamData?.id) {
+      updateStreamStatus(streamData.id, livepeerIsLive);
+    }
+  }, [streamData?.id, livepeerIsLive]);
 
   const handleSendMessage = () => {
     if (!identity?.id || !newMessage.trim()) {
@@ -337,6 +364,89 @@ const Watch = () => {
     return new Date(seconds * 1000).toISOString().substring(11, 19);
   };
 
+  // Video control handlers
+  const handlePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    
+    if (!isFullscreen) {
+      if (playerContainerRef.current.requestFullscreen) {
+        playerContainerRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+    }
+    if (newVolume > 0) setIsMuted(false);
+  };
+
+  const handleToggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = newMuted;
+    }
+  };
+
+  // Handle fullscreen changes
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Hide controls after inactivity
+  React.useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    
+    const resetTimeout = () => {
+      setShowControls(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setShowControls(false), 3000);
+    };
+
+    const handleMouseMove = () => resetTimeout();
+    const handleMouseLeave = () => {
+      clearTimeout(timeout);
+      setShowControls(false);
+    };
+
+    if (playerContainerRef.current) {
+      playerContainerRef.current.addEventListener('mousemove', handleMouseMove);
+      playerContainerRef.current.addEventListener('mouseleave', handleMouseLeave);
+      resetTimeout();
+    }
+
+    return () => {
+      clearTimeout(timeout);
+      if (playerContainerRef.current) {
+        playerContainerRef.current.removeEventListener('mousemove', handleMouseMove);
+        playerContainerRef.current.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, []);
+
   // Current user profile for display
   const profile = React.useMemo(() => {
     // Moved this logic into handleSendMessage
@@ -378,57 +488,58 @@ const Watch = () => {
         {/* Main content */}
         <div className="lg:col-span-3 space-y-4">
           {/* Video player */}
-          <div className="relative rounded-xl overflow-hidden">
-            {streamData.playback_url ? (
-              <HlsPlayer 
-                src={streamData.playback_url} 
-                autoPlay 
-                isLiveStream={streamData.is_live}
-                key={streamData.id}
-              />
-            ) : (
-              <PlayerPlaceholder />
-            )}
-            
-            {/* Video controls overlay - improved for mobile */}
-            <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Button
-                  variant="glass"
-                  size="icon"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  {isPlaying ? <Pause className="size-3 sm:size-4" /> : <Play className="size-3 sm:size-4" />}
-                </Button>
-                <span className="text-xs sm:text-sm bg-background/80 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full text-foreground border border-border/50">
-                  {streamData.playback_url ? 'LIVE' : 'OFFLINE'} • {formatTime(elapsed)}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 sm:gap-2">
-                <span className="flex items-center gap-1 text-xs sm:text-sm bg-background/80 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full text-foreground border border-border/50">
-                  <Users className="size-3 sm:size-4" />
-                  {streamData.viewers || 0}
-                </span>
-                {streamData.playback_url && (
-                  <Button
-                    variant="glass" 
-                    size="icon"
-                    onClick={() => setClipModalOpen(true)}
-                    title="Create Clip"
-                    className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
-                  >
-                    <Scissors className="size-3 sm:size-4" />
-                  </Button>
-                )}
-                <Button 
-                  variant="glass" 
-                  size="icon"
-                  className="bg-background/80 backdrop-blur-sm text-foreground border border-border/50 h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  <MoreVertical className="size-3 sm:size-4" />
-                </Button>
-              </div>
+          <div 
+            ref={playerContainerRef}
+            className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 p-1"
+          >
+            <div className="relative rounded-lg overflow-hidden bg-black">
+              {streamData.playback_url && livepeerIsLive ? (
+                <>
+                  <HlsPlayer 
+                    src={streamData.playback_url} 
+                    autoPlay 
+                    isLiveStream={livepeerIsLive}
+                    key={streamData.id}
+                    className="w-full h-full"
+                  />
+                  {showControls && (
+                    <CustomVideoControls
+                      isPlaying={isPlaying}
+                      onPlayPause={handlePlayPause}
+                      onFullscreen={handleFullscreen}
+                      onCreateClip={() => setClipModalOpen(true)}
+                      volume={volume}
+                      onVolumeChange={handleVolumeChange}
+                      isMuted={isMuted}
+                      onToggleMute={handleToggleMute}
+                      elapsed={elapsed}
+                      viewers={viewerCount}
+                      isLive={livepeerIsLive}
+                      showClipping={true}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                      {!isConnected ? 'Connecting...' : 'Stream Ended'}
+                    </div>
+                    <div className="text-gray-400">
+                      {!isConnected ? 'Establishing connection to stream...' : 'Thanks for watching! Stream is no longer live.'}
+                    </div>
+                    {!livepeerIsLive && isConnected && (
+                      <Button 
+                        onClick={() => navigate('/app')}
+                        variant="hero"
+                        className="mt-4"
+                      >
+                        Browse Other Streams
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -454,9 +565,14 @@ const Watch = () => {
                     <span className="text-xs px-2 py-1 rounded-full bg-muted">
                       {streamData.category || 'IRL'}
                     </span>
-                    {streamData.playback_url && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white">
+                    {livepeerIsLive && isConnected && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
                         LIVE
+                      </span>
+                    )}
+                    {!isConnected && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-yellow-500 text-black font-medium">
+                        CONNECTING
                       </span>
                     )}
                   </div>
@@ -485,7 +601,7 @@ const Watch = () => {
                   variant="gradientOutline"
                   size="sm"
                   onClick={() => setTipOpen(true)}
-                  disabled={!identity?.id || !streamerKaspaAddress}
+                  disabled={!identity?.id || !streamerKaspaAddress || !livepeerIsLive}
                   className="flex-1 sm:flex-none"
                 >
                   Tip KAS
@@ -523,7 +639,7 @@ const Watch = () => {
             onMessageChange={setNewMessage}
             onSendMessage={handleSendMessage}
           />
-          {!isConnected && (
+          {!chatConnected && (
             <div className="text-xs text-muted-foreground mt-2 text-center">
               Connecting to chat...
             </div>
@@ -562,12 +678,14 @@ const Watch = () => {
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
       
       {/* Clip Creator Modal */}
-      <LivepeerClipCreator 
-        open={clipModalOpen}
-        onOpenChange={setClipModalOpen}
-        livepeerPlaybackId={streamData?.playback_url?.split('/hls/')[1]?.split('/')[0] || ''}
-        streamTitle={streamData?.title || 'Stream'}
-      />
+      {livepeerIsLive && (
+        <LivepeerClipCreator
+          open={clipModalOpen}
+          onOpenChange={setClipModalOpen}
+          livepeerPlaybackId={streamData.playback_url?.split('/').pop() || ''}
+          streamTitle={streamData.title}
+        />
+      )}
     </main>
   );
 };
