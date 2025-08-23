@@ -203,6 +203,7 @@ const ClipPage: React.FC = () => {
                 )}
               </div>
             </div>
+            <div className="h-2.5" />
 
             {/* Clip Info */}
             <motion.div

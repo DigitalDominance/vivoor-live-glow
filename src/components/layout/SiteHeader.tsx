@@ -1,4 +1,5 @@
-import { Menu, Video, Clapperboard, User, LogOut, ChevronDown, Home, Grid3X3, Zap } from "lucide-react";
+import { Menu, Video, Clapperboard, User, LogOut, ChevronDown, Home, Grid3X3, Zap, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -41,6 +42,7 @@ const SiteHeader = () => {
   const [usernameOpen, setUsernameOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showClipsModal, setShowClipsModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (identity) {
@@ -71,13 +73,13 @@ const SiteHeader = () => {
             <Grid3X3 className="h-4 w-4" />
             App
           </Link>
-          <Link to="/go-live" className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground">
-            <Zap className="h-4 w-4 text-brand-cyan" />
-            <span className="font-bold">GO LIVE</span>
-          </Link>
           <Link to="/clips" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <Clapperboard className="h-4 w-4" />
             Clips
+          </Link>
+          <Link to="/go-live" className="flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground">
+            <Zap className="h-4 w-4 text-brand-cyan" />
+            <span className="font-bold">GO LIVE</span>
           </Link>
         </div>
 
@@ -130,46 +132,179 @@ const SiteHeader = () => {
             </DropdownMenu>
           )}
           
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="glass" size="icon" className="md:hidden" aria-label="Open menu">
-                <Menu />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="pt-16">
-              <div className="grid gap-2">
-                <Link to="/" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Home</Link>
-                <Link to="/app" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">App</Link>
-                <Link to="/go-live" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Go Live</Link>
-                <Link to="/clips" className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md">Clips</Link>
-                {!identity ? (
-                  <Button variant="gradientOutline" className="mt-2" onClick={() => (path === "/app" ? setWalletOpen(true) : navigate(cta.to))}>
-                    {path === "/app" ? "Login" : cta.label}
-                  </Button>
+          <div className="md:hidden relative">
+            <Button 
+              variant="glass" 
+              size="icon" 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+              className="relative z-50"
+            >
+              <AnimatePresence mode="wait">
+                {mobileMenuOpen ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <X className="h-4 w-4" />
+                  </motion.div>
                 ) : (
-                  <div className="mt-2 grid gap-2">
-                    <Button variant="hero" onClick={() => navigate("/go-live")} className="font-bold">
-                      GO LIVE
-                    </Button>
-                    <Button variant="secondary" onClick={() => setShowProfileModal(true)}>
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </Button>
-                    <Button variant="ghost" onClick={() => navigate(`/channel/${profile?.username || wallet.identity?.id}`)}>
-                      <Video className="h-4 w-4 mr-2" />
-                      My Channel
-                    </Button>
-                    <Button variant="ghost" onClick={() => setShowClipsModal(true)}>
-                      <Clapperboard className="h-4 w-4 mr-2" />
-                      My Clips
-                    </Button>
-                    <Button variant="ghost" onClick={() => navigate("/following")}>My Following</Button>
-                    <Button variant="ghost" onClick={wallet.disconnect}>Disconnect</Button>
-                  </div>
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Menu className="h-4 w-4" />
+                  </motion.div>
                 )}
-              </div>
-            </SheetContent>
-          </Sheet>
+              </AnimatePresence>
+            </Button>
+
+            <AnimatePresence>
+              {mobileMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+                    onClick={() => setMobileMenuOpen(false)}
+                  />
+                  
+                  {/* Menu Content */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                    transition={{ 
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                      duration: 0.3
+                    }}
+                    className="absolute top-full right-0 mt-2 w-72 p-4 bg-gradient-to-br from-background/95 via-background/90 to-background/95 backdrop-blur-lg border border-border/50 rounded-xl shadow-2xl z-50"
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(var(--background)/0.95) 0%, hsl(var(--card)/0.9) 50%, hsl(var(--background)/0.95) 100%)'
+                    }}
+                  >
+                    {/* Navigation Links */}
+                    <div className="space-y-2 mb-4">
+                      {[
+                        { icon: Home, label: "Home", path: "/" },
+                        { icon: Grid3X3, label: "App", path: "/app" },
+                        { icon: Clapperboard, label: "Clips", path: "/clips" },
+                        { icon: Zap, label: "GO LIVE", path: "/go-live", highlight: true }
+                      ].map((item, index) => (
+                        <motion.div
+                          key={item.path}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 + 0.1, duration: 0.3 }}
+                        >
+                          <Link
+                            to={item.path}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 group ${
+                              item.highlight 
+                                ? 'bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 border border-brand-iris/30 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30' 
+                                : 'hover:bg-accent/50 hover:scale-[1.02]'
+                            }`}
+                          >
+                            <item.icon className={`h-5 w-5 transition-colors ${
+                              item.highlight ? 'text-brand-cyan' : 'text-muted-foreground group-hover:text-foreground'
+                            }`} />
+                            <span className={`font-medium transition-colors ${
+                              item.highlight ? 'text-foreground font-bold' : 'text-muted-foreground group-hover:text-foreground'
+                            }`}>
+                              {item.label}
+                            </span>
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Auth Section */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.3 }}
+                      className="pt-3 border-t border-border/30"
+                    >
+                      {!identity ? (
+                        <Button 
+                          variant="gradientOutline" 
+                          className="w-full"
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            path === "/app" ? setWalletOpen(true) : navigate(cta.to);
+                          }}
+                        >
+                          {path === "/app" ? "Login" : cta.label}
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground px-2 mb-3">
+                            Logged in as <span className="font-medium text-foreground">{profile?.username || "Anonymous"}</span>
+                          </div>
+                          
+                          {[
+                            { icon: User, label: "Profile", action: () => setShowProfileModal(true) },
+                            { icon: Video, label: "My Channel", action: () => navigate(`/channel/${profile?.username || wallet.identity?.id}`) },
+                            { icon: Clapperboard, label: "My Clips", action: () => setShowClipsModal(true) }
+                          ].map((item, index) => (
+                            <motion.div
+                              key={item.label}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.6 + index * 0.05, duration: 0.2 }}
+                            >
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start h-9 text-sm hover:bg-accent/50"
+                                onClick={() => {
+                                  setMobileMenuOpen(false);
+                                  item.action();
+                                }}
+                              >
+                                <item.icon className="h-4 w-4 mr-3" />
+                                {item.label}
+                              </Button>
+                            </motion.div>
+                          ))}
+                          
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8, duration: 0.2 }}
+                            className="pt-2 mt-2 border-t border-border/20"
+                          >
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-9 text-sm text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                setMobileMenuOpen(false);
+                                wallet.disconnect();
+                              }}
+                            >
+                              <LogOut className="h-4 w-4 mr-3" />
+                              Disconnect
+                            </Button>
+                          </motion.div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </nav>
       <WalletConnectModal open={walletOpen} onOpenChange={setWalletOpen} />
