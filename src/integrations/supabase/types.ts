@@ -208,6 +208,33 @@ export type Database = {
         }
         Relationships: []
       }
+      stream_viewers: {
+        Row: {
+          id: string
+          joined_at: string
+          last_heartbeat: string
+          session_id: string
+          stream_id: string
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          last_heartbeat?: string
+          session_id: string
+          stream_id: string
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          last_heartbeat?: string
+          session_id?: string
+          stream_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       streams: {
         Row: {
           category: string | null
@@ -418,6 +445,10 @@ export type Database = {
         Args: { days_old?: number }
         Returns: number
       }
+      cleanup_stale_viewers: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       decrement_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
@@ -608,6 +639,18 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: boolean
       }
+      join_stream_viewer: {
+        Args: {
+          session_id_param: string
+          stream_id_param: string
+          user_id_param?: string
+        }
+        Returns: undefined
+      }
+      leave_stream_viewer: {
+        Args: { session_id_param: string; stream_id_param: string }
+        Returns: undefined
+      }
       monitor_livepeer_streams: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -622,6 +665,10 @@ export type Database = {
       }
       update_stream_heartbeat: {
         Args: { stream_id: string }
+        Returns: undefined
+      }
+      update_viewer_heartbeat: {
+        Args: { session_id_param: string; stream_id_param: string }
         Returns: undefined
       }
       user_follows_user: {

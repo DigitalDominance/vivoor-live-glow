@@ -15,6 +15,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { useStreamStatus } from "@/hooks/useStreamStatus";
+import { useViewerTracking } from "@/hooks/useViewerTracking";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import { toast } from "sonner";
@@ -234,6 +235,13 @@ const Watch = () => {
   const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
     streamData?.id || null, 
     streamData?.livepeer_stream_id
+  );
+
+  // Use improved viewer tracking with unique session ID
+  useViewerTracking(
+    streamData?.id || null,
+    livepeerIsLive,
+    identity?.id || null
   );
 
   const handleTipShown = (tipId: string) => {

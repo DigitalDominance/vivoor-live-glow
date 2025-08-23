@@ -94,28 +94,7 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
     }
   };
 
-  // Viewer tracking functions
-  const joinAsViewer = async () => {
-    if (!streamId) return;
-    
-    try {
-      await supabase.rpc('increment_stream_viewers', { stream_id: streamId });
-      console.log('Joined as viewer');
-    } catch (error) {
-      console.error('Error joining as viewer:', error);
-    }
-  };
-
-  const leaveAsViewer = async () => {
-    if (!streamId) return;
-    
-    try {
-      await supabase.rpc('decrement_stream_viewers', { stream_id: streamId });
-      console.log('Left as viewer');
-    } catch (error) {
-      console.error('Error leaving as viewer:', error);
-    }
-  };
+  // Remove old viewer tracking functions as they're now handled by useViewerTracking hook
 
   const sendViewerHeartbeat = async () => {
     if (!streamId) return;
@@ -151,9 +130,6 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
 
   useEffect(() => {
     if (!streamId) return;
-
-    // Join as viewer
-    joinAsViewer();
     
     // Fetch initial stream status
     fetchInitialStatus();
@@ -168,27 +144,13 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
       checkLivepeerStatus();
     }, 5000);
     
-    // Set up viewer heartbeat every 45 seconds
+    // Set up viewer count polling every 30 seconds
     heartbeatInterval.current = setInterval(() => {
-      sendViewerHeartbeat();
       fetchViewerCount();
-    }, 45000);
-
-    // Handle page visibility change
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        leaveAsViewer();
-      } else {
-        joinAsViewer();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    }, 30000);
 
     return () => {
-      // Cleanup
-      leaveAsViewer();
-      
+      // Cleanup intervals
       if (statusInterval) {
         clearInterval(statusInterval);
       }
@@ -204,8 +166,6 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
       }
-      
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [streamId, livepeerStreamId]);
 
