@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Zap, Repeat, Scissors, Play, Radio, Circle } from "lucide-react";
+import { Zap, Repeat, Scissors, Play, Radio, Circle, Heart, Eye } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
   <motion.div
@@ -43,22 +47,128 @@ const FeatureCard = ({ icon: Icon, title, desc }: { icon: any; title: string; de
   </motion.article>
 );
 
-const CreatorCard = ({ name, live }: { name: string; live?: boolean }) => (
-  <div className="snap-start shrink-0 w-64 glass rounded-xl p-4 mr-4">
-    <div className="flex items-center gap-3">
-      <div className="size-10 rounded-full bg-grad-primary p-[2px]">
-        <div className="size-full rounded-full bg-background" />
-      </div>
-      <div>
-        <div className="text-sm font-medium">{name}</div>
-        <div className="text-xs text-muted-foreground">{live ? "LIVE" : "OFFLINE"}</div>
+const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
+  <motion.div
+    className="snap-start shrink-0 w-80 group cursor-pointer mr-4"
+    whileHover={{ y: -4 }}
+    transition={{ duration: 0.3 }}
+    onClick={onClick}
+  >
+    <div className="relative rounded-xl overflow-hidden p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink hover:shadow-lg hover:shadow-brand-iris/20 transition-all duration-300">
+      <div className="relative rounded-xl overflow-hidden bg-background h-full">
+        {/* Thumbnail/Video */}
+        <div className="relative aspect-video overflow-hidden rounded-t-xl">
+          {clip.download_url ? (
+            <video
+              className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+              muted
+              playsInline
+              preload="metadata"
+              onMouseEnter={(e) => {
+                const video = e.currentTarget;
+                video.currentTime = 0.5;
+              }}
+            >
+              <source src={clip.download_url} type="video/mp4" />
+            </video>
+          ) : clip.thumbnail_url ? (
+            <img
+              src={clip.thumbnail_url}
+              alt={clip.title}
+              className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 flex items-center justify-center">
+              <Play className="size-12 text-muted-foreground" />
+            </div>
+          )}
+          
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          {/* Play button overlay */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/90 backdrop-blur-sm rounded-full p-3 scale-75 group-hover:scale-100">
+              <Play className="size-6 fill-current" />
+            </div>
+          </div>
+          
+          {/* Duration */}
+          <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/90 text-white text-xs font-medium backdrop-blur-sm">
+            {Math.floor((clip.end_seconds - clip.start_seconds) / 60)}:
+            {String((clip.end_seconds - clip.start_seconds) % 60).padStart(2, '0')}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          <h3 className="font-medium text-sm mb-2 line-clamp-2 text-foreground">
+            {clip.title}
+          </h3>
+          
+          {/* Creator Info */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <Avatar className="size-5">
+              <AvatarImage src={clip.profile_avatar_url || ''} alt={`@${clip.profile_handle} avatar`} />
+              <AvatarFallback className="text-[10px]">
+                {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <span>@{clip.profile_handle || 'Unknown'}</span>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Eye className="size-3" />
+              {clip.views || 0}
+            </div>
+            <div className="flex items-center gap-1">
+              <Heart className="size-3" />
+              {clip.like_count || 0}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <div className="mt-3 h-28 rounded-lg bg-grad-primary opacity-80" />
-  </div>
+  </motion.div>
 );
 
 const Index = () => {
+  const navigate = useNavigate();
+  
+  // Fetch top 10 most liked clips
+  const { data: topClips } = useQuery({
+    queryKey: ['top-clips'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_clips_with_profiles_and_stats', {
+        _limit: 10,
+        _offset: 0,
+        _search: null,
+        _order_by: 'likes'
+      });
+      
+      if (error) {
+        console.error('Error fetching top clips:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    refetchInterval: 300000 // Refetch every 5 minutes
+  });
+
+  const handleClipClick = async (clipId: string) => {
+    // Increment view count
+    try {
+      await supabase.rpc('increment_clip_views', { clip_id_param: clipId });
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+    }
+    
+    // Navigate to clip page
+    navigate(`/clip/${clipId}`);
+  };
   return (
     <main id="top">
       <Helmet>
@@ -105,16 +215,79 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Creator Showcase */}
-      <section id="creators" className="container mx-auto px-4 mt-16">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Creator Showcase</h2>
+      {/* Clip Showcase */}
+      <section id="clips" className="container mx-auto px-4 mt-16">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-1">
+              <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                Clip Showcase
+              </span>
+            </h2>
+            <p className="text-sm text-muted-foreground">Most liked clips from our community</p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/clips')}
+            className="border-brand-iris/30 hover:bg-brand-iris/10 hover:border-brand-iris/50 transition-all duration-300"
+          >
+            View All Clips
+          </Button>
         </div>
-        <div className="overflow-x-auto custom-scrollbar snap-x snap-mandatory pb-2 -mx-4 pl-4">
+        
+        {/* Custom Gradient Scrollbar */}
+        <style>{`
+          .gradient-scrollbar::-webkit-scrollbar {
+            height: 8px;
+          }
+          .gradient-scrollbar::-webkit-scrollbar-track {
+            background: hsl(var(--background));
+            border-radius: 4px;
+          }
+          .gradient-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)));
+            border-radius: 4px;
+            border: 1px solid hsl(var(--background));
+          }
+          .gradient-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(90deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)));
+            filter: brightness(1.2);
+          }
+        `}</style>
+        
+        <div className="overflow-x-auto gradient-scrollbar snap-x snap-mandatory pb-4 -mx-4 pl-4">
           <div className="flex w-max">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <CreatorCard key={i} name={`@creator_${i + 1}`} live={i % 3 === 0} />
-            ))}
+            {topClips && topClips.length > 0 ? (
+              topClips.map((clip: any) => (
+                <ClipCard 
+                  key={clip.id} 
+                  clip={clip} 
+                  onClick={() => handleClipClick(clip.id)}
+                />
+              ))
+            ) : (
+              // Loading skeleton
+              Array.from({ length: 6 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="snap-start shrink-0 w-80 mr-4"
+                >
+                  <div className="relative rounded-xl overflow-hidden p-0.5 bg-gradient-to-r from-brand-cyan/50 via-brand-iris/50 to-brand-pink/50 animate-pulse">
+                    <div className="relative rounded-xl overflow-hidden bg-background h-full">
+                      <div className="aspect-video bg-gradient-to-br from-brand-cyan/10 via-brand-iris/10 to-brand-pink/10 rounded-t-xl" />
+                      <div className="p-4 space-y-3">
+                        <div className="h-4 bg-gradient-to-r from-brand-cyan/20 to-brand-iris/20 rounded" />
+                        <div className="h-3 bg-gradient-to-r from-brand-iris/20 to-brand-pink/20 rounded w-2/3" />
+                        <div className="h-3 bg-gradient-to-r from-brand-pink/20 to-brand-cyan/20 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>
