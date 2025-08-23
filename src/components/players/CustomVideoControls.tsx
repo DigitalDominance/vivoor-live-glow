@@ -46,6 +46,37 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
       <div className="flex items-center justify-between">
         {/* Left controls */}
         <div className="flex items-center gap-1 md:gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onPlayPause}
+            className="group relative h-6 w-6 md:h-12 md:w-12 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
+          >
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+            <AnimatePresence mode="wait">
+              {isPlaying ? (
+                <motion.div
+                  key="pause"
+                  initial={{ scale: 0, rotate: -90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Pause className="h-2.5 w-2.5 md:h-5 md:w-5 text-white" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="play"
+                  initial={{ scale: 0, rotate: 90 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: -90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Play className="h-2.5 w-2.5 md:h-5 md:w-5 text-white ml-0.5" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Button>
 
           {/* Volume control */}
           <div className="flex items-center gap-1 md:gap-2">
