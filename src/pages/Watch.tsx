@@ -231,10 +231,9 @@ const Watch = () => {
   });
 
   // Use new stream status tracking
-  const livepeerPlaybackId = streamData?.playback_url?.match(/\/hls\/([^\/]+)\//)?.[1];
   const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
     streamData?.id || null, 
-    livepeerPlaybackId
+    streamData?.livepeer_stream_id
   );
 
   const handleTipShown = (tipId: string) => {
@@ -679,11 +678,11 @@ const Watch = () => {
       <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
       
       {/* Clip Creator Modal */}
-      {livepeerIsLive && livepeerPlaybackId && (
+      {livepeerIsLive && streamData?.playback_url && (
         <LivepeerClipCreator
           open={clipModalOpen}
           onOpenChange={setClipModalOpen}
-          livepeerPlaybackId={livepeerPlaybackId}
+          livepeerPlaybackId={streamData.playback_url.match(/\/hls\/([^\/]+)\//)?.[1] || ''}
           streamTitle={streamData.title}
         />
       )}

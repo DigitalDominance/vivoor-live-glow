@@ -7,7 +7,7 @@ interface StreamStatusData {
   lastHeartbeat?: string;
 }
 
-export const useStreamStatus = (streamId: string | null, livepeerPlaybackId?: string) => {
+export const useStreamStatus = (streamId: string | null, livepeerStreamId?: string | null) => {
   const [streamStatus, setStreamStatus] = useState<StreamStatusData>({
     isLive: false,
     viewerCount: 0
@@ -19,16 +19,16 @@ export const useStreamStatus = (streamId: string | null, livepeerPlaybackId?: st
 
   // Function to connect to Livepeer WebSocket
   const connectToLivepeer = () => {
-    if (!livepeerPlaybackId) {
-      console.log('No livepeer playback ID available');
+    if (!livepeerStreamId) {
+      console.log('No livepeer stream ID available');
       return;
     }
 
     try {
-      console.log('Connecting to Livepeer WebSocket for playback ID:', livepeerPlaybackId);
+      console.log('Connecting to Livepeer WebSocket for stream ID:', livepeerStreamId);
       
       // Connect to Livepeer WebSocket for stream status
-      const ws = new WebSocket(`wss://livepeer.studio/api/stream/${livepeerPlaybackId}/status`);
+      const ws = new WebSocket(`wss://livepeer.studio/api/stream/${livepeerStreamId}/status`);
       
       ws.onopen = () => {
         console.log('Connected to Livepeer WebSocket');
@@ -178,7 +178,7 @@ export const useStreamStatus = (streamId: string | null, livepeerPlaybackId?: st
       
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [streamId, livepeerPlaybackId]);
+  }, [streamId, livepeerStreamId]);
 
   return {
     isLive: streamStatus.isLive,
