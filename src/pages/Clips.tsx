@@ -116,6 +116,11 @@ const ClipsPage = () => {
     }
 
     try {
+      // First authenticate the wallet user with Supabase
+      const { data: authData } = await supabase.rpc('authenticate_wallet_user', {
+        wallet_address: identity.id
+      });
+
       if (isLiked) {
         await supabase
           .from('clip_likes')
@@ -208,7 +213,7 @@ const ClipsPage = () => {
           className="text-center mb-8"
         >
           <h1 className="text-5xl font-bold mb-2">
-            <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient">
               Discover Clips
             </span>
           </h1>
@@ -305,14 +310,34 @@ const ClipsPage = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group relative rounded-xl overflow-hidden border border-border/20 bg-background/40 backdrop-blur-xl hover:border-brand-iris/40 hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500"
+                    className="group relative rounded-xl overflow-hidden backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500"
                     style={{
                       background: `linear-gradient(135deg, 
                         hsl(var(--background) / 0.8) 0%, 
                         hsl(var(--background) / 0.6) 50%, 
-                        hsl(var(--background) / 0.8) 100%)`
+                        hsl(var(--background) / 0.8) 100%)`,
+                      border: `2px solid transparent`,
+                      backgroundClip: 'padding-box'
                     }}
                   >
+                    {/* Gradient border */}
+                    <div 
+                      className="absolute inset-0 rounded-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500 -z-10"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+                        padding: '2px'
+                      }}
+                    >
+                      <div 
+                        className="w-full h-full rounded-xl"
+                        style={{
+                          background: `linear-gradient(135deg, 
+                            hsl(var(--background) / 0.95) 0%, 
+                            hsl(var(--background) / 0.8) 50%, 
+                            hsl(var(--background) / 0.95) 100%)`
+                        }}
+                      />
+                    </div>
                     {/* Thumbnail */}
                     <div
                       className="relative aspect-video cursor-pointer overflow-hidden"
