@@ -119,16 +119,33 @@ const ClipPage: React.FC = () => {
     }
 
     try {
-      // Download the watermarked MP4 clip
+      toast({ title: "Downloading...", description: "Your clip download has started" });
+      
+      // Fetch the file as a blob to ensure proper download
+      const response = await fetch(clip.download_url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file');
+      }
+      
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create download link with blob URL
       const link = document.createElement('a');
-      link.href = clip.download_url;
+      link.href = blobUrl;
       link.download = `${clip.title.replace(/[^a-zA-Z0-9]/g, '_')}_vivoor_clip.mp4`;
+      link.style.display = 'none';
+      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+      
       toast({ title: "Downloaded", description: "Clip downloaded successfully!" });
     } catch (error) {
+      console.error('Download error:', error);
       toast({ title: "Download failed", description: "Unable to download clip", variant: "destructive" });
     }
   };
