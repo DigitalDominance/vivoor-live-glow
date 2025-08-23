@@ -19,9 +19,14 @@ export const useStreamStatus = (streamId: string | null, livepeerPlaybackId?: st
 
   // Function to connect to Livepeer WebSocket
   const connectToLivepeer = () => {
-    if (!livepeerPlaybackId) return;
+    if (!livepeerPlaybackId) {
+      console.log('No livepeer playback ID available');
+      return;
+    }
 
     try {
+      console.log('Connecting to Livepeer WebSocket for playback ID:', livepeerPlaybackId);
+      
       // Connect to Livepeer WebSocket for stream status
       const ws = new WebSocket(`wss://livepeer.studio/api/stream/${livepeerPlaybackId}/status`);
       
