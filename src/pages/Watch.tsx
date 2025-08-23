@@ -42,7 +42,7 @@ const Watch = () => {
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
   const [newMessage, setNewMessage] = React.useState('');
   const [volume, setVolume] = React.useState(1);
-  const [isMuted, setIsMuted] = React.useState(false);
+  const [isMuted, setIsMuted] = React.useState(true); // Start muted for autoplay, will unmute immediately
   const [showControls, setShowControls] = React.useState(true);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -425,23 +425,39 @@ const Watch = () => {
       setIsMuted(video.muted);
     };
 
-    // Auto-unmute and set proper volume when video loads
-    const handleLoadedData = () => {
+    // Auto-unmute and set proper volume when video can play
+    const handleCanPlay = () => {
       video.muted = false;
       video.volume = volume;
       setIsMuted(false);
+      // Try to play the video
+      video.play().catch(() => {
+        // If autoplay fails, that's fine - user will need to interact
+        console.log('Autoplay prevented by browser');
+      });
+    };
+
+    // Also try to unmute on any user interaction
+    const handleClick = () => {
+      if (video.muted) {
+        video.muted = false;
+        video.volume = volume;
+        setIsMuted(false);
+      }
     };
 
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('volumechange', handleVolumeChange);
-    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('click', handleClick);
 
     return () => {
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('volumechange', handleVolumeChange);
-      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('click', handleClick);
     };
   }, [volume]);
 

@@ -109,13 +109,13 @@ serve(async (req) => {
     }
 
     // 4. Send to watermark service
+    const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
     const formData = new FormData();
     formData.append('video', await clipData.blob(), 'clip.mp4');
     formData.append('position', 'br');
     formData.append('margin', '24');
     formData.append('wmWidth', '180');
     
-    const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
     const filename = `${clipTitle.replace(/[^a-zA-Z0-9]/g, '-')}.mp4`;
     formData.append('filename', filename);
 
