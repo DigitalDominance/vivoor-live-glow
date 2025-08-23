@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Share2, Play, Heart, User, Eye } from "lucide-react";
+import { Download, Share2, Play, Heart, User, Eye, Clock, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useWallet } from "@/context/WalletContext";
@@ -294,9 +294,44 @@ const ClipPage: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="text-sm text-muted-foreground p-4 bg-background/30 rounded-lg border border-border/20">
-                <p>⏱️ {duration}s clip{vod ? ` from "${vod.title}"` : ' from live stream'}</p>
-                <p className="mt-1">💎 Watermarked with Vivoor branding</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="group p-4 rounded-lg border border-border/20 bg-gradient-to-br from-brand-cyan/10 via-background/50 to-brand-iris/10 hover:from-brand-cyan/20 hover:to-brand-iris/20 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris">
+                      <Clock className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-foreground">Clip Duration</div>
+                      <div className="text-xs text-muted-foreground">
+                        {duration}s clip{vod ? ` from "${vod.title}"` : ' from live stream'}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="group p-4 rounded-lg border border-border/20 bg-gradient-to-br from-brand-iris/10 via-background/50 to-brand-pink/10 hover:from-brand-iris/20 hover:to-brand-pink/20 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-gradient-to-r from-brand-iris to-brand-pink">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-foreground">Quality Assured</div>
+                      <div className="text-xs text-muted-foreground">
+                        Watermarked with Vivoor branding
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
           </div>
