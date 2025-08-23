@@ -25,15 +25,7 @@ serve(async (req) => {
 
     console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`)
 
-    // For live streams, we create a clip from the current time going backwards
-    // This approach was working before - keeping it simple
-    const now = Date.now()
-    const endTime = Math.floor(now / 1000) // Current time in seconds
-    const startTime = endTime - seconds // Go back by the specified duration
-    
-    console.log(`Clipping from ${startTime}s to ${endTime}s (${seconds}s duration)`)
-
-    // Create clip via Livepeer API with proper timing
+    // Create clip via Livepeer API with proper body structure
     const clipResponse = await fetch('https://livepeer.studio/api/clip', {
       method: 'POST',
       headers: {
@@ -42,8 +34,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         playbackId,
-        startTime,
-        endTime,
+        clipStrategy: {
+          clipDuration: seconds
+        },
         name: `Live Clip ${seconds}s - ${new Date().toISOString()}`
       }),
     })
