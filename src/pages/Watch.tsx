@@ -231,7 +231,7 @@ const Watch = () => {
   });
 
   // Use new stream status tracking
-  const { isLive: livepeerIsLive, viewerCount, isConnected } = useStreamStatus(
+  const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
     streamData?.id || null, 
     streamData?.playback_url?.split('/').pop()
   );
@@ -523,12 +523,12 @@ const Watch = () => {
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                   <div className="text-center space-y-4">
                     <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                      {!isConnected ? 'Connecting...' : 'Stream Ended'}
+                      {!streamConnected ? 'Connecting...' : 'Stream Ended'}
                     </div>
                     <div className="text-gray-400">
-                      {!isConnected ? 'Establishing connection to stream...' : 'Thanks for watching! Stream is no longer live.'}
+                      {!streamConnected ? 'Establishing connection to stream...' : 'Thanks for watching! Stream is no longer live.'}
                     </div>
-                    {!livepeerIsLive && isConnected && (
+                    {!livepeerIsLive && streamConnected && (
                       <Button 
                         onClick={() => navigate('/app')}
                         variant="hero"
@@ -565,12 +565,12 @@ const Watch = () => {
                     <span className="text-xs px-2 py-1 rounded-full bg-muted">
                       {streamData.category || 'IRL'}
                     </span>
-                    {livepeerIsLive && isConnected && (
+                    {livepeerIsLive && streamConnected && (
                       <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
                         LIVE
                       </span>
                     )}
-                    {!isConnected && (
+                    {!streamConnected && (
                       <span className="text-xs px-2 py-1 rounded-full bg-yellow-500 text-black font-medium">
                         CONNECTING
                       </span>
