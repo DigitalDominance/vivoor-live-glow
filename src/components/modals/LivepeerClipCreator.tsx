@@ -49,10 +49,19 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       return;
     }
 
-    setIsCreating(true);
+    const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
+    
+    // Close modal immediately
+    handleClose();
+    
+    // Show loading toast
+    toast({
+      title: "Creating clip...",
+      description: "You will be notified when your clip is ready. You can continue watching!",
+      duration: 5000
+    });
 
     try {
-      const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
       console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
 
       // Create permanent clip with proper storage
@@ -62,7 +71,8 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           seconds: selectedDuration,
           title: clipTitle,
           userId: identity.id,
-          streamTitle
+          streamTitle,
+          isBackground: true
         }
       });
 
@@ -70,26 +80,60 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         throw new Error(clipResponse.error.message || 'Failed to create clip');
       }
 
-      const { clip, downloadUrl, playbackUrl } = clipResponse.data;
-      console.log('Permanent clip created:', clip.id);
+      const { clipId } = clipResponse.data;
+      console.log('Background clip creation started:', clipId);
 
-      // Show preview modal with permanent clip URLs
-      setClipPreview({
-        clipId: clip.id,
-        downloadUrl,
-        playbackUrl,
-        title: clipTitle,
-        isWatermarked: true
-      });
-      setShowPreview(true);
+      // Poll for completion
+      const pollForCompletion = async () => {
+        const maxAttempts = 40; // 2 minutes max
+        let attempts = 0;
+        
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          const { data: clip } = await supabase
+            .from('clips')
+            .select('*')
+            .eq('id', clipId)
+            .single();
+            
+          if (clip && clip.download_url) {
+            // Clip is ready!
+            toast({
+              title: "🎉 Clip Ready!",
+              description: "Your clip has been created successfully!",
+              duration: 8000
+            });
+            
+            // Show preview modal
+            setClipPreview({
+              clipId: clip.id,
+              downloadUrl: clip.download_url,
+              playbackUrl: clip.download_url,
+              title: clip.title,
+              isWatermarked: true
+            });
+            setShowPreview(true);
+            
+            // Invalidate clips queries
+            queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
+            break;
+          }
+          
+          attempts++;
+        }
+        
+        if (attempts >= maxAttempts) {
+          toast({
+            title: "Clip processing timeout",
+            description: "Your clip is taking longer than expected. Please check your clips page later.",
+            variant: "destructive"
+          });
+        }
+      };
       
-      // Invalidate clips queries to refresh the clips page
-      queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
-      
-      toast({
-        title: "Clip created!",
-        description: `Your ${selectedDuration}-second watermarked clip is ready and permanently stored.`
-      });
+      // Start polling in background
+      pollForCompletion();
 
     } catch (error: any) {
       console.error('Error creating clip:', error);
@@ -98,8 +142,6 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         description: error.message || "Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsCreating(false);
     }
   };
 

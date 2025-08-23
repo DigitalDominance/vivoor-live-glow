@@ -20,7 +20,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { playbackId, seconds, title, userId, streamTitle } = await req.json();
+    const { playbackId, seconds, title, userId, streamTitle, isBackground } = await req.json();
 
     if (!playbackId || !seconds || !userId) {
       return new Response(
@@ -29,9 +29,77 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`);
+    // If background processing is requested, create a placeholder clip and process async
+    if (isBackground) {
+      const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+      
+      // Create placeholder clip entry
+      const { data: placeholderClip, error: placeholderError } = await supabaseClient
+        .from('clips')
+        .insert({
+          title: clipTitle,
+          user_id: userId,
+          start_seconds: 0,
+          end_seconds: seconds,
+          playback_id: playbackId,
+          // No download_url yet - this signals it's still processing
+        })
+        .select()
+        .single();
 
-    // 1. Create clip via Livepeer API with buffer
+      if (placeholderError) {
+        console.error('Error creating placeholder clip:', placeholderError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create clip placeholder' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Start background processing
+      const processClipBackground = async () => {
+        try {
+          await processClip(supabaseClient, playbackId, seconds, clipTitle, userId, streamTitle, placeholderClip.id);
+        } catch (error) {
+          console.error('Background clip processing failed:', error);
+          // Could update the clip with an error status or delete it
+          await supabaseClient.from('clips').delete().eq('id', placeholderClip.id);
+        }
+      };
+
+      // Use EdgeRuntime.waitUntil to run background task
+      EdgeRuntime.waitUntil(processClipBackground());
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          clipId: placeholderClip.id
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Process clip synchronously (original behavior)
+    const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+    const result = await processClip(supabaseClient, playbackId, seconds, clipTitle, userId, streamTitle);
+    
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in create-permanent-clip:', error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+
+async function processClip(supabaseClient: any, playbackId: string, seconds: number, clipTitle: string, userId: string, streamTitle: string, existingClipId?: string) {
+  console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`);
+
+  // 1. Create clip via Livepeer API with buffer
     const BUFFER_SECONDS = 13;
     const now = Date.now();
     const endTime = now - (BUFFER_SECONDS * 1000);
@@ -155,44 +223,56 @@ serve(async (req) => {
 
     const publicUrl = urlData.publicUrl;
 
-    // 8. Save clip to database with permanent URLs
-    const { data: savedClip, error: saveError } = await supabaseClient
-      .from('clips')
-      .insert({
-        title: clipTitle,
-        user_id: userId,
-        start_seconds: 0,
-        end_seconds: seconds,
-        download_url: publicUrl,
-        thumbnail_url: publicUrl, // Could generate thumbnail later
-        playback_id: playbackId,
-        livepeer_asset_id: asset.id
-      })
-      .select()
-      .single();
+    // 8. Save or update clip to database with permanent URLs
+    let savedClip;
+    if (existingClipId) {
+      // Update existing placeholder clip
+      const { data: updatedClip, error: updateError } = await supabaseClient
+        .from('clips')
+        .update({
+          download_url: publicUrl,
+          thumbnail_url: publicUrl,
+          livepeer_asset_id: asset.id
+        })
+        .eq('id', existingClipId)
+        .select()
+        .single();
 
-    if (saveError) {
-      console.error('Error saving clip to database:', saveError);
-      throw new Error('Failed to save clip to database');
+      if (updateError) {
+        console.error('Error updating clip in database:', updateError);
+        throw new Error('Failed to update clip in database');
+      }
+      savedClip = updatedClip;
+    } else {
+      // Create new clip entry
+      const { data: newClip, error: saveError } = await supabaseClient
+        .from('clips')
+        .insert({
+          title: clipTitle,
+          user_id: userId,
+          start_seconds: 0,
+          end_seconds: seconds,
+          download_url: publicUrl,
+          thumbnail_url: publicUrl,
+          playback_id: playbackId,
+          livepeer_asset_id: asset.id
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('Error saving clip to database:', saveError);
+        throw new Error('Failed to save clip to database');
+      }
+      savedClip = newClip;
     }
 
     console.log('Clip successfully created and stored:', savedClip.id);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        clip: savedClip,
-        downloadUrl: publicUrl,
-        playbackUrl: publicUrl
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('Error in create-permanent-clip:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
+    return {
+      success: true,
+      clip: savedClip,
+      downloadUrl: publicUrl,
+      playbackUrl: publicUrl
+    };
+}
