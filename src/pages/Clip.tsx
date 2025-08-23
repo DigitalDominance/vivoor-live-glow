@@ -178,8 +178,9 @@ const ClipPage: React.FC = () => {
         >
           {/* Video Container */}
           <div className="glass rounded-xl p-6 border border-border/50">
-            <div className="aspect-video rounded-lg overflow-hidden mb-8 relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
-              <div className="aspect-video bg-background rounded-lg overflow-hidden">
+            <div className="aspect-video rounded-lg mb-8 relative" style={{ padding: '2px' }}>
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink" />
+              <div className="aspect-video bg-background rounded-lg overflow-hidden relative z-10" style={{ margin: '2px' }}>
                 {clip.download_url ? (
                   <video
                     src={clip.download_url}
