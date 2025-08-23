@@ -58,18 +58,11 @@ const AppDirectory: React.FC = () => {
       console.log('Raw streams data:', data);
       
       return (data || []).map((stream: any) => {
-        // A stream is considered live if:
-        // 1. It has is_live = true (updated by Livepeer status check)
-        // 2. It has a playback_url
-        // 3. It has recent activity (last_heartbeat within last 5 minutes)
-        const hasRecentHeartbeat = !stream.last_heartbeat || 
-          (new Date().getTime() - new Date(stream.last_heartbeat).getTime()) < 300000; // 5 minutes
+        // Stream is considered live based on database is_live status
+        // which is updated by our Livepeer status check function
+        const isLive = stream.is_live;
         
-        const isLive = stream.is_live && 
-                      !!stream.playback_url && 
-                      hasRecentHeartbeat;
-        
-        console.log(`Stream ${stream.id}: is_live=${stream.is_live}, playback_url=${!!stream.playback_url}, hasRecentHeartbeat=${hasRecentHeartbeat}, final_live=${isLive}`);
+        console.log(`Stream ${stream.id}: is_live=${stream.is_live}, playback_url=${!!stream.playback_url}, final_live=${isLive}`);
         
         return {
           id: stream.id,
@@ -86,7 +79,7 @@ const AppDirectory: React.FC = () => {
         };
       });
     },
-    refetchInterval: 15000 // Refresh every 15 seconds for live updates
+    refetchInterval: 10000 // Refresh every 10 seconds for live updates
   });
 
   // Trigger Livepeer status check every 30 seconds
