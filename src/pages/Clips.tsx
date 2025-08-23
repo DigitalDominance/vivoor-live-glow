@@ -76,7 +76,7 @@ const ClipsPage = () => {
       
       return data || [];
     },
-    refetchInterval: 30000 // Refetch every 30 seconds to pick up new clips
+    refetchInterval: 60000 // Refetch every 60 seconds (1 minute) to pick up new clips
   });
 
   // Calculate pagination
