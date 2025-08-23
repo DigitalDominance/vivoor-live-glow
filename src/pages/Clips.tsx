@@ -322,25 +322,15 @@ const ClipsPage = () => {
                   >
                     {/* Gradient border */}
                     <div 
-                      className="absolute inset-0 rounded-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500 -z-10"
+                      className="absolute inset-0 rounded-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500"
                       style={{
                         background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
-                        padding: '2px'
+                        zIndex: 1
                       }}
-                    >
-                      <div 
-                        className="w-full h-full rounded-xl"
-                        style={{
-                          background: `linear-gradient(135deg, 
-                            hsl(var(--background) / 0.95) 0%, 
-                            hsl(var(--background) / 0.8) 50%, 
-                            hsl(var(--background) / 0.95) 100%)`
-                        }}
-                      />
-                    </div>
+                    />
                     {/* Thumbnail */}
                     <div
-                      className="relative aspect-video cursor-pointer overflow-hidden"
+                      className="relative aspect-video cursor-pointer overflow-hidden m-0.5 rounded-lg z-10"
                       onClick={() => handleClipClick(clip.id)}
                     >
                       {clip.download_url ? (
