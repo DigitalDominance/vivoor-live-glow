@@ -313,21 +313,13 @@ const ClipsPage = () => {
                     className="group relative rounded-xl overflow-hidden backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500"
                     style={{
                       background: `linear-gradient(135deg, 
-                        hsl(var(--background) / 0.8) 0%, 
-                        hsl(var(--background) / 0.6) 50%, 
-                        hsl(var(--background) / 0.8) 100%)`,
-                      border: `2px solid transparent`,
-                      backgroundClip: 'padding-box'
+                        hsl(var(--background) / 0.95) 0%, 
+                        hsl(var(--background) / 0.9) 50%, 
+                        hsl(var(--background) / 0.95) 100%)`,
+                      border: `2px solid`,
+                      borderImage: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink))) 1'
                     }}
                   >
-                    {/* Gradient border */}
-                    <div 
-                      className="absolute inset-0 rounded-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500"
-                      style={{
-                        background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
-                        zIndex: 1
-                      }}
-                    />
                     {/* Thumbnail */}
                     <div
                       className="relative aspect-video cursor-pointer overflow-hidden m-0.5 rounded-lg z-10"
@@ -412,33 +404,19 @@ const ClipsPage = () => {
                             {likeCount}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          {clip.download_url && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 hover:bg-brand-cyan/10 hover:text-brand-cyan transition-all duration-200"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(clip.download_url!, '_blank');
-                              }}
-                              aria-label="Download clip"
-                            >
-                              <Download className="size-3" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 hover:bg-brand-pink/10 hover:text-brand-pink transition-all duration-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLike(clip.id, isLiked);
-                            }}
-                            aria-label={isLiked ? 'Unlike' : 'Like'}
-                          >
-                            <Heart className={`size-3 transition-all duration-200 ${isLiked ? "fill-current text-brand-pink" : ""}`} />
-                          </Button>
+                         <div className="flex items-center gap-1">
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             className="size-8 hover:bg-brand-pink/10 hover:text-brand-pink transition-all duration-200 relative z-20"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleLike(clip.id, isLiked);
+                             }}
+                             aria-label={isLiked ? 'Unlike' : 'Like'}
+                           >
+                             <Heart className={`size-3 transition-all duration-200 ${isLiked ? "fill-current text-brand-pink" : ""}`} />
+                           </Button>
                         </div>
                       </div>
                     </div>
