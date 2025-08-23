@@ -24,6 +24,7 @@ const GoLive = () => {
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
+  const [livepeerStreamId, setLivepeerStreamId] = React.useState<string | null>(null);
   
   const [previewReady, setPreviewReady] = React.useState(false);
   const [playerKey, setPlayerKey] = React.useState(0);
@@ -162,6 +163,7 @@ const GoLive = () => {
       setIngestUrl(lp.ingestUrl || null);
       setStreamKey(lp.streamKey || null);
       setPlaybackUrl(lp.playbackUrl || null);
+      setLivepeerStreamId(lp.streamId || null);
       
       console.log('Stream details set:', {
         streamId: lp.streamId,
@@ -236,7 +238,7 @@ const GoLive = () => {
       let currentIngestUrl = ingestUrl;
       let currentStreamKey = streamKey;
       let currentPlaybackUrl = playbackUrl;
-      let currentLivepeerStreamId = null;
+      let currentLivepeerStreamId = livepeerStreamId;
 
       if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
         console.log('Generating stream details...');
@@ -327,7 +329,7 @@ const GoLive = () => {
             thumbnail_url: thumbnailUrl,
             treasury_txid: treasuryTxid,
             treasury_block_time: Date.now(), // Approximate block time
-            livepeer_stream_id: currentLivepeerStreamId || null, // Save the Livepeer stream ID from API response
+            livepeer_stream_id: livepeerStreamId || null, // Save the Livepeer stream ID from API response
             is_live: true
           })
           .select()
