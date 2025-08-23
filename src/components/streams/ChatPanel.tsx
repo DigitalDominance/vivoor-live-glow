@@ -1,8 +1,15 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SendHorizonal } from "lucide-react";
+import { blurBadWords } from "@/lib/badWords";
 
-export type ChatMessage = { id: string; user: string; text: string; time: string };
+export type ChatMessage = { 
+  id: string; 
+  user: { id: string; name: string; avatar?: string }; 
+  text: string; 
+  time: string; 
+};
 
 const ChatPanel: React.FC<{
   messages: ChatMessage[];
@@ -41,10 +48,23 @@ const ChatPanel: React.FC<{
           </div>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="text-sm">
-              <span className="text-primary mr-1 font-medium">{m.user}:</span>
-              <span className="break-words">{m.text}</span>
-              <div className="text-xs text-muted-foreground mt-0.5">{m.time}</div>
+            <div key={m.id} className="text-sm flex gap-2">
+              <Avatar className="h-6 w-6 mt-0.5 flex-shrink-0">
+                <AvatarImage src={m.user.avatar} alt={m.user.name} />
+                <AvatarFallback className="text-xs">
+                  {m.user.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-primary font-medium truncate">{m.user.name}</span>
+                  <span className="text-xs text-muted-foreground">{m.time}</span>
+                </div>
+                <div 
+                  className="break-words mt-0.5"
+                  dangerouslySetInnerHTML={{ __html: blurBadWords(m.text) }}
+                />
+              </div>
             </div>
           ))
         )}

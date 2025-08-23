@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Heart, Play, Pause, MoreVertical, Users, Scissors } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
+import { containsBadWords, cleanText } from "@/lib/badWords";
 
 const Watch = () => {
   const { streamId } = useParams();
@@ -68,6 +69,19 @@ const Watch = () => {
       return data?.[0] || null;
     },
     enabled: !!streamData?.user_id
+  });
+
+  // Fetch current user's profile for chat display
+  const { data: currentUserProfile } = useQuery({
+    queryKey: ['current-user-profile', identity?.id],
+    queryFn: async () => {
+      if (!identity?.id) return null;
+      const { data } = await supabase.rpc('get_profile_with_stats', { 
+        _user_id: identity.id 
+      });
+      return data?.[0] || null;
+    },
+    enabled: !!identity?.id
   });
 
   // Check if user already likes/follows this stream/user
@@ -181,9 +195,17 @@ const Watch = () => {
       .filter(msg => msg.type === 'chat') // Only show chat messages
       .map(msg => ({
         id: `${msg.serverTs}-${msg.user.id}`,
-        user: msg.user.name,
+        user: {
+          id: msg.user.id,
+          name: msg.user.name,
+          avatar: msg.user.avatar
+        },
         text: msg.text,
-        time: new Date(msg.serverTs).toLocaleTimeString()
+        time: new Date(msg.serverTs).toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        })
       }));
   }, [wsMessages]);
 
@@ -231,10 +253,16 @@ const Watch = () => {
       return;
     }
 
+    // Check for bad words
+    if (containsBadWords(newMessage.trim())) {
+      toast.error('Your message contains inappropriate language');
+      return;
+    }
+
     const user = {
       id: identity.id,
-      name: identity.id.slice(0, 8), // Use wallet ID as name for now
-      avatar: undefined // Could add avatar URL here
+      name: currentUserProfile?.display_name || currentUserProfile?.handle || `User ${identity.id.slice(0, 8)}`,
+      avatar: currentUserProfile?.avatar_url
     };
 
     sendChat(newMessage.trim(), user);
