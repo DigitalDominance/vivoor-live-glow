@@ -55,7 +55,16 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
       console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
 
-      // Create permanent clip with proper storage
+      // Close the modal immediately
+      handleClose();
+
+      // Show loading toast
+      toast({
+        title: "Creating clip...",
+        description: "You will be notified when your clip is ready. You can continue watching!",
+      });
+
+      // Create permanent clip with proper storage in background
       const clipResponse = await supabase.functions.invoke('create-permanent-clip', {
         body: {
           playbackId: livepeerPlaybackId,
@@ -73,6 +82,12 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const { clip, downloadUrl, playbackUrl } = clipResponse.data;
       console.log('Permanent clip created:', clip.id);
 
+      // Show success toast
+      toast({
+        title: "Clip Ready!",
+        description: `Your ${selectedDuration}-second clip is ready to watch!`,
+      });
+
       // Show preview modal with permanent clip URLs
       setClipPreview({
         clipId: clip.id,
@@ -85,11 +100,6 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       
       // Invalidate clips queries to refresh the clips page
       queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
-      
-      toast({
-        title: "Clip created!",
-        description: `Your ${selectedDuration}-second watermarked clip is ready and permanently stored.`
-      });
 
     } catch (error: any) {
       console.error('Error creating clip:', error);

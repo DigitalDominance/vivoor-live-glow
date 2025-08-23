@@ -413,7 +413,7 @@ const Watch = () => {
     }
   };
 
-  // Handle video events for control state sync
+  // Handle video events for control state sync and auto-unmute
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -425,16 +425,25 @@ const Watch = () => {
       setIsMuted(video.muted);
     };
 
+    // Auto-unmute and set proper volume when video loads
+    const handleLoadedData = () => {
+      video.muted = false;
+      video.volume = volume;
+      setIsMuted(false);
+    };
+
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('volumechange', handleVolumeChange);
+    video.addEventListener('loadeddata', handleLoadedData);
 
     return () => {
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('volumechange', handleVolumeChange);
+      video.removeEventListener('loadeddata', handleLoadedData);
     };
-  }, []);
+  }, [volume]);
 
   // Handle fullscreen changes
   React.useEffect(() => {
