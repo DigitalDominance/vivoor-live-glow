@@ -55,11 +55,14 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
       console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
 
-      // 1. Create clip via our app backend (simplified back to working approach)
-      const clipResponse = await supabase.functions.invoke('livepeer-create-clip', {
+      // Create permanent clip with proper storage
+      const clipResponse = await supabase.functions.invoke('create-permanent-clip', {
         body: {
           playbackId: livepeerPlaybackId,
-          seconds: selectedDuration
+          seconds: selectedDuration,
+          title: clipTitle,
+          userId: identity.id,
+          streamTitle
         }
       });
 
@@ -67,53 +70,14 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         throw new Error(clipResponse.error.message || 'Failed to create clip');
       }
 
-      const { downloadUrl } = clipResponse.data;
-      console.log('Clip created, starting watermarking...');
+      const { clip, downloadUrl, playbackUrl } = clipResponse.data;
+      console.log('Permanent clip created:', clip.id);
 
-      // 2. Send the clip to watermark service
-      const formData = new FormData();
-      formData.append('videoUrl', downloadUrl);
-      formData.append('position', 'br');
-      formData.append('margin', '24');
-      formData.append('wmWidth', '180');
-      formData.append('filename', `${clipTitle.replace(/[^a-zA-Z0-9]/g, '-')}.mp4`);
-
-      const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!watermarkResponse.ok) {
-        throw new Error('Watermarking failed');
-      }
-
-      // 3. Get watermarked video as blob and create download
-      const watermarkedBlob = await watermarkResponse.blob();
-      const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
-
-      // Save clip to database
-      const { data: savedClip, error: saveError } = await supabase
-        .from('clips')
-        .insert({
-          title: clipTitle,
-          user_id: identity.id,
-          start_seconds: 0,  // For live stream clips, start from 0
-          end_seconds: selectedDuration,  // Duration in seconds
-          download_url: watermarkedUrl,
-          playback_id: livepeerPlaybackId
-        })
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error('Error saving clip:', saveError);
-      }
-
-      // Show preview modal with watermarked clip
+      // Show preview modal with permanent clip URLs
       setClipPreview({
-        clipId: savedClip?.id || `temp-${Date.now()}`,
-        downloadUrl: watermarkedUrl,
-        playbackUrl: watermarkedUrl,
+        clipId: clip.id,
+        downloadUrl,
+        playbackUrl,
         title: clipTitle,
         isWatermarked: true
       });
@@ -124,7 +88,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       
       toast({
         title: "Clip created!",
-        description: `Your ${selectedDuration}-second watermarked clip is ready.`
+        description: `Your ${selectedDuration}-second watermarked clip is ready and permanently stored.`
       });
 
     } catch (error: any) {

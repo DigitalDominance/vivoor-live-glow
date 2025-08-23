@@ -26,12 +26,13 @@ serve(async (req) => {
     console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`)
 
     // For live streams, we create a clip from the current time going backwards
-    // This approach was working before - keeping it simple
+    // Adding 13-second buffer to ensure content is fully available (10s initial + 3s additional buffer)
+    const BUFFER_SECONDS = 13
     const now = Date.now()
-    const endTime = now // Current time in milliseconds  
-    const startTime = now - (seconds * 1000) // Go back by the specified duration in milliseconds
+    const endTime = now - (BUFFER_SECONDS * 1000) // End 13 seconds ago to ensure content is available
+    const startTime = endTime - (seconds * 1000) // Go back by the specified duration in milliseconds
     
-    console.log(`Clipping from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()} (${seconds}s duration)`)
+    console.log(`Clipping from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()} (${seconds}s duration with ${BUFFER_SECONDS}s buffer)`)
 
     // Create clip via Livepeer API with proper timing (milliseconds)
     const clipResponse = await fetch('https://livepeer.studio/api/clip', {
