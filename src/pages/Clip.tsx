@@ -178,7 +178,7 @@ const ClipPage: React.FC = () => {
         >
           {/* Video Container */}
           <div className="glass rounded-xl p-6 border border-border/50">
-            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-4 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+            <div className="aspect-video bg-background/50 rounded-lg overflow-hidden mb-8 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
               <div className="aspect-video bg-background rounded-lg overflow-hidden">
                 {clip.download_url ? (
                   <video
@@ -203,7 +203,6 @@ const ClipPage: React.FC = () => {
                 )}
               </div>
             </div>
-            <div className="h-2.5" />
 
             {/* Clip Info */}
             <motion.div
