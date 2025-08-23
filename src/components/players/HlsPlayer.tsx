@@ -9,9 +9,10 @@ type HlsPlayerProps = {
   className?: string;
   onStreamReady?: () => void;
   isLiveStream?: boolean;
+  videoRef?: React.RefObject<HTMLVideoElement>;
 };
 
-const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className, onStreamReady, isLiveStream = false }) => {
+const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className, onStreamReady, isLiveStream = false, videoRef: externalVideoRef }) => {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -168,7 +169,20 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     <div className={"relative rounded-xl overflow-hidden border border-border bg-card/60 backdrop-blur-md " + (className || "")}
       aria-label="Live player">
       <div className="aspect-[16/9] relative">
-        <video ref={videoRef} poster={poster} controls={false} autoPlay={autoPlay} muted playsInline className="w-full h-full object-contain bg-background" />
+        <video 
+          ref={(el) => {
+            videoRef.current = el;
+            if (externalVideoRef && externalVideoRef.current !== el) {
+              (externalVideoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+            }
+          }} 
+          poster={poster} 
+          controls={false} 
+          autoPlay={autoPlay} 
+          muted 
+          playsInline 
+          className="w-full h-full object-contain bg-background" 
+        />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80">
             <div className="text-sm text-muted-foreground">Loading stream...</div>

@@ -372,7 +372,6 @@ const Watch = () => {
       } else {
         videoRef.current.play();
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -405,6 +404,29 @@ const Watch = () => {
       videoRef.current.muted = newMuted;
     }
   };
+
+  // Handle video events for control state sync
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleVolumeChange = () => {
+      setVolume(video.volume);
+      setIsMuted(video.muted);
+    };
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, []);
 
   // Handle fullscreen changes
   React.useEffect(() => {
@@ -501,6 +523,7 @@ const Watch = () => {
                     isLiveStream={livepeerIsLive}
                     key={streamData.id}
                     className="w-full h-full"
+                    videoRef={videoRef}
                   />
                   {showControls && (
                     <CustomVideoControls
@@ -648,22 +671,24 @@ const Watch = () => {
       </div>
 
       {/* Modals */}
-      <ProfileModal 
-        open={profileOpen} 
-        onOpenChange={setProfileOpen} 
-        profile={streamerProfile ? {
-          id: streamerProfile.id,
-          displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
-          handle: streamerProfile.handle || 'streamer',
-          bio: streamerProfile.bio || '',
-          followers: followerCount,
-          following: streamerProfile.following_count || 0,
-          tags: []
-        } : undefined}
-        isLoggedIn={!!identity}
-        onRequireLogin={onRequireLogin}
-        onGoToChannel={() => {}}
-      />
+            {streamerProfile && (
+              <ProfileModal
+                open={profileOpen}
+                onOpenChange={setProfileOpen}
+                profile={{
+                  id: streamerProfile.id,
+                  handle: streamerProfile.handle || 'streamer',
+                  displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
+                  bio: streamerProfile.bio || '',
+                  followers: streamerProfile.follower_count || 0,
+                  following: streamerProfile.following_count || 0,
+                  tags: [],
+                  avatar: streamerProfile.avatar_url || ''
+                }}
+                isLoggedIn={!!identity?.id}
+                onRequireLogin={() => toast.error('Please connect your wallet to continue')}
+              />
+            )}
       
       <TipModal 
         open={tipOpen} 

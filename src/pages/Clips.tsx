@@ -37,7 +37,7 @@ type UserProfile = {
   handle: string;
   displayName: string;
   bio: string;
-  avatar_url: string;
+  avatar: string;
   followers: number;
   following: number;
   tags?: string[];
@@ -169,7 +169,7 @@ const ClipsPage = () => {
           handle: profile.handle,
           displayName: profile.display_name || profile.handle,
           bio: profile.bio || '',
-          avatar_url: profile.avatar_url || '',
+          avatar: profile.avatar_url || '',
           followers: profile.follower_count || 0,
           following: profile.following_count || 0,
           tags: []
