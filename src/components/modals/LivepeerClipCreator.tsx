@@ -31,7 +31,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   streamTitle
 }) => {
   const [title, setTitle] = useState("");
-  const [selectedDuration, setSelectedDuration] = useState<10 | 30 | 60>(30);
+  const [selectedDuration, setSelectedDuration] = useState<15 | 30 | 60>(30);
   const [isCreating, setIsCreating] = useState(false);
   const [clipPreview, setClipPreview] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -142,7 +142,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
 
   const handleClose = () => {
     setTitle("");
-    setSelectedDuration(30);
+    setSelectedDuration(15);
     onOpenChange(false);
   };
 
@@ -153,7 +153,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   };
 
   const durations = [
-    { value: 10, label: "10 Seconds", description: "Quick highlights" },
+    { value: 15, label: "15 Seconds", description: "Quick highlights" },
     { value: 30, label: "30 Seconds", description: "Extended moments" },
     { value: 60, label: "60 Seconds", description: "Full sequences" }
   ] as const;

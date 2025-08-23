@@ -30,7 +30,7 @@ const secondsToTs = (s: number) => {
 
 const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCreated }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [duration, setDuration] = useState<10 | 30 | 60>(10);
+  const [duration, setDuration] = useState<15 | 30 | 60>(15);
   const [title, setTitle] = useState("");
   const { toast } = useToast();
   const { identity } = useWallet();
@@ -43,7 +43,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
 
   useEffect(() => {
     if (!open) {
-      setDuration(10);
+      setDuration(15);
       setTitle("");
     }
   }, [open]);
@@ -171,10 +171,10 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
             <label className="text-sm font-medium mb-2 block">Clip Duration</label>
             <select
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value) as 10 | 30 | 60)}
+              onChange={(e) => setDuration(Number(e.target.value) as 15 | 30 | 60)}
               className="w-full rounded-md bg-background px-3 py-2 text-sm border border-border"
             >
-              <option value={10}>Last 10 seconds</option>
+              <option value={15}>Last 15 seconds</option>
               <option value={30}>Last 30 seconds</option>
               <option value={60}>Last 1 minute</option>
             </select>
