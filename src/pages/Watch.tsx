@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
-
+import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
 import TipDisplay from "@/components/TipDisplay";
@@ -36,10 +36,15 @@ const Watch = () => {
   const [followed, setFollowed] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(0);
   const [followerCount, setFollowerCount] = React.useState(0);
+  const [isPlaying, setIsPlaying] = React.useState(true);
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
   const [newMessage, setNewMessage] = React.useState('');
+  const [volume, setVolume] = React.useState(1);
+  const [isMuted, setIsMuted] = React.useState(false);
+  const [showControls, setShowControls] = React.useState(true);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const playerContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -367,6 +372,110 @@ const Watch = () => {
     return new Date(seconds * 1000).toISOString().substring(11, 19);
   };
 
+  // Video control handlers
+  const handlePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    
+    if (!isFullscreen) {
+      if (playerContainerRef.current.requestFullscreen) {
+        playerContainerRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+    }
+    if (newVolume > 0) setIsMuted(false);
+  };
+
+  const handleToggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = newMuted;
+    }
+  };
+
+  // Handle video events for control state sync
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleVolumeChange = () => {
+      setVolume(video.volume);
+      setIsMuted(video.muted);
+    };
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, []);
+
+  // Handle fullscreen changes
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Hide controls after inactivity
+  React.useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    
+    const resetTimeout = () => {
+      setShowControls(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setShowControls(false), 3000);
+    };
+
+    const handleMouseMove = () => resetTimeout();
+    const handleMouseLeave = () => {
+      clearTimeout(timeout);
+      setShowControls(false);
+    };
+
+    if (playerContainerRef.current) {
+      playerContainerRef.current.addEventListener('mousemove', handleMouseMove);
+      playerContainerRef.current.addEventListener('mouseleave', handleMouseLeave);
+      resetTimeout();
+    }
+
+    return () => {
+      clearTimeout(timeout);
+      if (playerContainerRef.current) {
+        playerContainerRef.current.removeEventListener('mousemove', handleMouseMove);
+        playerContainerRef.current.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, []);
 
   // Current user profile for display
   const profile = React.useMemo(() => {
@@ -424,6 +533,22 @@ const Watch = () => {
                     className="w-full h-full"
                     videoRef={videoRef}
                   />
+                  {showControls && (
+                    <CustomVideoControls
+                      isPlaying={isPlaying}
+                      onPlayPause={handlePlayPause}
+                      onFullscreen={handleFullscreen}
+                      onCreateClip={() => setClipModalOpen(true)}
+                      volume={volume}
+                      onVolumeChange={handleVolumeChange}
+                      isMuted={isMuted}
+                      onToggleMute={handleToggleMute}
+                      elapsed={elapsed}
+                      viewers={viewerCount}
+                      isLive={livepeerIsLive}
+                      showClipping={true}
+                    />
+                  )}
                 </>
               ) : (
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
