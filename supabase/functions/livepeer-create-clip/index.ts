@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { playbackId, seconds, startSeconds, endSeconds } = await req.json()
+    const { playbackId, seconds } = await req.json()
 
     if (!playbackId || !seconds) {
       return new Response(
@@ -25,23 +25,13 @@ serve(async (req) => {
 
     console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`)
 
-    // Use provided timing from frontend tracking or fallback to current time method
-    let clipStartTime, clipEndTime;
+    // For live streams, we create a clip from the current time going backwards
+    // This approach was working before - keeping it simple
+    const now = Date.now()
+    const endTime = Math.floor(now / 1000) // Current time in seconds
+    const startTime = endTime - seconds // Go back by the specified duration
     
-    if (startSeconds !== undefined && endSeconds !== undefined) {
-      // Use tracked timing from frontend
-      clipStartTime = Math.floor(startSeconds);
-      clipEndTime = Math.floor(endSeconds);
-      console.log(`Using tracked timing: ${clipStartTime}s to ${clipEndTime}s`);
-    } else {
-      // Fallback to current time method for backward compatibility
-      const now = Date.now()
-      clipEndTime = Math.floor(now / 1000);
-      clipStartTime = clipEndTime - seconds;
-      console.log(`Using current time fallback: ${clipStartTime}s to ${clipEndTime}s`);
-    }
-    
-    console.log(`Clipping from ${clipStartTime}s to ${clipEndTime}s (${seconds}s duration)`)
+    console.log(`Clipping from ${startTime}s to ${endTime}s (${seconds}s duration)`)
 
     // Create clip via Livepeer API with proper timing
     const clipResponse = await fetch('https://livepeer.studio/api/clip', {
@@ -52,8 +42,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         playbackId,
-        startTime: clipStartTime,
-        endTime: clipEndTime,
+        startTime,
+        endTime,
         name: `Live Clip ${seconds}s - ${new Date().toISOString()}`
       }),
     })
