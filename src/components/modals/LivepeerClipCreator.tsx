@@ -39,65 +39,6 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const { identity } = useWallet();
   const queryClient = useQueryClient();
 
-  // Polling function to check clip completion
-  const startPollingForClipCompletion = (clipId: string, clipTitle: string) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data: clip, error } = await supabase
-          .from('clips')
-          .select('id, download_url, title')
-          .eq('id', clipId)
-          .single();
-
-        if (error) {
-          console.error('Error checking clip status:', error);
-          clearInterval(pollInterval);
-          return;
-        }
-
-        if (clip.download_url && clip.download_url !== 'FAILED') {
-          // Clip is ready!
-          clearInterval(pollInterval);
-          
-          // Show success notification with clip preview
-          setClipPreview({
-            clipId: clip.id,
-            downloadUrl: clip.download_url,
-            playbackUrl: clip.download_url,
-            title: clip.title,
-            isWatermarked: true
-          });
-          setShowPreview(true);
-          
-          // Invalidate clips queries to refresh
-          queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
-          
-          toast({
-            title: "🎉 Clip Ready!",
-            description: `Your ${clipTitle} has been created and is ready to view!`,
-          });
-        } else if (clip.download_url === 'FAILED') {
-          // Clip failed
-          clearInterval(pollInterval);
-          toast({
-            title: "Clip creation failed",
-            description: "There was an error creating your clip. Please try again.",
-            variant: "destructive"
-          });
-        }
-        // If still null, keep polling
-      } catch (error) {
-        console.error('Error polling clip status:', error);
-        clearInterval(pollInterval);
-      }
-    }, 5000); // Poll every 5 seconds
-
-    // Clear polling after 5 minutes to prevent infinite polling
-    setTimeout(() => {
-      clearInterval(pollInterval);
-    }, 300000);
-  };
-
   const createClip = async () => {
     if (!identity?.id) {
       toast({
@@ -114,16 +55,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
       console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
 
-      // Close modal immediately
-      handleClose();
-
-      // Show loading toast
-      toast({
-        title: "Creating clip...",
-        description: "You will be notified when your clip is ready. You can continue watching!",
-      });
-
-      // Start clip creation in background
+      // Create permanent clip with proper storage
       const clipResponse = await supabase.functions.invoke('create-permanent-clip', {
         body: {
           playbackId: livepeerPlaybackId,
@@ -138,16 +70,26 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         throw new Error(clipResponse.error.message || 'Failed to create clip');
       }
 
-      const { clip, processing } = clipResponse.data;
-      console.log('Clip creation started:', clip.id);
+      const { clip, downloadUrl, playbackUrl } = clipResponse.data;
+      console.log('Permanent clip created:', clip.id);
 
-      if (processing) {
-        // Start polling for clip completion
-        startPollingForClipCompletion(clip.id, clipTitle);
-      }
+      // Show preview modal with permanent clip URLs
+      setClipPreview({
+        clipId: clip.id,
+        downloadUrl,
+        playbackUrl,
+        title: clipTitle,
+        isWatermarked: true
+      });
+      setShowPreview(true);
       
       // Invalidate clips queries to refresh the clips page
       queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
+      
+      toast({
+        title: "Clip created!",
+        description: `Your ${selectedDuration}-second watermarked clip is ready and permanently stored.`
+      });
 
     } catch (error: any) {
       console.error('Error creating clip:', error);
