@@ -19,7 +19,7 @@ const AppDirectory: React.FC = () => {
   const [searchMode, setSearchMode] = React.useState<SearchMode>('title');
   const [query, setQuery] = React.useState('');
   const [activeCats, setActiveCats] = React.useState<string[]>([]);
-  const [showLive, setShowLive] = React.useState<'live' | 'replay' | 'all'>('all');
+  const [showLive, setShowLive] = React.useState<'live' | 'replay' | 'all'>('live');
   const [sort, setSort] = React.useState<SortMode>('viewers');
   const [visible, setVisible] = React.useState(9);
 
