@@ -14,18 +14,26 @@ serve(async (req) => {
   }
 
   try {
-    const { playbackId, startTime, endTime, seconds } = await req.json()
+    const { playbackId, seconds } = await req.json()
 
-    if (!playbackId || typeof startTime !== 'number' || typeof endTime !== 'number') {
+    if (!playbackId || !seconds) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: playbackId, startTime, endTime' }),
+        JSON.stringify({ error: 'Missing required fields: playbackId, seconds' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}, ${startTime}ms to ${endTime}ms`)
+    console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`)
 
-    // Create clip via Livepeer API
+    // For live streams, we create a clip from the current time going backwards
+    // Calculate proper start and end times relative to the live stream
+    const now = Date.now()
+    const endTime = Math.floor(now / 1000) // Current time in seconds
+    const startTime = endTime - seconds // Go back by the specified duration
+    
+    console.log(`Clipping from ${startTime}s to ${endTime}s (${seconds}s duration)`)
+
+    // Create clip via Livepeer API with proper timing
     const clipResponse = await fetch('https://livepeer.studio/api/clip', {
       method: 'POST',
       headers: {
@@ -34,9 +42,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         playbackId,
-        startTime: Math.round(startTime),
-        endTime: Math.round(endTime),
-        name: `Clip ${new Date().toISOString()}`
+        startTime,
+        endTime,
+        name: `Live Clip ${seconds}s - ${new Date().toISOString()}`
       }),
     })
 

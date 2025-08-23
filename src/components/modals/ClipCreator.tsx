@@ -147,7 +147,7 @@ const ClipCreator: React.FC<ClipCreatorProps> = ({ open, onOpenChange, vod, onCr
     onCreated?.(insert.data.id);
     
     // Invalidate clips queries to refresh the clips page
-    queryClient.invalidateQueries({ queryKey: ['clips'] });
+    queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
   };
 
   return (

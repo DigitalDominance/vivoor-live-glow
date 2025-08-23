@@ -53,61 +53,28 @@ const ClipsPage = () => {
   const [likedClips, setLikedClips] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
-  // Fetch clips with profiles
+  // Fetch clips with profiles using the database function
   const { data: clips, isLoading } = useQuery({
-    queryKey: ['clips', searchQuery, orderBy],
+    queryKey: ['clips-with-profiles', searchQuery, orderBy],
     queryFn: async () => {
-      let query = supabase
-        .from('clips')
-        .select(`
-          *,
-          profiles:user_id (
-            handle,
-            display_name,
-            avatar_url
-          )
-        `);
-
-      if (searchQuery) {
-        query = query.ilike('title', `%${searchQuery}%`);
+      const { data, error } = await supabase.rpc('get_clips_with_profiles_and_stats', {
+        _limit: 50,
+        _offset: 0,
+        _search: searchQuery || null,
+        _order_by: orderBy
+      });
+      
+      if (error) {
+        console.error('Error fetching clips:', error);
+        throw error;
       }
-
-      if (orderBy === 'views') {
-        query = query.order('views', { ascending: false });
-      } else if (orderBy === 'created_at') {
-        query = query.order('created_at', { ascending: false });
-      } else {
-        query = query.order('created_at', { ascending: false });
-      }
-
-      const { data, error } = await query.limit(50);
-      if (error) throw error;
-      return data as any;
+      
+      return data || [];
     },
     refetchInterval: 10000 // Refetch every 10 seconds to pick up new clips
   });
 
-  // Fetch clip like counts using database function
-  const { data: clipLikeCounts } = useQuery({
-    queryKey: ['clip-like-counts', clips?.map(c => c.id)],
-    queryFn: async () => {
-      if (!clips || clips.length === 0) return {};
-      
-      // Get like counts for each clip
-      const likeCounts: Record<string, number> = {};
-      await Promise.all(
-        clips.map(async (clip) => {
-          const { data } = await supabase.rpc('get_clip_like_count', { 
-            clip_id_param: clip.id 
-          });
-          likeCounts[clip.id] = data || 0;
-        })
-      );
-      
-      return likeCounts;
-    },
-    enabled: !!clips && clips.length > 0
-  });
+  // Remove the separate clip like counts query since we're getting it from the database function
 
   // Check which clips the user has liked
   useEffect(() => {
@@ -157,8 +124,8 @@ const ClipsPage = () => {
         setLikedClips(prev => new Set([...prev, clipId]));
       }
       
-      // Invalidate clip like counts to refresh
-      queryClient.invalidateQueries({ queryKey: ['clip-like-counts'] });
+      // Invalidate clips to refresh
+      queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
     } catch (error) {
       console.error('Error toggling like:', error);
       toast.error('Failed to update like status');
@@ -274,8 +241,7 @@ const ClipsPage = () => {
           >
             {clips.map((clip, index) => {
               const isLiked = likedClips.has(clip.id);
-              const profile = Array.isArray(clip.profiles) ? clip.profiles[0] : clip.profiles;
-              const likeCount = clipLikeCounts?.[clip.id] || 0;
+              const likeCount = clip.like_count || 0;
               return (
                 <motion.div
                   key={clip.id}
@@ -323,20 +289,18 @@ const ClipsPage = () => {
                     </h3>
                     
                     {/* Creator Info */}
-                    {profile && (
-                      <button
-                        onClick={() => handleProfileClick(clip.user_id)}
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
-                      >
-                        <Avatar className="size-5">
-                          <AvatarImage src={profile.avatar_url || ''} alt={`@${profile.handle} avatar`} />
-                          <AvatarFallback className="text-[10px]">
-                            {profile.display_name?.[0]?.toUpperCase() || profile.handle?.[0]?.toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>@{profile.handle}</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleProfileClick(clip.user_id)}
+                      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
+                    >
+                      <Avatar className="size-5">
+                        <AvatarImage src={clip.profile_avatar_url || ''} alt={`@${clip.profile_handle} avatar`} />
+                        <AvatarFallback className="text-[10px]">
+                          {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>@{clip.profile_handle || 'Unknown'}</span>
+                    </button>
 
                     {/* Stats and Actions */}
                     <div className="flex items-center justify-between">

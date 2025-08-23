@@ -52,21 +52,16 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     setIsCreating(true);
 
     try {
-      // Use current time as endTime and calculate startTime
-      const now = Date.now();
-      const endTime = now;
-      const startTime = Math.max(0, endTime - (selectedDuration * 1000));
-
-      console.log(`Creating ${selectedDuration}s clip from ${startTime}ms to ${endTime}ms`);
-
+      // For live streams, we clip from the current live edge going backwards
+      // Livepeer expects the clip to be from the last X seconds of the stream
       const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
+
+      console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
 
       // 1. Create clip via our app backend
       const clipResponse = await supabase.functions.invoke('livepeer-create-clip', {
         body: {
           playbackId: livepeerPlaybackId,
-          startTime,
-          endTime,
           seconds: selectedDuration
         }
       });
@@ -105,8 +100,8 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         .insert({
           title: clipTitle,
           user_id: identity.id,
-          start_seconds: Math.floor(startTime / 1000),
-          end_seconds: Math.floor(endTime / 1000),
+          start_seconds: 0,  // For live stream clips, start from 0
+          end_seconds: selectedDuration,  // Duration in seconds
           download_url: watermarkedUrl,
           playback_id: livepeerPlaybackId
         })
@@ -128,7 +123,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       setShowPreview(true);
       
       // Invalidate clips queries to refresh the clips page
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
+      queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
       
       toast({
         title: "Clip created!",
