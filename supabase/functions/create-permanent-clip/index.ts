@@ -55,19 +55,8 @@ serve(async (req) => {
         );
       }
 
-      // Start background processing
-      const processClipBackground = async () => {
-        try {
-          await processClip(supabaseClient, playbackId, seconds, clipTitle, userId, streamTitle, placeholderClip.id);
-        } catch (error) {
-          console.error('Background clip processing failed:', error);
-          // Could update the clip with an error status or delete it
-          await supabaseClient.from('clips').delete().eq('id', placeholderClip.id);
-        }
-      };
-
-      // Use EdgeRuntime.waitUntil to run background task
-      EdgeRuntime.waitUntil(processClipBackground());
+      // Start background processing without EdgeRuntime.waitUntil
+      processClipBackground(supabaseClient, playbackId, seconds, clipTitle, userId, streamTitle, placeholderClip.id);
 
       return new Response(
         JSON.stringify({
@@ -95,6 +84,17 @@ serve(async (req) => {
     );
   }
 });
+
+// Background processing function
+async function processClipBackground(supabaseClient: any, playbackId: string, seconds: number, clipTitle: string, userId: string, streamTitle: string, existingClipId: string) {
+  try {
+    await processClip(supabaseClient, playbackId, seconds, clipTitle, userId, streamTitle, existingClipId);
+  } catch (error) {
+    console.error('Background clip processing failed:', error);
+    // Delete the placeholder clip on failure
+    await supabaseClient.from('clips').delete().eq('id', existingClipId);
+  }
+}
 
 async function processClip(supabaseClient: any, playbackId: string, seconds: number, clipTitle: string, userId: string, streamTitle: string, existingClipId?: string) {
   console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`);
