@@ -74,7 +74,7 @@ serve(async (req) => {
         const now = Date.now();
         const lastSeenTime = livepeerStream.lastSeen || 0;
         const timeSinceLastSeen = now - lastSeenTime;
-        const maxIdleTime = 30 * 1000; // 30 seconds in milliseconds - more strict detection
+        const maxIdleTime = 90 * 1000; // 90 seconds in milliseconds - more lenient for live streams
         
         // Stream is live if it's active and has been seen recently
         const isActuallyLive = livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime;

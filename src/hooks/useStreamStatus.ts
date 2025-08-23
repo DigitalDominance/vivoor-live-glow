@@ -158,15 +158,15 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
     // Fetch initial stream status
     fetchInitialStatus();
     
-    // Start polling Livepeer status every 30 seconds (reduced frequency to prevent glitching)
+    // Start polling Livepeer status every 60 seconds (less frequent to prevent glitching)
     const statusInterval = setInterval(() => {
       checkLivepeerStatus();
-    }, 30000);
+    }, 60000);
     
     // Check immediately but delayed to avoid conflicts
     const initialCheck = setTimeout(() => {
       checkLivepeerStatus();
-    }, 2000);
+    }, 5000);
     
     // Set up viewer heartbeat every 45 seconds
     heartbeatInterval.current = setInterval(() => {
