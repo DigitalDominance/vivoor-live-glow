@@ -112,7 +112,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           </div>
           
           {/* Floating KAS symbols animation */}
-          <div className="absolute -top-2 -left-2 pointer-events-none">
+          <div className="absolute top-1 left-1 pointer-events-none">
             {[...Array(3)].map((_, i) => (
               <motion.div
                 key={i}
