@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { useQuery } from "@tanstack/react-query";
 import { Settings, Play, Eye, Heart, ExternalLink } from "lucide-react";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
@@ -228,6 +229,8 @@ const Channel: React.FC = () => {
 // Component to fetch and display user's streams
 const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile: any }> = ({ userId, isOwnChannel, profile }) => {
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const streamsPerPage = 6;
   
   const { data: streams = [], isLoading } = useQuery({
     queryKey: ['user-streams', userId],
@@ -242,11 +245,10 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
           viewers,
           thumbnail_url,
           created_at,
-          playback_url
+          playbook_url
         `)
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching streams:', error);
@@ -257,6 +259,12 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
     },
     enabled: !!userId
   });
+
+  const totalPages = Math.ceil(streams.length / streamsPerPage);
+  const paginatedStreams = streams.slice(
+    (currentPage - 1) * streamsPerPage,
+    currentPage * streamsPerPage
+  );
 
   if (isLoading) {
     return (
@@ -301,7 +309,7 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
         {isOwnChannel ? 'Your Streams' : 'Recent Streams'}
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {streams.map((stream: any) => (
+        {paginatedStreams.map((stream: any) => (
           <StreamCard
             key={stream.id}
             stream={{
@@ -319,6 +327,51 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
           />
         ))}
       </div>
+      
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setCurrentPage(currentPage - 1);
+                  }}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage(page);
+                    }}
+                    isActive={currentPage === page}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                  }}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 };
@@ -326,6 +379,8 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
 // Component to fetch and display user's clips
 const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: any }> = ({ userId, isOwnChannel, profile }) => {
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const clipsPerPage = 8;
   
   const { data: clips = [], isLoading } = useQuery({
     queryKey: ['user-clips', userId],
@@ -343,8 +398,7 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
           views
         `)
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(12);
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching clips:', error);
@@ -355,6 +409,12 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
     },
     enabled: !!userId
   });
+
+  const totalPages = Math.ceil(clips.length / clipsPerPage);
+  const paginatedClips = clips.slice(
+    (currentPage - 1) * clipsPerPage,
+    currentPage * clipsPerPage
+  );
 
   const handleClipClick = async (clipId: string) => {
     // Increment view count
@@ -410,7 +470,7 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
         >
-          {clips.map((clip, index) => (
+          {paginatedClips.map((clip, index) => (
             <motion.div
               key={clip.id}
               initial={{ opacity: 0, y: 20 }}
@@ -505,6 +565,51 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
             </motion.div>
           ))}
         </motion.div>
+      )}
+      
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) setCurrentPage(currentPage - 1);
+                  }}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage(page);
+                    }}
+                    isActive={currentPage === page}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                  }}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
     </div>
   );
