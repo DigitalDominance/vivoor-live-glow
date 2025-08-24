@@ -18,57 +18,21 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
       for (const tip of newTips) {
         console.log('Processing tip:', tip);
         
-        // First, try to get the tip with sender/recipient addresses from database
+        // Get the tip data from database to access the stored sender info
         const { data: tipData, error: tipError } = await supabase
           .from('tips')
-          .select('sender_address, decrypted_message')
+          .select('sender_name, sender_avatar, tip_message')
           .eq('id', tip.id)
           .single();
 
         console.log('Tip data from DB:', tipData);
 
-        let profile = null;
-        let senderName = tip.sender;
-        let tipMessage = tip.message;
-
-        if (tipData?.sender_address) {
-          // Look up profile by sender's kaspa address
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('display_name, handle, avatar_url')
-            .eq('kaspa_address', tipData.sender_address)
-            .single();
-
-          console.log('Profile lookup result:', { profileData, profileError, senderAddress: tipData.sender_address });
-          profile = profileData;
-        }
-
-        // Parse decrypted message for additional details
-        if (tipData?.decrypted_message) {
-          try {
-            const decrypted = typeof tipData.decrypted_message === 'string' 
-              ? JSON.parse(tipData.decrypted_message) 
-              : tipData.decrypted_message;
-            
-            console.log('Decrypted message:', decrypted);
-            
-            if (decrypted?.sender) {
-              senderName = decrypted.sender;
-            }
-            if (decrypted?.message) {
-              tipMessage = decrypted.message;
-            }
-          } catch (e) {
-            console.error('Error parsing decrypted message:', e);
-          }
-        }
-
         const notification: TipNotificationData = {
           id: tip.id,
           amount: tip.amount,
-          sender: profile?.display_name || profile?.handle || senderName || 'Anonymous',
-          message: tipMessage && tipMessage.length > 0 && !tipMessage.startsWith('VIVR-TIP1:') ? tipMessage : undefined,
-          senderAvatar: profile?.avatar_url
+          sender: tipData?.sender_name || tip.sender || 'Anonymous',
+          message: tipData?.tip_message && tipData.tip_message.length > 0 ? tipData.tip_message : undefined,
+          senderAvatar: tipData?.sender_avatar
         };
 
         console.log('Created notification:', notification);

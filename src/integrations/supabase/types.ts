@@ -303,7 +303,10 @@ export type Database = {
           processed_at: string | null
           recipient_address: string
           sender_address: string
+          sender_avatar: string | null
+          sender_name: string | null
           stream_id: string
+          tip_message: string | null
           txid: string
         }
         Insert: {
@@ -316,7 +319,10 @@ export type Database = {
           processed_at?: string | null
           recipient_address: string
           sender_address: string
+          sender_avatar?: string | null
+          sender_name?: string | null
           stream_id: string
+          tip_message?: string | null
           txid: string
         }
         Update: {
@@ -329,7 +335,10 @@ export type Database = {
           processed_at?: string | null
           recipient_address?: string
           sender_address?: string
+          sender_avatar?: string | null
+          sender_name?: string | null
           stream_id?: string
+          tip_message?: string | null
           txid?: string
         }
         Relationships: [

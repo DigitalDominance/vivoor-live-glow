@@ -755,6 +755,7 @@ const Watch = () => {
         toAddress={streamerKaspaAddress}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
         streamId={streamData?.id}
+        senderProfile={profile}
       />
       
       

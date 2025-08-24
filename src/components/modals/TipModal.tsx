@@ -14,7 +14,12 @@ const TipModal: React.FC<{
   toAddress?: string | null; // Streamer's Kaspa address (not displayed)
   senderHandle?: string; // Sender's handle for encryption
   streamId?: string; // Stream ID for verification
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId }) => {
+  senderProfile?: {
+    display_name?: string;
+    handle?: string;
+    avatar_url?: string;
+  } | null;
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -99,7 +104,10 @@ const TipModal: React.FC<{
               streamId,
               expectedAmount: sompi,
               recipientAddress: toAddress,
-              senderAddress: senderHandle || 'Anonymous'
+              senderAddress: senderHandle || 'Anonymous',
+              senderName: senderProfile?.display_name || senderProfile?.handle || senderHandle || 'Anonymous',
+              senderAvatar: senderProfile?.avatar_url,
+              tipMessage: message || "Thanks for the stream!"
             })
           });
           

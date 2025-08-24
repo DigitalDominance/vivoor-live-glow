@@ -12,6 +12,9 @@ interface TipVerificationRequest {
   expectedAmount: number; // in sompi
   recipientAddress: string;
   senderAddress?: string;
+  senderName?: string;
+  senderAvatar?: string;
+  tipMessage?: string;
 }
 
 interface KaspaTx {
@@ -45,7 +48,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { txid, streamId, expectedAmount, recipientAddress, senderAddress }: TipVerificationRequest = await req.json()
+    const { 
+      txid, 
+      streamId, 
+      expectedAmount, 
+      recipientAddress, 
+      senderAddress,
+      senderName,
+      senderAvatar,
+      tipMessage
+    }: TipVerificationRequest = await req.json()
 
     console.log('Verifying tip transaction:', { 
       txid: typeof txid === 'string' ? txid : 'INVALID_TYPE',
@@ -186,7 +198,10 @@ serve(async (req) => {
         encrypted_message: encryptedMessage,
         decrypted_message: decryptedMessage,
         block_time: tx.accepting_block_blue_score,
-        processed_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
+        sender_name: senderName || 'Anonymous',
+        sender_avatar: senderAvatar,
+        tip_message: tipMessage || 'Thanks for the stream!'
       })
       .select()
       .single()
