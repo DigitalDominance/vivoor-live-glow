@@ -139,13 +139,13 @@ const Watch = () => {
   const { data: streamerKaspaAddress } = useQuery({
     queryKey: ['tip-address', streamId],
     queryFn: async () => {
-      if (!streamId || !identity?.id) return null;
+      if (!streamId) return null;
       const { data } = await supabase.rpc('get_tip_address', { 
         stream_id: streamId 
       });
       return data;
     },
-    enabled: !!streamId && !!identity?.id
+    enabled: !!streamId
   });
 
   // Fetch suggested streams
