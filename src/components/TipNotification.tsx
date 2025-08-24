@@ -64,7 +64,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <Avatar className="w-8 h-8 ring-2 ring-brand-cyan/30">
+                    <Avatar className="w-6 h-6 ring-1 ring-brand-cyan/30">
                       <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                       <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                         {tip.sender.slice(0, 1).toUpperCase()}
@@ -94,7 +94,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                       transition={{ delay: 0.4, duration: 0.3 }}
                       className="text-white/90 text-sm line-clamp-2 bg-white/5 rounded-lg p-2 border border-white/10"
                     >
-                      "{tip.message}"
+                      {tip.message}
                     </motion.p>
                   )}
                 </div>

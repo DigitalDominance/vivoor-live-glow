@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import TipNotification, { TipNotificationData } from './TipNotification';
 import { ProcessedTip } from '@/hooks/useTipMonitoring';
 import { supabase } from '@/integrations/supabase/client';
+import { blurBadWords } from '@/lib/badWords';
 
 interface TipDisplayProps {
   newTips: ProcessedTip[];
@@ -11,6 +12,7 @@ interface TipDisplayProps {
 
 const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false }) => {
   const [activeTips, setActiveTips] = useState<TipNotificationData[]>([]);
+  const MAX_TIPS = 3; // Maximum 3 tips displayed at once
 
   // Process new tips into notifications with profile resolution
   React.useEffect(() => {
@@ -50,7 +52,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
           id: tip.id,
           amount: tip.amount,
           sender: finalSenderName,
-          message: tipData?.tip_message && tipData.tip_message.length > 0 ? tipData.tip_message : undefined,
+          message: tipData?.tip_message && tipData.tip_message.length > 0 ? blurBadWords(tipData.tip_message) : undefined,
           senderAvatar: finalSenderAvatar
         };
 
@@ -61,7 +63,9 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
           if (prev.some(t => t.id === notification.id)) {
             return prev;
           }
-          return [...prev, notification];
+          // Maintain max 3 tips by removing oldest if necessary
+          const updatedTips = [...prev, notification];
+          return updatedTips.slice(-MAX_TIPS);
         });
 
         // Mark as shown
@@ -80,7 +84,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
 
   return (
     <div className="absolute top-4 right-4 z-[100] space-y-2 pointer-events-none">
-      {activeTips.map(tip => (
+      {activeTips.slice(-MAX_TIPS).map(tip => (
         <TipNotification
           key={tip.id}
           tip={tip}

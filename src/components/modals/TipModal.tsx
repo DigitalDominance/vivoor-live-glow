@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import KasLogo from "@/components/KasLogo";
 import { toast } from "sonner";
 import { encryptTipMessage } from "@/lib/crypto";
+import { containsBadWords, cleanText } from "@/lib/badWords";
 
 const TipModal: React.FC<{
   open: boolean;
@@ -31,6 +32,12 @@ const TipModal: React.FC<{
     }
     if (!streamId) {
       toast.error("Stream not found - Cannot process tip.");
+      return;
+    }
+
+    // Validate tip message for bad words
+    if (message && containsBadWords(message)) {
+      toast.error("Tip message contains inappropriate language. Please revise your message.");
       return;
     }
     
@@ -107,7 +114,7 @@ const TipModal: React.FC<{
               senderAddress: senderHandle || 'Anonymous',
               senderName: senderProfile?.display_name || senderProfile?.handle || senderHandle || 'Anonymous',
               senderAvatar: senderProfile?.avatar_url,
-              tipMessage: message || "Thanks for the stream!"
+              tipMessage: cleanText(message || "Thanks for the stream!") // Clean the message before storing
             })
           });
           

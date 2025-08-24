@@ -220,27 +220,29 @@ const Watch = () => {
       }));
   }, [wsMessages]);
 
+  const [watchStartTime, setWatchStartTime] = React.useState<number>(Date.now());
+  
   // Monitor tips for this stream using real-time Supabase
-  const { tips: allTips, totalAmountReceived, isConnected } = useRealtimeTips({
+  const { tips: allTips, totalAmountReceived, isConnected: tipConnected } = useRealtimeTips({
     streamId: streamData?.id,
     onNewTip: (tip) => {
-      if (!shownTipIds.has(tip.id)) {
+      // Only show tips that occurred after the user started watching
+      if (tip.timestamp >= watchStartTime) {
         setNewTips(prev => [...prev, tip]);
       }
     }
   });
 
-  // Process existing tips that haven't been shown yet and poll for new ones
+  // Show previous tips when user first arrives, then only new ones
   React.useEffect(() => {
-    if (allTips.length > 0) {
-      const unshownTips = allTips.filter(tip => !shownTipIds.has(tip.id));
-      if (unshownTips.length > 0) {
-        setNewTips(prev => {
-          const existingIds = new Set(prev.map(t => t.id));
-          const newTipsToAdd = unshownTips.filter(tip => !existingIds.has(tip.id));
-          return [...prev, ...newTipsToAdd];
-        });
-      }
+    if (allTips.length > 0 && shownTipIds.size === 0) {
+      // First time loading - show recent tips from before they started watching
+      const recentTips = allTips.slice(-3); // Show last 3 tips
+      setNewTips(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newTipsToAdd = recentTips.filter(tip => !existingIds.has(tip.id));
+        return [...prev, ...newTipsToAdd];
+      });
     }
   }, [allTips, shownTipIds]);
 
@@ -254,8 +256,9 @@ const Watch = () => {
           .from('tips')
           .select('*')
           .eq('stream_id', streamData.id)
+          .gte('created_at', new Date(watchStartTime).toISOString())
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(5);
 
         if (error) {
           console.error('Error fetching recent tips:', error);
@@ -268,12 +271,17 @@ const Watch = () => {
             amount: Math.round(tip.amount_sompi / 100000000),
             sender: tip.sender_name || 'Anonymous',
             message: tip.tip_message,
-            timestamp: Date.now(),
-            txid: tip.txid
+            timestamp: new Date(tip.created_at).getTime(),
+            txid: tip.txid,
+            created_at: tip.created_at // Keep original created_at for filtering
           }));
 
-          // Add any new tips that aren't already shown
-          const newUnshownTips = processedTips.filter(tip => !shownTipIds.has(tip.id));
+          // Add any new tips that aren't already shown and occurred after watch start
+          const newUnshownTips = processedTips.filter(tip => 
+            !shownTipIds.has(tip.id) && 
+            new Date(tip.created_at).getTime() >= watchStartTime
+          );
+          
           if (newUnshownTips.length > 0) {
             setNewTips(prev => {
               const existingIds = new Set(prev.map(t => t.id));
@@ -288,7 +296,7 @@ const Watch = () => {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-  }, [streamData?.id, shownTipIds]);
+  }, [streamData?.id, shownTipIds, watchStartTime]);
 
   // Use new stream status tracking
   const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
