@@ -80,11 +80,11 @@ const TipModal: React.FC<{
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
       
-      // Now verify the transaction with our backend (with retry logic)
-      const maxRetries = 3;
-      const retryDelay = 2000; // 2 seconds
+      // Now verify the transaction with our backend (with progressive retry logic)
+      const maxRetries = 5;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const retryDelay = attempt * 1000; // Progressive delay: 1s, 2s, 3s, 4s, 5s
         try {
           console.log(`Tip verification attempt ${attempt}/${maxRetries} for txid:`, txid);
           
@@ -112,8 +112,8 @@ const TipModal: React.FC<{
             if (attempt === maxRetries) {
               toast.error(`Tip verification failed: ${result.error}`);
             } else {
-              console.log(`Verification failed on attempt ${attempt}, retrying in ${retryDelay}ms...`);
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              console.log(`Verification failed on attempt ${attempt}, retrying in ${attempt * 1000}ms...`);
+              await new Promise(resolve => setTimeout(resolve, attempt * 1000));
             }
           }
         } catch (verificationError) {
@@ -121,8 +121,8 @@ const TipModal: React.FC<{
           if (attempt === maxRetries) {
             toast.warning('Tip sent but verification failed - it may take a moment to appear.');
           } else {
-            console.log(`Verification error on attempt ${attempt}, retrying in ${retryDelay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            console.log(`Verification error on attempt ${attempt}, retrying in ${attempt * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
           }
         }
       }
