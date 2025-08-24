@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import TipNotification, { TipNotificationData } from './TipNotification';
 import { ProcessedTip } from '@/hooks/useTipMonitoring';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TipDisplayProps {
   newTips: ProcessedTip[];
@@ -13,26 +14,39 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
 
   // Process new tips into notifications
   React.useEffect(() => {
-    newTips.forEach(tip => {
-      const notification: TipNotificationData = {
-        id: tip.id,
-        amount: tip.amount,
-        sender: tip.sender,
-        message: tip.message,
-        senderAvatar: undefined // Could be fetched from profiles table
-      };
+    const processNewTips = async () => {
+      for (const tip of newTips) {
+        // Fetch sender profile info
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, handle, avatar_url')
+          .eq('kaspa_address', tip.sender)
+          .single();
 
-      setActiveTips(prev => {
-        // Check if this tip is already being shown
-        if (prev.some(t => t.id === notification.id)) {
-          return prev;
-        }
-        return [...prev, notification];
-      });
+        const notification: TipNotificationData = {
+          id: tip.id,
+          amount: tip.amount,
+          sender: profile?.display_name || profile?.handle || tip.sender.slice(0, 8),
+          message: tip.message,
+          senderAvatar: profile?.avatar_url
+        };
 
-      // Mark as shown
-      onTipShown(tip.id);
-    });
+        setActiveTips(prev => {
+          // Check if this tip is already being shown
+          if (prev.some(t => t.id === notification.id)) {
+            return prev;
+          }
+          return [...prev, notification];
+        });
+
+        // Mark as shown
+        onTipShown(tip.id);
+      }
+    };
+
+    if (newTips.length > 0) {
+      processNewTips();
+    }
   }, [newTips, onTipShown]);
 
   const handleTipComplete = (tipId: string) => {
@@ -40,13 +54,13 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
   };
 
   return (
-    <div className={`${isFullscreen ? 'fixed top-4 right-4' : 'absolute top-4 right-4'} z-[10001] space-y-2 pointer-events-none`}>
+    <div className="absolute top-4 right-4 z-[100] space-y-2 pointer-events-none">
       {activeTips.map(tip => (
         <TipNotification
           key={tip.id}
           tip={tip}
           onComplete={() => handleTipComplete(tip.id)}
-          duration={5000}
+          duration={15000}
           isFullscreen={isFullscreen}
         />
       ))}

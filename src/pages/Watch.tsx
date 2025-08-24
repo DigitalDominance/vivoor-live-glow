@@ -609,6 +609,9 @@ const Watch = () => {
                   </div>
                 </div>
               )}
+
+              {/* Tip notifications positioned within player */}
+              <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} />
             </div>
           </div>
 
@@ -754,10 +757,7 @@ const Watch = () => {
         streamId={streamData?.id}
       />
       
-      {/* Tip notifications overlay - positioned over video player */}
-      <div className={`fixed z-[10000] pointer-events-none ${isFullscreen ? 'inset-0' : 'inset-0'}`}>
-        <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} />
-      </div>
+      
       
       {/* Clip Creator Modal */}
       {livepeerIsLive && streamData?.playback_url && (
