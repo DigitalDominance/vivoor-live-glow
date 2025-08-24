@@ -69,7 +69,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                     {tip.sender.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-white font-bold text-2xl truncate -mt-4">
+                <span className="text-white font-bold text-2xl truncate -mt-8">
                   {tip.sender}
                 </span>
               </div>
@@ -84,7 +84,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent text-4xl font-bold">
                   {tip.amount}
                 </span>
-                <img src="/kaspalogo.webp" alt="KAS" className="w-10 h-10" />
+                <KaspaIcon size={40} />
               </motion.div>
               
               {/* Row 3: Message with proper text wrapping */}
