@@ -188,6 +188,10 @@ const ClipPage: React.FC = () => {
                     className="w-full h-full object-contain rounded-lg"
                     poster={clip.thumbnail_url}
                     preload="metadata"
+                    onLoadedMetadata={(e) => {
+                      // Load first frame on metadata load
+                      e.currentTarget.currentTime = 0.1;
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
