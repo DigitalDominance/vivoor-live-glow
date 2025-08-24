@@ -658,7 +658,15 @@ const Watch = () => {
                 <Button
                   variant="gradientOutline"
                   size="sm"
-                  onClick={() => setTipOpen(true)}
+                  onClick={() => {
+                    console.log('Tip button values:', { 
+                      identity: !!identity, 
+                      streamerKaspaAddress, 
+                      livepeerIsLive,
+                      disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
+                    });
+                    setTipOpen(true);
+                  }}
                   disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
                   className="flex-1 sm:flex-none"
                 >
