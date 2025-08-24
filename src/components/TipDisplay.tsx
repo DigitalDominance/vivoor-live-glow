@@ -12,7 +12,7 @@ interface TipDisplayProps {
 const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false }) => {
   const [activeTips, setActiveTips] = useState<TipNotificationData[]>([]);
 
-  // Process new tips into notifications
+  // Process new tips into notifications with profile resolution
   React.useEffect(() => {
     const processNewTips = async () => {
       for (const tip of newTips) {
@@ -21,18 +21,37 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
         // Get the tip data from database to access the stored sender info
         const { data: tipData, error: tipError } = await supabase
           .from('tips')
-          .select('sender_name, sender_avatar, tip_message')
+          .select('sender_name, sender_avatar, tip_message, sender_address')
           .eq('id', tip.id)
           .single();
 
         console.log('Tip data from DB:', tipData);
 
+        let finalSenderName = tipData?.sender_name || 'Anonymous';
+        let finalSenderAvatar = tipData?.sender_avatar;
+
+        // If we don't have stored sender info, try to resolve from wallet address
+        if (!tipData?.sender_name && tipData?.sender_address) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('display_name, handle, avatar_url')
+            .eq('kaspa_address', tipData.sender_address)
+            .single();
+
+          console.log('Profile lookup result:', { profile, profileError, senderAddress: tipData.sender_address });
+          
+          if (profile) {
+            finalSenderName = profile.display_name || profile.handle || 'Anonymous';
+            finalSenderAvatar = profile.avatar_url;
+          }
+        }
+
         const notification: TipNotificationData = {
           id: tip.id,
           amount: tip.amount,
-          sender: tipData?.sender_name || tip.sender || 'Anonymous',
+          sender: finalSenderName,
           message: tipData?.tip_message && tipData.tip_message.length > 0 ? tipData.tip_message : undefined,
-          senderAvatar: tipData?.sender_avatar
+          senderAvatar: finalSenderAvatar
         };
 
         console.log('Created notification:', notification);

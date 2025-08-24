@@ -230,7 +230,7 @@ const Watch = () => {
     }
   });
 
-  // Process existing tips that haven't been shown yet
+  // Process existing tips that haven't been shown yet and poll for new ones
   React.useEffect(() => {
     if (allTips.length > 0) {
       const unshownTips = allTips.filter(tip => !shownTipIds.has(tip.id));
@@ -243,6 +243,52 @@ const Watch = () => {
       }
     }
   }, [allTips, shownTipIds]);
+
+  // Set up periodic tip fetching every 5 seconds
+  React.useEffect(() => {
+    if (!streamData?.id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data: recentTips, error } = await supabase
+          .from('tips')
+          .select('*')
+          .eq('stream_id', streamData.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) {
+          console.error('Error fetching recent tips:', error);
+          return;
+        }
+
+        if (recentTips) {
+          const processedTips = recentTips.map(tip => ({
+            id: tip.id,
+            amount: Math.round(tip.amount_sompi / 100000000),
+            sender: tip.sender_name || 'Anonymous',
+            message: tip.tip_message,
+            timestamp: Date.now(),
+            txid: tip.txid
+          }));
+
+          // Add any new tips that aren't already shown
+          const newUnshownTips = processedTips.filter(tip => !shownTipIds.has(tip.id));
+          if (newUnshownTips.length > 0) {
+            setNewTips(prev => {
+              const existingIds = new Set(prev.map(t => t.id));
+              const newTipsToAdd = newUnshownTips.filter(tip => !existingIds.has(tip.id));
+              return [...prev, ...newTipsToAdd];
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error in tip polling:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [streamData?.id, shownTipIds]);
 
   // Use new stream status tracking
   const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
@@ -753,9 +799,9 @@ const Watch = () => {
         isLoggedIn={!!identity} 
         onRequireLogin={onRequireLogin} 
         toAddress={streamerKaspaAddress}
-        senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
+        senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)} 
         streamId={streamData?.id}
-        senderProfile={profile}
+        senderProfile={currentUserProfile}
       />
       
       

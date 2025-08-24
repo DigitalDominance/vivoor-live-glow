@@ -25,6 +25,13 @@ interface KaspaTx {
   payload?: string;
   inputs: Array<{
     signature_script?: string | null;
+    utxo?: {
+      address: string;
+      amount: string;
+      script_public_key: string;
+      block_daa_score: string;
+      is_coinbase: boolean;
+    };
   }>;
   outputs: Array<{
     transaction_id: string;
@@ -186,12 +193,12 @@ serve(async (req) => {
       }
     }
 
-    // Store verified tip in database
+    // Store verified tip in database with full sender address
     const { data: newTip, error: insertError } = await supabaseClient
       .from('tips')
       .insert({
         stream_id: streamId,
-        sender_address: senderAddress || 'unknown',
+        sender_address: tx.inputs[0]?.utxo?.address || senderAddress || 'unknown', // Use actual sender from transaction inputs
         recipient_address: recipientAddress,
         amount_sompi: outputToRecipient.amount,
         txid: cleanTxid,

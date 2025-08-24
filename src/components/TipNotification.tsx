@@ -50,59 +50,64 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
           className="relative max-w-sm pointer-events-auto"
         >
-          <div className="bg-gradient-to-r from-green-500/90 to-emerald-600/90 backdrop-blur-md rounded-xl p-4 shadow-2xl border border-green-400/20">
-            {/* Close button */}
-            <button
-              onClick={handleDismiss}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors pointer-events-auto"
-            >
-              <X size={14} className="text-white" />
-            </button>
+          {/* Glass container with gradient outline */}
+          <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+            <div className="bg-black/90 backdrop-blur-md rounded-[10px] p-4 shadow-2xl">
+              {/* Close button */}
+              <button
+                onClick={handleDismiss}
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors pointer-events-auto z-10"
+              >
+                <X size={14} className="text-white" />
+              </button>
 
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
-                    <AvatarFallback className="text-xs bg-white/20 text-white">
-                      {tip.sender.slice(0, 1).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-white font-medium text-sm">
-                    {tip.sender}
-                  </span>
-                </div>
-                
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 0.3 }}
-                  className="flex items-center gap-2 text-white font-bold text-lg mb-2"
-                >
-                  <span>{tip.amount}</span>
-                  <KaspaIcon size={20} />
-                </motion.div>
-                
-                {tip.message && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.3 }}
-                    className="text-white/90 text-sm line-clamp-2"
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Avatar className="w-8 h-8 ring-2 ring-brand-cyan/30">
+                      <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
+                      <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
+                        {tip.sender.slice(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-white font-medium text-sm">
+                      {tip.sender}
+                    </span>
+                  </div>
+                  
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.3 }}
+                    className="flex items-center gap-2 text-white font-bold text-lg mb-2"
                   >
-                    "{tip.message}"
-                  </motion.p>
-                )}
+                    <span className="bg-gradient-to-r from-brand-cyan to-brand-iris bg-clip-text text-transparent">
+                      {tip.amount}
+                    </span>
+                    <KaspaIcon size={20} />
+                  </motion.div>
+                  
+                  {tip.message && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4, duration: 0.3 }}
+                      className="text-white/90 text-sm line-clamp-2 bg-white/5 rounded-lg p-2 border border-white/10"
+                    >
+                      "{tip.message}"
+                    </motion.p>
+                  )}
+                </div>
               </div>
+              
+              {/* Animated progress bar with gradient */}
+              <motion.div
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: duration / 1000, ease: "linear" }}
+                className="h-1 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink rounded-full mt-3"
+              />
             </div>
-            
-            {/* Animated progress bar */}
-            <motion.div
-              initial={{ width: "100%" }}
-              animate={{ width: "0%" }}
-              transition={{ duration: duration / 1000, ease: "linear" }}
-              className="h-1 bg-white/30 rounded-full mt-3"
-            />
           </div>
           
           {/* Floating KAS symbols animation */}
@@ -124,7 +129,9 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 }}
                 className="absolute"
               >
-                <KaspaIcon size={16} />
+                <div className="w-4 h-4 bg-gradient-to-r from-brand-cyan to-brand-iris rounded-full flex items-center justify-center">
+                  <KaspaIcon size={12} />
+                </div>
               </motion.div>
             ))}
           </div>
