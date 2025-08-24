@@ -27,7 +27,7 @@ async function fetchKaspaTransaction(txid: string, maxRetries = 5): Promise<any>
     try {
       console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}): ${txid}`);
       
-      const response = await fetch(`${KASPA_API_BASE}/transactions/${txid}`, {
+      const response = await fetch(`https://api.kaspa.org/transactions/${txid}?inputs=true&outputs=true&resolve_previous_outpoints=no`, {
         headers: { 'Accept': 'application/json' }
       });
       
@@ -37,7 +37,9 @@ async function fetchKaspaTransaction(txid: string, maxRetries = 5): Promise<any>
           await new Promise(resolve => setTimeout(resolve, 2000));
           continue;
         }
-        throw new Error(`Kaspa API error: ${response.status} ${await response.text()}`);
+        const errorText = await response.text();
+        console.error(`Kaspa API error (attempt ${attempt}):`, response.status, errorText);
+        throw new Error(`Kaspa API error: ${response.status} ${errorText}`);
       }
       
       const data = await response.json();
@@ -77,7 +79,7 @@ serve(async (req) => {
 
     const { userAddress, paymentType, txid, startTime }: PaymentRequest = await req.json();
     
-    console.log('Verifying payment:', { userAddress, paymentType, txid, startTime });
+    console.log('Verifying payment:', { userAddress, paymentType, txid: typeof txid === 'string' ? txid.slice(0, 20) + '...' : typeof txid, startTime });
 
     // Validate payment type and amount
     const expectedPayment = PAYMENT_AMOUNTS[paymentType];
@@ -88,11 +90,44 @@ serve(async (req) => {
       );
     }
 
+    // Extract transaction ID if txid is passed as a JSON object
+    let cleanTxid: string;
+    if (typeof txid === 'string') {
+      try {
+        // Try to parse as JSON first (in case it's the full transaction object)
+        const parsed = JSON.parse(txid);
+        if (parsed.id) {
+          cleanTxid = parsed.id;
+        } else if (parsed.transaction_id) {
+          cleanTxid = parsed.transaction_id;
+        } else {
+          cleanTxid = txid.trim();
+        }
+      } catch {
+        // Not JSON, treat as plain txid
+        cleanTxid = txid.trim();
+      }
+    } else {
+      return new Response(
+        JSON.stringify({ error: 'Transaction ID must be a string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate txid format
+    if (!/^[a-f0-9]{64}$/i.test(cleanTxid)) {
+      console.error('Invalid txid format:', cleanTxid, 'Length:', cleanTxid.length);
+      return new Response(
+        JSON.stringify({ error: 'Invalid transaction ID format - must be 64 character hex string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if transaction already verified
     const { data: existingVerification } = await supabase
       .from('payment_verifications')
       .select('id')
-      .eq('txid', txid)
+      .eq('txid', cleanTxid)
       .single();
 
     if (existingVerification) {
@@ -103,22 +138,42 @@ serve(async (req) => {
     }
 
     // Fetch and verify transaction from Kaspa network
-    const transaction = await fetchKaspaTransaction(txid);
+    const transaction = await fetchKaspaTransaction(cleanTxid);
     
-    // Check transaction timing
-    if (transaction.block_time < startTime) {
+    // Verify transaction is accepted (if this field exists)
+    if (transaction.is_accepted !== undefined && !transaction.is_accepted) {
+      return new Response(
+        JSON.stringify({ error: 'Transaction not yet accepted by the network' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check transaction timing - use accepting_block_blue_score or block_time
+    const transactionTime = transaction.accepting_block_blue_score || transaction.block_time;
+    if (transactionTime && transactionTime < startTime) {
       return new Response(
         JSON.stringify({ error: 'Transaction is too old' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify payment amount
+    // Verify payment amount to treasury address
     const amountSent = sumOutputsToAddress(transaction, TREASURY_ADDRESS);
     if (amountSent < expectedPayment.sompi) {
       return new Response(
         JSON.stringify({ 
           error: `Insufficient payment. Expected ${expectedPayment.kas} KAS, received ${amountSent / 100000000} KAS` 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify transaction came from the user's address
+    const senderAddress = transaction.inputs?.[0]?.utxo?.address;
+    if (senderAddress !== userAddress) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Transaction must be sent from your wallet address. Expected: ${userAddress}, Found: ${senderAddress}` 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -140,8 +195,8 @@ serve(async (req) => {
         payment_type: paymentType,
         amount_sompi: amountSent,
         amount_kas: amountSent / 100000000,
-        txid: txid,
-        block_time: transaction.block_time,
+        txid: cleanTxid,
+        block_time: transactionTime,
         treasury_address: TREASURY_ADDRESS,
         expires_at: expiresAt
       })
