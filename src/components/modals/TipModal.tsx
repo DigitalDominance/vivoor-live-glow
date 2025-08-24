@@ -12,16 +12,15 @@ const TipModal: React.FC<{
   onOpenChange: (v: boolean) => void;
   isLoggedIn: boolean;
   onRequireLogin: () => void;
-  toAddress?: string | null; // Streamer's Kaspa address (not displayed)
-  senderHandle?: string; // Sender's handle for encryption
-  streamId?: string; // Stream ID for verification
+  toAddress?: string | null;
+  senderHandle?: string;
+  streamId?: string;
   senderProfile?: {
     display_name?: string;
     handle?: string;
     avatar_url?: string;
   } | null;
-  triggerElement?: React.ReactNode;
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile, triggerElement }) => {
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -244,21 +243,7 @@ const TipModal: React.FC<{
     </div>
   ));
 
-  // If we have a trigger element, use it for positioning
-  if (triggerElement) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogTrigger asChild>
-          {triggerElement}
-        </DialogTrigger>
-        <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-md">
-          <ModalContent />
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Fallback to centered modal
+  // Always use centered modal for stability
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-md">
