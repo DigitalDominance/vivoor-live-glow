@@ -48,7 +48,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.9 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="relative min-w-[40vw] max-w-lg w-full pointer-events-auto"
+          className="relative w-[30vw] pointer-events-auto"
         >
           {/* Glass container with gradient outline */}
           <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
@@ -62,14 +62,14 @@ const TipNotification: React.FC<TipNotificationProps> = ({
               </button>
 
               {/* Row 1: Profile picture and username */}
-              <div className="flex items-center gap-3 mb-4 ml-8 mt-4">
-                <Avatar className="w-12 h-12 ring-2 ring-brand-cyan/30 flex-shrink-0">
+              <div className="flex items-center gap-2 mb-4 ml-12 mt-6">
+                <Avatar className="w-10 h-10 ring-2 ring-brand-cyan/30 flex-shrink-0">
                   <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
-                  <AvatarFallback className="text-sm bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
+                  <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                     {tip.sender.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-white font-semibold text-base truncate">
+                <span className="text-white font-semibold text-sm truncate">
                   {tip.sender}
                 </span>
               </div>
@@ -84,7 +84,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent text-4xl font-bold">
                   {tip.amount}
                 </span>
-                <img src="/kaslogo.webp" alt="KAS" className="w-10 h-10" />
+                <img src="/lovable-uploads/f63befd5-f736-4b9f-87cd-32f91a28a6ba.png" alt="KAS" className="w-10 h-10" />
               </motion.div>
               
               {/* Row 3: Message with proper text wrapping */}
