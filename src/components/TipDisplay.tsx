@@ -16,20 +16,62 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
   React.useEffect(() => {
     const processNewTips = async () => {
       for (const tip of newTips) {
-        // Fetch sender profile info
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, handle, avatar_url')
-          .eq('kaspa_address', tip.sender)
+        console.log('Processing tip:', tip);
+        
+        // First, try to get the tip with sender/recipient addresses from database
+        const { data: tipData, error: tipError } = await supabase
+          .from('tips')
+          .select('sender_address, decrypted_message')
+          .eq('id', tip.id)
           .single();
+
+        console.log('Tip data from DB:', tipData);
+
+        let profile = null;
+        let senderName = tip.sender;
+        let tipMessage = tip.message;
+
+        if (tipData?.sender_address) {
+          // Look up profile by sender's kaspa address
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('display_name, handle, avatar_url')
+            .eq('kaspa_address', tipData.sender_address)
+            .single();
+
+          console.log('Profile lookup result:', { profileData, profileError, senderAddress: tipData.sender_address });
+          profile = profileData;
+        }
+
+        // Parse decrypted message for additional details
+        if (tipData?.decrypted_message) {
+          try {
+            const decrypted = typeof tipData.decrypted_message === 'string' 
+              ? JSON.parse(tipData.decrypted_message) 
+              : tipData.decrypted_message;
+            
+            console.log('Decrypted message:', decrypted);
+            
+            if (decrypted?.sender) {
+              senderName = decrypted.sender;
+            }
+            if (decrypted?.message) {
+              tipMessage = decrypted.message;
+            }
+          } catch (e) {
+            console.error('Error parsing decrypted message:', e);
+          }
+        }
 
         const notification: TipNotificationData = {
           id: tip.id,
           amount: tip.amount,
-          sender: profile?.display_name || profile?.handle || tip.sender.slice(0, 8),
-          message: tip.message,
+          sender: profile?.display_name || profile?.handle || senderName || 'Anonymous',
+          message: tipMessage && tipMessage.length > 0 && !tipMessage.startsWith('VIVR-TIP1:') ? tipMessage : undefined,
           senderAvatar: profile?.avatar_url
         };
+
+        console.log('Created notification:', notification);
 
         setActiveTips(prev => {
           // Check if this tip is already being shown
