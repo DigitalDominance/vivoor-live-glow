@@ -91,16 +91,6 @@ const MyProfileModal: React.FC<{
                   {error && <div className="text-xs text-[hsl(var(--destructive))] mt-1">{error}</div>}
                 </div>
               </div>
-            <div className="flex items-center gap-6 text-sm">
-              <div>
-                <div className="text-muted-foreground">Total Likes</div>
-                <div className="font-semibold">0</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Total Followers</div>
-                <div className="font-semibold">0</div>
-              </div>
-            </div>
             <div className="flex justify-end gap-2 mt-2">
               <Button variant="hero" onClick={onEditUsername}>Edit username</Button>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>

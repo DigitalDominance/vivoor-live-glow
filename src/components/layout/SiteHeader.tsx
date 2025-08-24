@@ -106,7 +106,7 @@ const SiteHeader = () => {
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem onClick={() => setShowProfileModal(true)} className="cursor-pointer hover:bg-accent/50">
                   <User className="h-4 w-4 mr-2" />
-                  Profile
+                  Edit Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate(`/channel/${profile?.username || identity?.id}`)} className="cursor-pointer hover:bg-accent/50">
                   <Video className="h-4 w-4 mr-2" />
@@ -251,7 +251,7 @@ const SiteHeader = () => {
                           </div>
                           
                           {[
-                            { icon: User, label: "Profile", action: () => setShowProfileModal(true) },
+                            { icon: User, label: "Edit Profile", action: () => setShowProfileModal(true) },
                             { icon: Video, label: "My Channel", action: () => navigate(`/channel/${profile?.username || wallet.identity?.id}`) }
                           ].map((item, index) => (
                             <motion.div
