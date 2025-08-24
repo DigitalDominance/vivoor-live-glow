@@ -153,7 +153,7 @@ const TipModal: React.FC<{
     }
   };
 
-  const ModalContent = () => (
+  const ModalContent = React.memo(() => (
     <div className="relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink border-0 max-w-md rounded-lg">
       <div className="bg-black/95 backdrop-blur-md rounded-lg p-6">
         <DialogHeader>
@@ -242,7 +242,7 @@ const TipModal: React.FC<{
         )}
       </div>
     </div>
-  );
+  ));
 
   // If we have a trigger element, use it for positioning
   if (triggerElement) {

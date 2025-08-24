@@ -724,6 +724,15 @@ const Watch = () => {
                 >
                   {followed ? 'Following' : 'Follow'}
                 </Button>
+                <Button
+                  variant="gradientOutline"
+                  size="sm"
+                  onClick={() => setTipOpen(true)}
+                  disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
+                  className="flex-1 sm:flex-none"
+                >
+                  Tip KAS
+                </Button>
                 <TipModal
                   open={tipOpen}
                   onOpenChange={setTipOpen}
@@ -733,25 +742,6 @@ const Watch = () => {
                   senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)}
                   streamId={streamId}
                   senderProfile={currentUserProfile}
-                  triggerElement={
-                    <Button
-                      variant="gradientOutline"
-                      size="sm"
-                      onClick={() => {
-                        console.log('Tip button values:', { 
-                          identity: !!identity, 
-                          streamerKaspaAddress, 
-                          livepeerIsLive,
-                          disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
-                        });
-                        setTipOpen(true);
-                      }}
-                      disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
-                      className="flex-1 sm:flex-none"
-                    >
-                      Tip KAS
-                    </Button>
-                  }
                 />
               </div>
             </div>
