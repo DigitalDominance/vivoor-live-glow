@@ -666,7 +666,7 @@ const DocsPage = () => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="p-4 border border-brand-iris/20 rounded-lg">
                       <h4 className="font-semibold text-brand-iris mb-2">Monthly Verification</h4>
-                      <p className="text-2xl font-bold text-brand-iris mb-2">10 KAS</p>
+                      <p className="text-2xl font-bold text-brand-iris mb-2">100 KAS</p>
                       <p className="text-sm text-muted-foreground mb-3">Perfect for trying verification benefits</p>
                       <ul className="text-sm space-y-1">
                         <li>• ✓ Verified badge on profile & streams</li>
@@ -680,7 +680,7 @@ const DocsPage = () => {
                         <h4 className="font-semibold text-brand-pink">Yearly Verification</h4>
                         <span className="text-xs bg-brand-pink text-white px-2 py-1 rounded">Best Value</span>
                       </div>
-                      <p className="text-2xl font-bold text-brand-pink mb-2">100 KAS</p>
+                      <p className="text-2xl font-bold text-brand-pink mb-2">1000 KAS</p>
                       <p className="text-sm text-muted-foreground mb-3">Save ~17% vs monthly plan</p>
                       <ul className="text-sm space-y-1">
                         <li>• ✓ All monthly benefits</li>
