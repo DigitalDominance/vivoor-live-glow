@@ -547,24 +547,12 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
                       muted
                       playsInline
                       preload="metadata"
-                      poster={clip.thumbnail_url || undefined}
-                      controls={false}
                       onMouseEnter={(e) => {
-                        if (window.innerWidth > 768) {
-                          const video = e.currentTarget;
-                          video.currentTime = 0.5;
-                          video.play().catch(() => {});
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (window.innerWidth > 768) {
-                          const video = e.currentTarget;
-                          video.pause();
-                        }
+                        const video = e.currentTarget;
+                        video.currentTime = 0.5; // Show frame at 0.5s
                       }}
                     >
                       <source src={clip.download_url} type="video/mp4" />
-                      Your browser does not support the video tag.
                     </video>
                   ) : clip.thumbnail_url ? (
                     <img

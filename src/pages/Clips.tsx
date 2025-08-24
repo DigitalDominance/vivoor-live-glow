@@ -74,7 +74,6 @@ const ClipsPage = () => {
         throw error;
       }
       
-      console.log('Clips data:', data?.slice(0, 3)); // Debug first 3 clips
       return data || [];
     },
     refetchInterval: 60000 // Refetch every 60 seconds (1 minute) to pick up new clips
@@ -330,54 +329,33 @@ const ClipsPage = () => {
                     >
                        {/* Thumbnail */}
                        <div
-                          className="relative aspect-video cursor-pointer overflow-hidden rounded-t-xl"
-                          onClick={() => handleClipClick(clip.id)}
+                         className="relative aspect-video cursor-pointer overflow-hidden rounded-t-xl"
+                         onClick={() => handleClipClick(clip.id)}
+                       >
+                      {clip.download_url ? (
+                        <video
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                          muted
+                          playsInline
+                          preload="metadata"
+                          onMouseEnter={(e) => {
+                            const video = e.currentTarget;
+                            video.currentTime = 0.5; // Show frame at 0.5s
+                          }}
                         >
-                       {/* Debug info */}
-                       <div className="absolute top-2 left-2 bg-black/80 text-white text-xs p-1 rounded z-50">
-                         Video: {clip.download_url ? 'YES' : 'NO'} | Thumb: {clip.thumbnail_url ? 'YES' : 'NO'}
-                       </div>
-                       
-                       {clip.download_url ? (
-                          <video
-                            className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                            muted
-                            playsInline
-                            preload="metadata"
-                            poster={clip.thumbnail_url || undefined}
-                            controls={false}
-                           onMouseEnter={(e) => {
-                             if (window.innerWidth > 768) {
-                               const video = e.currentTarget;
-                               video.currentTime = 0.5;
-                               video.play().catch(() => {});
-                             }
-                           }}
-                           onMouseLeave={(e) => {
-                             if (window.innerWidth > 768) {
-                               const video = e.currentTarget;
-                               video.pause();
-                             }
-                           }}
-                         >
-                           <source src={clip.download_url} type="video/mp4" />
-                           Your browser does not support the video tag.
-                         </video>
-                       ) : clip.thumbnail_url ? (
-                         <img
-                           src={clip.thumbnail_url}
-                           alt={clip.title}
-                           className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                           onError={(e) => {
-                             console.log('Image failed to load:', clip.thumbnail_url);
-                             e.currentTarget.style.display = 'none';
-                           }}
-                         />
-                       ) : (
-                         <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 flex items-center justify-center">
-                           <Play className="size-12 text-muted-foreground" />
-                         </div>
-                       )}
+                          <source src={clip.download_url} type="video/mp4" />
+                        </video>
+                      ) : clip.thumbnail_url ? (
+                        <img
+                          src={clip.thumbnail_url}
+                          alt={clip.title}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 flex items-center justify-center">
+                          <Play className="size-12 text-muted-foreground" />
+                        </div>
+                      )}
                       
                       {/* Gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
