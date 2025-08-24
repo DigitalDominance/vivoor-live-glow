@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
+import { useUserVerification } from "@/hooks/useUserVerification";
 
 export type UserProfile = {
   id: string;
@@ -30,6 +32,7 @@ const ProfileModal: React.FC<{
   const navigate = useNavigate();
   const { identity } = useWallet();
   const [following, setFollowing] = React.useState(false);
+  const { data: verificationData } = useUserVerification(profile?.id);
 
   // Check if user is following this profile
   React.useEffect(() => {
@@ -108,7 +111,15 @@ const ProfileModal: React.FC<{
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="font-medium">{profile.displayName}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{profile.displayName}</span>
+              <ClipVerifiedBadge userId={profile.id} size="sm" />
+            </div>
+            {verificationData?.isVerified && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-xs text-muted-foreground">This Account Is Verified!</span>
+              </div>
+            )}
             <div className="text-sm text-muted-foreground mt-1">{profile.bio}</div>
             <div className="text-xs text-muted-foreground mt-2">{profile.followers.toLocaleString()} followers • {profile.following.toLocaleString()} following</div>
             <div className="flex gap-2 mt-3">
