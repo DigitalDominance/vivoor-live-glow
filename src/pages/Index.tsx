@@ -63,8 +63,19 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
               className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
               muted
               playsInline
+              webkit-playsinline="true"
+              x-webkit-airplay="deny"
               preload="metadata"
+              poster=""
+              onLoadedMetadata={(e) => {
+                const video = e.currentTarget;
+                video.currentTime = 0.5;
+              }}
               onMouseEnter={(e) => {
+                const video = e.currentTarget;
+                video.currentTime = 0.5;
+              }}
+              onTouchStart={(e) => {
                 const video = e.currentTarget;
                 video.currentTime = 0.5;
               }}
