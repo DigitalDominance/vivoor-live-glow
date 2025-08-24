@@ -62,7 +62,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
               </button>
 
               {/* Row 1: Profile picture and username */}
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 ml-8 mt-4">
                 <Avatar className="w-12 h-12 ring-2 ring-brand-cyan/30 flex-shrink-0">
                   <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                   <AvatarFallback className="text-sm bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
@@ -84,7 +84,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent text-4xl font-bold">
                   {tip.amount}
                 </span>
-                <img src="/lovable-uploads/636e7c48-8fbb-44a4-9973-a7f5923c68c4.png" alt="KAS" className="w-10 h-10" />
+                <img src="/kaslogo.webp" alt="KAS" className="w-10 h-10" />
               </motion.div>
               
               {/* Row 3: Message with proper text wrapping */}
