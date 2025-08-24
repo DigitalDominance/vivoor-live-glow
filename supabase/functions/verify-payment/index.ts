@@ -13,57 +13,39 @@ interface PaymentRequest {
   startTime: number;
 }
 
+interface KaspaTx {
+  transaction_id: string;
+  accepting_block_blue_score: number;
+  block_time: number;
+  is_accepted: boolean;
+  payload?: string;
+  inputs: Array<{
+    signature_script?: string | null;
+    utxo?: {
+      address: string;
+      amount: string;
+      script_public_key: string;
+      block_daa_score: string;
+      is_coinbase: boolean;
+    };
+  }>;
+  outputs: Array<{
+    transaction_id: string;
+    index: number;
+    amount: number;
+    script_public_key: string;
+    script_public_key_address: string;
+    script_public_key_type: string;
+  }>;
+}
+
 const TREASURY_ADDRESS = 'kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80';
-const KASPA_API_BASE = 'https://api.kaspa.org';
 
 const PAYMENT_AMOUNTS: Record<string, { sompi: number; kas: number }> = {
   stream_start: { sompi: 120000000, kas: 1.2 },
   monthly_verification: { sompi: 10000000000, kas: 100 },
   yearly_verification: { sompi: 100000000000, kas: 1000 }
 };
-
-async function fetchKaspaTransaction(txid: string, maxRetries = 5): Promise<any> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}): ${txid}`);
-      
-      const response = await fetch(`https://api.kaspa.org/transactions/${txid}?inputs=true&outputs=true&resolve_previous_outpoints=no`, {
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      if (!response.ok) {
-        if (response.status === 404 && attempt < maxRetries) {
-          console.log(`Transaction not found on attempt ${attempt}, retrying in 2 seconds...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          continue;
-        }
-        const errorText = await response.text();
-        console.error(`Kaspa API error (attempt ${attempt}):`, response.status, errorText);
-        throw new Error(`Kaspa API error: ${response.status} ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Successfully fetched transaction data');
-      return data;
-    } catch (error) {
-      console.error(`Kaspa API error (attempt ${attempt}):`, error);
-      
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-}
-
-function sumOutputsToAddress(transaction: any, address: string): number {
-  if (!transaction.outputs) return 0;
-  
-  return transaction.outputs
-    .filter((output: any) => output.script_public_key_address === address)
-    .reduce((sum: number, output: any) => sum + (output.amount || 0), 0);
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -72,119 +54,129 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { userAddress, paymentType, txid, startTime }: PaymentRequest = await req.json();
-    
-    console.log('RAW REQUEST DATA:', JSON.stringify({ userAddress, paymentType, txid: typeof txid, startTime }));
-    console.log('TXID TYPE:', typeof txid);
-    console.log('TXID LENGTH:', typeof txid === 'string' ? txid.length : 'NOT STRING');
-    console.log('TXID SAMPLE:', typeof txid === 'string' ? txid.slice(0, 100) : txid);
+    const { 
+      userAddress, 
+      paymentType, 
+      txid, 
+      startTime 
+    }: PaymentRequest = await req.json();
+
+    console.log('Verifying payment:', { 
+      userAddress,
+      paymentType, 
+      txid: typeof txid === 'string' ? txid : 'INVALID_TYPE',
+      startTime 
+    });
 
     // Validate payment type and amount
     const expectedPayment = PAYMENT_AMOUNTS[paymentType];
     if (!expectedPayment) {
-      console.log('INVALID PAYMENT TYPE:', paymentType);
       return new Response(
         JSON.stringify({ error: 'Invalid payment type' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    console.log('EXPECTED PAYMENT:', expectedPayment);
 
-    // Extract transaction ID if txid is passed as a JSON object
-    let cleanTxid: string;
-    if (typeof txid === 'string') {
-      try {
-        // Try to parse as JSON first (in case it's the full transaction object)
-        const parsed = JSON.parse(txid);
-        console.log('PARSED TXID AS JSON:', typeof parsed, Object.keys(parsed || {}));
-        if (parsed.id) {
-          cleanTxid = parsed.id;
-          console.log('USING PARSED ID:', cleanTxid);
-        } else if (parsed.transaction_id) {
-          cleanTxid = parsed.transaction_id;
-          console.log('USING PARSED TRANSACTION_ID:', cleanTxid);
-        } else {
-          cleanTxid = txid.trim();
-          console.log('USING TRIMMED ORIGINAL:', cleanTxid);
-        }
-      } catch (e) {
-        // Not JSON, treat as plain txid
-        cleanTxid = txid.trim();
-        console.log('NOT JSON, USING TRIMMED:', cleanTxid);
-      }
-    } else {
-      console.log('TXID NOT STRING, TYPE:', typeof txid);
+    // Validate txid format - ensure it's a string and proper length (EXACTLY like tip verification)
+    if (!txid || typeof txid !== 'string') {
+      console.error('Invalid txid type:', typeof txid, txid);
       return new Response(
         JSON.stringify({ error: 'Transaction ID must be a string' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('CLEAN TXID:', cleanTxid);
-    console.log('CLEAN TXID LENGTH:', cleanTxid.length);
-    console.log('HEX REGEX TEST:', /^[a-f0-9]{64}$/i.test(cleanTxid));
-
-    // Validate txid format
+    // Clean the txid - remove any whitespace and validate hex format (EXACTLY like tip verification)
+    const cleanTxid = txid.trim();
     if (!/^[a-f0-9]{64}$/i.test(cleanTxid)) {
-      console.error('INVALID TXID FORMAT - Expected 64 char hex, got:', cleanTxid, 'Length:', cleanTxid.length);
+      console.error('Invalid txid format:', cleanTxid, 'Length:', cleanTxid.length);
       return new Response(
-        JSON.stringify({ error: `Invalid transaction ID format - must be 64 character hex string. Got ${cleanTxid.length} characters.` }),
+        JSON.stringify({ error: 'Invalid transaction ID format - must be 64 character hex string' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if transaction already verified
-    const { data: existingVerification } = await supabase
+    // Check if we've already processed this transaction (EXACTLY like tip verification)
+    const { data: existingPayment } = await supabaseClient
       .from('payment_verifications')
       .select('id')
       .eq('txid', cleanTxid)
       .single();
 
-    if (existingVerification) {
+    if (existingPayment) {
       return new Response(
-        JSON.stringify({ error: 'Transaction already verified' }),
+        JSON.stringify({ error: 'Transaction already processed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Fetch and verify transaction from Kaspa network
-    const transaction = await fetchKaspaTransaction(cleanTxid);
+    // Fetch transaction from Kaspa API with progressive retry logic (EXACTLY like tip verification)
+    const maxRetries = 5;
+    let tx: KaspaTx | null = null;
     
-    // Verify transaction is accepted (if this field exists)
-    if (transaction.is_accepted !== undefined && !transaction.is_accepted) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const retryDelay = attempt * 1000; // Progressive delay: 1s, 2s, 3s, 4s, 5s
+      try {
+        console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}):`, cleanTxid);
+        const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${cleanTxid}?inputs=true&outputs=true&resolve_previous_outpoints=no`);
+        
+        if (!kaspaResponse.ok) {
+          const errorText = await kaspaResponse.text();
+          console.error(`Kaspa API error (attempt ${attempt}):`, kaspaResponse.status, errorText);
+          
+          if (attempt === maxRetries) {
+            throw new Error(`Failed to fetch transaction after ${maxRetries} attempts: ${kaspaResponse.status}`);
+          } else {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+        }
+
+        tx = await kaspaResponse.json();
+        console.log('Successfully fetched transaction data');
+        break; // Success, exit retry loop
+        
+      } catch (error) {
+        console.error(`Error on attempt ${attempt}:`, error);
+        if (attempt === maxRetries) {
+          throw error;
+        } else {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+    }
+
+    if (!tx) {
+      throw new Error('Failed to fetch transaction data');
+    }
+
+    // Verify transaction is accepted (EXACTLY like tip verification)
+    if (!tx.is_accepted) {
       return new Response(
         JSON.stringify({ error: 'Transaction not yet accepted by the network' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Check transaction timing - use accepting_block_blue_score or block_time
-    const transactionTime = transaction.accepting_block_blue_score || transaction.block_time;
-    if (transactionTime && transactionTime < startTime) {
+
+    // Verify transaction has output to treasury address with correct amount (EXACTLY like tip verification)
+    const outputToTreasury = tx.outputs.find(output => 
+      output.script_public_key_address === TREASURY_ADDRESS && output.amount >= expectedPayment.sompi
+    );
+
+    if (!outputToTreasury) {
       return new Response(
-        JSON.stringify({ error: 'Transaction is too old' }),
+        JSON.stringify({ error: 'Transaction does not send the expected amount to treasury address' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify payment amount to treasury address
-    const amountSent = sumOutputsToAddress(transaction, TREASURY_ADDRESS);
-    if (amountSent < expectedPayment.sompi) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Insufficient payment. Expected ${expectedPayment.kas} KAS, received ${amountSent / 100000000} KAS` 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify transaction came from the user's address
-    const senderAddress = transaction.inputs?.[0]?.utxo?.address;
+    // Verify transaction came from the user's address (check sender)
+    const senderAddress = tx.inputs[0]?.utxo?.address;
     if (senderAddress !== userAddress) {
       return new Response(
         JSON.stringify({ 
@@ -202,50 +194,50 @@ serve(async (req) => {
       expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
     }
 
-    // Store verification
-    const { data: verification, error: dbError } = await supabase
+    // Store verified payment in database (EXACTLY like tip verification)
+    const { data: newPayment, error: insertError } = await supabaseClient
       .from('payment_verifications')
       .insert({
         user_id: userAddress,
         payment_type: paymentType,
-        amount_sompi: amountSent,
-        amount_kas: amountSent / 100000000,
+        amount_sompi: outputToTreasury.amount,
+        amount_kas: outputToTreasury.amount / 100000000,
         txid: cleanTxid,
-        block_time: transactionTime,
+        block_time: tx.accepting_block_blue_score,
         treasury_address: TREASURY_ADDRESS,
         expires_at: expiresAt
       })
       .select()
       .single();
 
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to record verification' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (insertError) {
+      console.error('Error inserting payment verification:', insertError);
+      throw new Error('Failed to store payment verification');
     }
 
-    console.log('Payment verified and stored:', verification);
+    console.log('Payment verified and stored:', newPayment);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         verification: {
-          id: verification.id,
-          payment_type: verification.payment_type,
-          amount_kas: verification.amount_kas,
-          expires_at: verification.expires_at
+          id: newPayment.id,
+          payment_type: newPayment.payment_type,
+          amount_kas: newPayment.amount_kas,
+          expires_at: newPayment.expires_at
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Payment verification error:', error);
+    console.error('Error verifying payment:', error);
     return new Response(
-      JSON.stringify({ error: 'Payment verification failed' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
