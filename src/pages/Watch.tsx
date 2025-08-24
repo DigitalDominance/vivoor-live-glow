@@ -48,6 +48,7 @@ const Watch = () => {
   const [userJoinedAt] = React.useState(new Date()); // Track when user joined this watch session
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const playerContainerRef = React.useRef<HTMLDivElement>(null);
+  const tipButtonRef = React.useRef<HTMLButtonElement>(null);
 
   // WebSocket chat
   const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || '');
@@ -725,6 +726,7 @@ const Watch = () => {
                   {followed ? 'Following' : 'Follow'}
                 </Button>
                 <Button
+                  ref={tipButtonRef}
                   variant="gradientOutline"
                   size="sm"
                   onClick={() => {
@@ -811,6 +813,7 @@ const Watch = () => {
         senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)} 
         streamId={streamData?.id}
         senderProfile={currentUserProfile}
+        triggerRef={tipButtonRef}
       />
       
       

@@ -1,11 +1,12 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import KaspaIcon from "@/components/KaspaIcon";
 import { toast } from "sonner";
 import { encryptTipMessage } from "@/lib/crypto";
 import { containsBadWords, cleanText } from "@/lib/badWords";
+import { X } from "lucide-react";
 
 const TipModal: React.FC<{
   open: boolean;
@@ -20,7 +21,8 @@ const TipModal: React.FC<{
     handle?: string;
     avatar_url?: string;
   } | null;
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
+  triggerRef?: React.RefObject<HTMLElement>;
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile, triggerRef }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -152,15 +154,41 @@ const TipModal: React.FC<{
     }
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink border-0 max-w-md mx-auto">
-        <div className="bg-black/95 backdrop-blur-md rounded-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <KaspaIcon size={20} /> Tip in KAS
-            </DialogTitle>
-          </DialogHeader>
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink border-0 max-w-md w-full rounded-xl pointer-events-auto">
+          <div className="bg-black/95 backdrop-blur-md rounded-[10px] p-6">
+            {/* Close button */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10"
+            >
+              <X size={16} className="text-white" />
+            </button>
+
+            {/* Header with profile */}
+            <div className="flex items-center gap-3 mb-6">
+              <Avatar className="w-10 h-10 ring-2 ring-brand-cyan/30">
+                <AvatarImage src={senderProfile?.avatar_url} alt={senderProfile?.display_name || senderProfile?.handle} />
+                <AvatarFallback className="bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
+                  {(senderProfile?.display_name || senderProfile?.handle || 'U').charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex items-center gap-2 flex-1">
+                <KaspaIcon size={20} />
+                <h2 className="text-xl font-bold text-white">Tip in KAS</h2>
+              </div>
+            </div>
           {isLoggedIn ? (
             <div className="space-y-4 mt-4">
               <p className="text-sm text-white/70">Choose an amount and add a message. Your wallet will open to confirm.</p>
@@ -240,9 +268,10 @@ const TipModal: React.FC<{
               </div>
             </div>
           )}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   );
 };
 
