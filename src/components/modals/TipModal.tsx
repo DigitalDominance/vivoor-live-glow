@@ -47,10 +47,21 @@ const TipModal: React.FC<{
       );
       
       // Send the transaction
-      const txid = await window.kasware.sendKaspa(toAddress, sompi, {
+      const txResponse = await window.kasware.sendKaspa(toAddress, sompi, {
         priorityFee: 10000,
         payload: encryptedPayload
       });
+      
+      // Extract transaction ID from response (handle both string and object formats)
+      let txid: string;
+      if (typeof txResponse === 'string') {
+        txid = txResponse;
+      } else if (txResponse && typeof txResponse === 'object' && (txResponse as any).id) {
+        txid = (txResponse as any).id;
+      } else {
+        console.log('Unexpected transaction response:', txResponse);
+        throw new Error('Invalid transaction response format');
+      }
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
       

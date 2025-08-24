@@ -44,6 +44,14 @@ serve(async (req) => {
 
     console.log('Verifying tip transaction:', { txid, streamId, expectedAmount, recipientAddress })
 
+    // Validate txid format
+    if (!txid || typeof txid !== 'string' || txid.length < 10) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid transaction ID format' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Check if we've already processed this transaction
     const { data: existingTip } = await supabaseClient
       .from('tips')
@@ -59,8 +67,11 @@ serve(async (req) => {
     }
 
     // Fetch transaction from Kaspa API
+    console.log('Fetching transaction from Kaspa API:', txid)
     const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${txid}`)
+    
     if (!kaspaResponse.ok) {
+      console.error('Kaspa API error:', kaspaResponse.status, await kaspaResponse.text())
       throw new Error(`Failed to fetch transaction: ${kaspaResponse.status}`)
     }
 
