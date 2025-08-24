@@ -47,12 +47,28 @@ serve(async (req) => {
 
     const { txid, streamId, expectedAmount, recipientAddress, senderAddress }: TipVerificationRequest = await req.json()
 
-    console.log('Verifying tip transaction:', { txid, streamId, expectedAmount, recipientAddress })
+    console.log('Verifying tip transaction:', { 
+      txid: typeof txid === 'string' ? txid : 'INVALID_TYPE',
+      streamId, 
+      expectedAmount, 
+      recipientAddress 
+    })
 
-    // Validate txid format
-    if (!txid || typeof txid !== 'string' || txid.length < 10) {
+    // Validate txid format - ensure it's a string and proper length
+    if (!txid || typeof txid !== 'string') {
+      console.error('Invalid txid type:', typeof txid, txid)
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid transaction ID format' }),
+        JSON.stringify({ success: false, error: 'Transaction ID must be a string' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Clean the txid - remove any whitespace and validate hex format
+    const cleanTxid = txid.trim()
+    if (!/^[a-f0-9]{64}$/i.test(cleanTxid)) {
+      console.error('Invalid txid format:', cleanTxid, 'Length:', cleanTxid.length)
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid transaction ID format - must be 64 character hex string' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -61,7 +77,7 @@ serve(async (req) => {
     const { data: existingTip } = await supabaseClient
       .from('tips')
       .select('id')
-      .eq('txid', txid)
+      .eq('txid', cleanTxid)
       .single()
 
     if (existingTip) {
@@ -71,15 +87,45 @@ serve(async (req) => {
       )
     }
 
-    // Fetch transaction from Kaspa API
-    const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${txid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)
+    // Fetch transaction from Kaspa API with retry logic
+    const maxRetries = 3
+    const retryDelay = 1000 // 1 second
+    let tx: KaspaTx | null = null
     
-    if (!kaspaResponse.ok) {
-      console.error('Kaspa API error:', kaspaResponse.status, await kaspaResponse.text())
-      throw new Error(`Failed to fetch transaction: ${kaspaResponse.status}`)
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}):`, cleanTxid)
+        const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${cleanTxid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)
+        
+        if (!kaspaResponse.ok) {
+          const errorText = await kaspaResponse.text()
+          console.error(`Kaspa API error (attempt ${attempt}):`, kaspaResponse.status, errorText)
+          
+          if (attempt === maxRetries) {
+            throw new Error(`Failed to fetch transaction after ${maxRetries} attempts: ${kaspaResponse.status}`)
+          } else {
+            await new Promise(resolve => setTimeout(resolve, retryDelay))
+            continue
+          }
+        }
+
+        tx = await kaspaResponse.json()
+        console.log('Successfully fetched transaction data')
+        break // Success, exit retry loop
+        
+      } catch (error) {
+        console.error(`Error on attempt ${attempt}:`, error)
+        if (attempt === maxRetries) {
+          throw error
+        } else {
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+        }
+      }
     }
 
-    const tx: KaspaTx = await kaspaResponse.json()
+    if (!tx) {
+      throw new Error('Failed to fetch transaction data')
+    }
 
     // Verify transaction is accepted
     if (!tx.is_accepted) {
@@ -136,7 +182,7 @@ serve(async (req) => {
         sender_address: senderAddress || 'unknown',
         recipient_address: recipientAddress,
         amount_sompi: outputToRecipient.amount,
-        txid: txid,
+        txid: cleanTxid,
         encrypted_message: encryptedMessage,
         decrypted_message: decryptedMessage,
         block_time: tx.accepting_block_blue_score,
@@ -158,7 +204,7 @@ serve(async (req) => {
         tip: {
           id: newTip.id,
           amount: Math.round(outputToRecipient.amount / 100000000), // Convert to KAS
-          txid: txid,
+          txid: cleanTxid,
           message: decryptedMessage
         }
       }),

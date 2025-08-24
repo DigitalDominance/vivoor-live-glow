@@ -80,33 +80,51 @@ const TipModal: React.FC<{
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
       
-      // Now verify the transaction with our backend
-      try {
-        const response = await fetch(`https://qcowmxypihinteajhnjw.supabase.co/functions/v1/verify-tip-transaction`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjb3dteHlwaWhpbnRlYWpobmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDI4MTMsImV4cCI6MjA3MDYxODgxM30.KrSQYsOzPPhErffzdLzMS_4pC2reuONNc134tdtVPbA`
-          },
-          body: JSON.stringify({
-            txid,
-            streamId,
-            expectedAmount: sompi,
-            recipientAddress: toAddress,
-            senderAddress: senderHandle || 'Anonymous'
-          })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          toast.success(`Tip verified! ${kas} KAS sent successfully.`);
-        } else {
-          toast.error(`Tip verification failed: ${result.error}`);
+      // Now verify the transaction with our backend (with retry logic)
+      const maxRetries = 3;
+      const retryDelay = 2000; // 2 seconds
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Tip verification attempt ${attempt}/${maxRetries} for txid:`, txid);
+          
+          const response = await fetch(`https://qcowmxypihinteajhnjw.supabase.co/functions/v1/verify-tip-transaction`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjb3dteHlwaWhpbnRlYWpobmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDI4MTMsImV4cCI6MjA3MDYxODgxM30.KrSQYsOzPPhErffzdLzMS_4pC2reuONNc134tdtVPbA`
+            },
+            body: JSON.stringify({
+              txid: txid, // Send only the transaction ID string
+              streamId,
+              expectedAmount: sompi,
+              recipientAddress: toAddress,
+              senderAddress: senderHandle || 'Anonymous'
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            toast.success(`Tip verified! ${kas} KAS sent successfully.`);
+            break; // Success, exit retry loop
+          } else {
+            if (attempt === maxRetries) {
+              toast.error(`Tip verification failed: ${result.error}`);
+            } else {
+              console.log(`Verification failed on attempt ${attempt}, retrying in ${retryDelay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+          }
+        } catch (verificationError) {
+          console.error(`Tip verification error on attempt ${attempt}:`, verificationError);
+          if (attempt === maxRetries) {
+            toast.warning('Tip sent but verification failed - it may take a moment to appear.');
+          } else {
+            console.log(`Verification error on attempt ${attempt}, retrying in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
         }
-      } catch (verificationError) {
-        console.error('Tip verification error:', verificationError);
-        toast.warning('Tip sent but verification failed - it may take a moment to appear.');
       }
       
       setMessage("");
