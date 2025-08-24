@@ -52,7 +52,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
         >
           {/* Glass container with gradient outline */}
           <div className="relative rounded-lg p-[1px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
-            <div className="bg-black/95 backdrop-blur-md rounded-[7px] p-3 shadow-2xl">
+            <div className="bg-black/95 backdrop-blur-md rounded-lg p-3 shadow-2xl">
               {/* Close button */}
               <button
                 onClick={handleDismiss}
@@ -62,9 +62,9 @@ const TipNotification: React.FC<TipNotificationProps> = ({
               </button>
 
               {/* Main content row */}
-              <div className="flex items-center gap-3">
-                {/* Profile picture */}
-                <Avatar className="w-8 h-8 ring-1 ring-brand-cyan/30 flex-shrink-0">
+              <div className="flex items-center gap-3 relative">
+                {/* Profile picture - positioned down and to the right */}
+                <Avatar className="w-8 h-8 ring-1 ring-brand-cyan/30 flex-shrink-0 mt-1 ml-1">
                   <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                   <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                     {tip.sender.slice(0, 1).toUpperCase()}
