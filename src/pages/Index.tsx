@@ -423,7 +423,7 @@ const Index = () => {
             { q: 'Do you really take 0% fees on tips?', a: 'Yes! Unlike traditional platforms that take 30-50% cuts, we take 0% from tips. 100% goes directly to creators.' },
             { q: 'What makes Kaspa better for tips?', a: 'Kaspa has sub-second confirmation times and ultra-low fees, making it perfect for instant micro-payments to creators.' },
             { q: 'How do I create clips from streams?', a: 'While watching any stream, click the scissors icon to create clips up to 60 seconds long. They process instantly via Livepeer.' },
-            { q: 'Can I get verified on Vivoor?', a: 'Yes! Visit /verification to purchase monthly (100 KAS) or yearly (1000 KAS) verification for enhanced credibility and priority features.' },
+            { q: 'Can I get verified on Vivoor?', a: 'Yes! Visit /verification to purchase monthly (10 KAS) or yearly (100 KAS) verification for enhanced credibility and priority features.' },
             { q: 'What is Livepeer and why do you use it?', a: 'Livepeer is a decentralized video infrastructure that provides high-quality, low-latency streaming at 50x lower cost than traditional CDNs.' },
           ].map((f, i) => (
             <div key={i} className="glass rounded-xl p-5">
