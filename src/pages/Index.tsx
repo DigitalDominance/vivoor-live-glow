@@ -231,9 +231,9 @@ const Index = () => {
             <h1 className="font-display text-4xl md:text-6xl font-extrabold leading-[1.1] text-gradient">
               Go live in seconds. Replay forever.
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground max-w-prose">
-              The world's first Kaspa-powered streaming platform. Stream live, earn with zero-fee KAS tips, and build your community on decentralized infrastructure powered by Livepeer.
-            </p>
+          <p className="mt-4 text-lg text-muted-foreground max-w-prose">
+            The world's first Kaspa-powered streaming platform. Stream live, earn with zero-fee KAS tips, and build your community on decentralized infrastructure powered by Livepeer.
+          </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button variant="hero" size="lg" onClick={() => navigate('/go-live')}>Start Streaming</Button>
               <Button variant="glass" size="lg" onClick={() => navigate('/docs')}>Read Documentation</Button>
@@ -250,16 +250,16 @@ const Index = () => {
       {/* Kaspa highlight */}
       <section className="container mx-auto px-4 mt-10">
         <div className="rounded-xl border border-border p-4 bg-card/60 backdrop-blur-md text-center">
-          <p className="text-sm font-medium">Built on <span className="text-gradient font-semibold">Kaspa</span> + <span className="text-gradient font-semibold">Livepeer</span> — pioneering web3 streaming with zero-fee creator economy.</p>
+          <p className="text-sm font-medium">Built on <a href="https://kaspa.org/" target="_blank" rel="noopener noreferrer" className="text-gradient font-semibold hover:underline">Kaspa</a> + <a href="https://www.livepeer.org/" target="_blank" rel="noopener noreferrer" className="text-gradient font-semibold hover:underline">Livepeer</a> = Pioneering Streaming with a Web3 Zero-Fee Creator Economy.</p>
         </div>
       </section>
 
       {/* Feature Trio */}
       <section id="features" className="container mx-auto px-4 mt-16">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FeatureCard icon={Zap} title="Zero-Fee Tips" desc="100% of KAS tips go to creators. No platform cuts, powered by Kaspa blockchain." />
+          <FeatureCard icon={Zap} title="Zero-Fee Tips" desc="100% of KAS tips go to creators. We take 0% platform fees, powered by Kaspa blockchain." />
           <FeatureCard icon={Repeat} title="Instant Streaming" desc="Go live in seconds with Livepeer's decentralized video infrastructure." />
-          <FeatureCard icon={Scissors} title="One-Tap Clips" desc="Create and share highlights instantly with automatic processing." />
+          <FeatureCard icon={Scissors} title="Auto Clipping" desc="Create and share highlights instantly with automatic processing." />
         </div>
       </section>
 
@@ -344,9 +344,9 @@ const Index = () => {
       <section id="how" className="container mx-auto px-4 mt-16">
         <div className="grid md:grid-cols-3 gap-8 items-start">
           {[
-            { title: "Go Live", desc: "One tap to start streaming with ultra‑low latency." },
-            { title: "Auto Save", desc: "Your stream becomes a replay instantly — no extra steps." },
-            { title: "Share Replay", desc: "Link your moment anywhere with beautiful previews." },
+            { title: "Go Live", desc: "One tap to start streaming with ultra-low latency." },
+            { title: "Auto Clipping", desc: "Create highlights instantly with automatic processing and AI detection." },
+            { title: "Share Clips", desc: "Share your best moments anywhere with beautiful previews." },
           ].map((s, i) => (
             <motion.div key={i} className="glass rounded-xl p-5" whileInView={{ opacity: [0, 1], y: [8, 0] }} viewport={{ once: true }}>
               <div className="text-sm text-muted-foreground">Step {i + 1}</div>
@@ -397,32 +397,34 @@ const Index = () => {
         <h2 className="font-semibold mb-4">Instant Tips on Kaspa</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="glass rounded-xl p-6">
-            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Zap className="size-4 text-[hsl(var(--brand-pink))]" /> Near‑instant</div>
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Zap className="size-4 text-[hsl(var(--brand-pink))]" /> Near-instant</div>
             <div className="mt-2 text-lg font-bold">Tips settle in seconds</div>
             <p className="text-sm text-muted-foreground mt-2">Kaspa’s blockDAG confirms fast — creators see KAS almost immediately.</p>
           </div>
           <div className="glass rounded-xl p-6">
-            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Circle className="size-4 text-[hsl(var(--brand-iris))]" /> Low fee</div>
-            <div className="mt-2 text-lg font-bold">Only 5% platform fee</div>
-            <p className="text-sm text-muted-foreground mt-2">We take just 5% — far less than major streaming platforms.</p>
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Circle className="size-4 text-[hsl(var(--brand-iris))]" /> 0% Platform Fee</div>
+            <div className="mt-2 text-lg font-bold">100% goes to creators</div>
+            <p className="text-sm text-muted-foreground mt-2">We take 0% platform fees unlike major streaming platforms that take up to 50%.</p>
           </div>
           <div className="glass rounded-xl p-6">
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Repeat className="size-4 text-[hsl(var(--brand-cyan))]" /> Transparent</div>
-            <div className="mt-2 text-lg font-bold">On‑chain and simple</div>
-            <p className="text-sm text-muted-foreground mt-2">No middlemen, no hidden cuts. Direct, on‑chain tipping in KAS.</p>
+            <div className="mt-2 text-lg font-bold">On-chain and simple</div>
+            <p className="text-sm text-muted-foreground mt-2">No middlemen, no hidden cuts. Direct, on-chain tipping in KAS.</p>
           </div>
         </div>
       </section>
 
-      {/* FAQ (placeholder) */}
+      {/* FAQ */}
       <section id="faq" className="container mx-auto px-4 mt-16 mb-20">
-        <h2 className="font-semibold mb-4">FAQ</h2>
+        <h2 className="font-semibold mb-4">Frequently Asked Questions</h2>
         <div className="grid md:grid-cols-2 gap-4">
           {[
-            { q: 'Is this functional?', a: 'This landing is non‑functional and runs offline. Animations are smooth and accessible.' },
-            { q: 'Does it support dark mode?', a: 'Yes — toggle in the header. Preference persists.' },
-            { q: 'Can I upload videos?', a: 'Not in this demo. It focuses on structure and motion only.' },
-            { q: 'Is performance optimized?', a: 'Yes — CSS‑only background, reduced motion support, and responsive design.' },
+            { q: 'How do I start streaming on Vivoor?', a: 'Connect your Kaspa wallet, go to /go-live, pay the 1.2 KAS treasury fee, and get your RTMP details for OBS streaming.' },
+            { q: 'Do you really take 0% fees on tips?', a: 'Yes! Unlike traditional platforms that take 30-50% cuts, we take 0% from tips. 100% goes directly to creators.' },
+            { q: 'What makes Kaspa better for tips?', a: 'Kaspa has sub-second confirmation times and ultra-low fees, making it perfect for instant micro-payments to creators.' },
+            { q: 'How do I create clips from streams?', a: 'While watching any stream, click the scissors icon to create clips up to 60 seconds long. They process instantly via Livepeer.' },
+            { q: 'Can I get verified on Vivoor?', a: 'Yes! Visit /verification to purchase monthly (10 KAS) or yearly (100 KAS) verification for enhanced credibility and priority features.' },
+            { q: 'What is Livepeer and why do you use it?', a: 'Livepeer is a decentralized video infrastructure that provides high-quality, low-latency streaming at 50x lower cost than traditional CDNs.' },
           ].map((f, i) => (
             <div key={i} className="glass rounded-xl p-5">
               <div className="font-medium">{f.q}</div>

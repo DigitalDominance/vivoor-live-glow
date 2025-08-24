@@ -45,7 +45,7 @@ const DocsPage = () => {
   };
 
   return (
-    <main className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground">
       <Helmet>
         <title>Documentation - Complete Guide to Vivoor | Vivoor</title>
         <meta name="description" content="Complete guide to using Vivoor - from streaming and tipping with Kaspa to creating clips and getting verified. Learn everything about our web3 streaming platform." />
@@ -53,18 +53,33 @@ const DocsPage = () => {
         <link rel="canonical" href="https://vivoor.live/docs" />
       </Helmet>
 
-      {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/5 via-brand-iris/10 to-brand-pink/5 -z-10" />
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-background/80 to-background -z-5" />
-      
-      {/* Aurora effect */}
-      <div className="absolute inset-0 opacity-30 -z-5">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-cyan/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-iris/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-brand-pink/20 rounded-full blur-3xl animate-pulse delay-2000" />
+      {/* GitBook-style sidebar navigation */}
+      <div className="fixed inset-y-0 left-0 w-64 bg-background border-r border-border z-40 hidden lg:block">
+        <div className="p-6">
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">Documentation</h2>
+          <nav className="space-y-2">
+            <a href="#getting-started" className="block text-sm hover:text-primary transition-colors py-1">Getting Started</a>
+            <a href="#watching" className="block text-sm hover:text-primary transition-colors py-1">Watching Streams</a>
+            <a href="#tipping" className="block text-sm hover:text-primary transition-colors py-1">Tipping with KAS</a>
+            <a href="#streaming" className="block text-sm hover:text-primary transition-colors py-1">Live Streaming</a>
+            <a href="#clips" className="block text-sm hover:text-primary transition-colors py-1">Creating Clips</a>
+            <a href="#verification" className="block text-sm hover:text-primary transition-colors py-1">Getting Verified</a>
+            <a href="#profile" className="block text-sm hover:text-primary transition-colors py-1">Profile Management</a>
+            <a href="#following" className="block text-sm hover:text-primary transition-colors py-1">Following Users</a>
+          </nav>
+        </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      {/* Main content */}
+      <main className="lg:pl-64">
+        {/* Add background aurora for GitBook feel */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-brand-cyan rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-10 w-32 h-32 bg-brand-iris rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 w-32 h-32 bg-brand-pink rounded-full blur-3xl animate-pulse delay-2000" />
+        </div>
+
+        <div className="container mx-auto px-4 py-12">
         {/* Hero Section */}
         <motion.div 
           className="text-center mb-16"
@@ -938,8 +953,9 @@ const DocsPage = () => {
             </motion.div>
           </div>
         </motion.div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 };
 
