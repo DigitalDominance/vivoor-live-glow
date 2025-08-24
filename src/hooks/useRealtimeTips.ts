@@ -78,8 +78,6 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
   useEffect(() => {
     if (!streamId) return;
 
-    console.log('Setting up real-time tip monitoring for stream:', streamId);
-
     const channel = supabase
       .channel(`tips:stream_id=eq.${streamId}`)
       .on(
@@ -91,11 +89,8 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
           filter: `stream_id=eq.${streamId}`
         },
         (payload) => {
-          console.log('🎉 New tip received via real-time:', payload);
-          
           const newTipData = payload.new;
           if (processedTipIds.has(newTipData.id)) {
-            console.log('Tip already processed:', newTipData.id);
             return;
           }
 
@@ -131,16 +126,14 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
         }
       )
       .subscribe((status) => {
-        console.log('Tip subscription status:', status);
         setIsConnected(status === 'SUBSCRIBED');
       });
 
     return () => {
-      console.log('Cleaning up tip subscription');
       supabase.removeChannel(channel);
       setIsConnected(false);
     };
-  }, [streamId, onNewTip, processedTipIds]);
+  }, [streamId, onNewTip]);
 
   return {
     tips,

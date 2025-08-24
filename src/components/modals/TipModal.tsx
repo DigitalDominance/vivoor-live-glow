@@ -52,15 +52,30 @@ const TipModal: React.FC<{
         payload: encryptedPayload
       });
       
-      // Extract transaction ID from response (handle both string and object formats)
+      // Extract transaction ID from response
       let txid: string;
+      console.log('Kasware response:', txResponse);
+      
       if (typeof txResponse === 'string') {
-        txid = txResponse;
-      } else if (txResponse && typeof txResponse === 'object' && (txResponse as any).id) {
-        txid = (txResponse as any).id;
+        // If it's a string, it might be JSON or just the txid
+        try {
+          const parsed = JSON.parse(txResponse);
+          txid = parsed.id || parsed.transaction_id || parsed.txid;
+        } catch {
+          // If parsing fails, assume it's the txid directly
+          txid = txResponse;
+        }
+      } else if (txResponse && typeof txResponse === 'object') {
+        // If it's an object, extract the id
+        txid = (txResponse as any).id || (txResponse as any).transaction_id || (txResponse as any).txid;
       } else {
-        console.log('Unexpected transaction response:', txResponse);
+        console.error('Unexpected transaction response format:', txResponse);
         throw new Error('Invalid transaction response format');
+      }
+      
+      if (!txid || typeof txid !== 'string') {
+        console.error('Could not extract transaction ID from response:', txResponse);
+        throw new Error('Failed to extract transaction ID');
       }
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);

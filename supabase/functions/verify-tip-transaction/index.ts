@@ -18,13 +18,18 @@ interface KaspaTx {
   transaction_id: string;
   accepting_block_blue_score: number;
   block_time: number;
+  is_accepted: boolean;
   payload?: string;
   inputs: Array<{
     signature_script?: string | null;
   }>;
   outputs: Array<{
+    transaction_id: string;
+    index: number;
     amount: number;
-    script_public_key_address?: string | null;
+    script_public_key: string;
+    script_public_key_address: string;
+    script_public_key_type: string;
   }>;
 }
 
@@ -67,8 +72,7 @@ serve(async (req) => {
     }
 
     // Fetch transaction from Kaspa API
-    console.log('Fetching transaction from Kaspa API:', txid)
-    const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${txid}`)
+    const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${txid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)
     
     if (!kaspaResponse.ok) {
       console.error('Kaspa API error:', kaspaResponse.status, await kaspaResponse.text())
@@ -77,22 +81,22 @@ serve(async (req) => {
 
     const tx: KaspaTx = await kaspaResponse.json()
 
-    // Verify transaction has output to recipient address
-    const outputToRecipient = tx.outputs.find(output => 
-      output.script_public_key_address === recipientAddress
-    )
-
-    if (!outputToRecipient) {
+    // Verify transaction is accepted
+    if (!tx.is_accepted) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Transaction does not send to recipient address' }),
+        JSON.stringify({ success: false, error: 'Transaction not yet accepted by the network' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verify amount (allow some tolerance for fees)
-    if (outputToRecipient.amount < expectedAmount * 0.95) { // 5% tolerance
+    // Verify transaction has output to recipient address with correct amount
+    const outputToRecipient = tx.outputs.find(output => 
+      output.script_public_key_address === recipientAddress && output.amount >= expectedAmount
+    )
+
+    if (!outputToRecipient) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Transaction amount is too low' }),
+        JSON.stringify({ success: false, error: 'Transaction does not send the expected amount to recipient address' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
