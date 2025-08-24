@@ -733,6 +733,10 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: boolean
       }
+      user_has_valid_stream_payment: {
+        Args: { user_id_param: string }
+        Returns: boolean
+      }
       user_likes_clip: {
         Args: { clip_id_param: string; user_id_param: string }
         Returns: boolean
