@@ -135,17 +135,19 @@ const Watch = () => {
     }
   }, [streamerProfile?.follower_count]);
 
-  // Get streamer's Kaspa address for tipping (secure function)
+  // Get streamer's Kaspa address directly from their profile
   const { data: streamerKaspaAddress } = useQuery({
-    queryKey: ['tip-address', streamId],
+    queryKey: ['streamer-kaspa-address', streamerProfile?.id],
     queryFn: async () => {
-      if (!streamId) return null;
-      const { data } = await supabase.rpc('get_stream_tip_address', { 
-        _stream_id: streamId 
-      });
-      return data;
+      if (!streamerProfile?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('kaspa_address')
+        .eq('id', streamerProfile.id)
+        .maybeSingle();
+      return data?.kaspa_address || null;
     },
-    enabled: !!streamId
+    enabled: !!streamerProfile?.id
   });
 
   // Fetch suggested streams
@@ -656,14 +658,11 @@ const Watch = () => {
                 <Button
                   variant="gradientOutline"
                   size="sm"
-                  onClick={() => {
-                    console.log('Tip button clicked', { identity: !!identity, streamerKaspaAddress, livepeerIsLive });
-                    setTipOpen(true);
-                  }}
+                  onClick={() => setTipOpen(true)}
                   disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
                   className="flex-1 sm:flex-none"
                 >
-                  Tip KAS {!identity && '(No Wallet)'} {!streamerKaspaAddress && '(No Address)'} {!livepeerIsLive && '(Not Live)'}
+                  Tip KAS
                 </Button>
               </div>
             </div>
