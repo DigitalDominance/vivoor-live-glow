@@ -230,6 +230,20 @@ const Watch = () => {
     }
   });
 
+  // Process existing tips that haven't been shown yet
+  React.useEffect(() => {
+    if (allTips.length > 0) {
+      const unshownTips = allTips.filter(tip => !shownTipIds.has(tip.id));
+      if (unshownTips.length > 0) {
+        setNewTips(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTipsToAdd = unshownTips.filter(tip => !existingIds.has(tip.id));
+          return [...prev, ...newTipsToAdd];
+        });
+      }
+    }
+  }, [allTips, shownTipIds]);
+
   // Use new stream status tracking
   const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
     streamData?.id || null, 
