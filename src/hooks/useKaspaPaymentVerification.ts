@@ -35,24 +35,42 @@ export function useKaspaPaymentVerification() {
     setIsVerifying(true);
     
     try {
+      console.log('=== PAYMENT VERIFICATION DEBUG ===');
+      console.log('User Address:', userAddress);
+      console.log('Payment Type:', paymentType);
+      console.log('Transaction ID:', txid);
+      console.log('Transaction ID Type:', typeof txid);
+      console.log('Transaction ID Length:', txid?.length);
+      console.log('Start Time:', startTime);
+      console.log('Expected Amount:', PAYMENT_AMOUNTS[paymentType]);
+      
+      const payload = {
+        userAddress,
+        paymentType,
+        txid,
+        startTime
+      };
+      
+      console.log('Sending to edge function:', payload);
+      
       // Use edge function for verification
       const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: {
-          userAddress,
-          paymentType,
-          txid,
-          startTime
-        }
+        body: payload
       });
       
+      console.log('Edge function response:', { data, error });
+      
       if (error) {
+        console.error('Edge function error:', error);
         return { success: false, error: error.message };
       }
       
-      if (data.error) {
+      if (data?.error) {
+        console.error('Edge function returned error:', data.error);
         return { success: false, error: data.error };
       }
       
+      console.log('Verification successful:', data);
       return { success: true, txid };
     } catch (error) {
       console.error('Payment verification error:', error);
