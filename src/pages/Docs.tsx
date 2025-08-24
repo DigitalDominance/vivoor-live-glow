@@ -58,14 +58,14 @@ const DocsPage = () => {
         <div className="p-6">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">Documentation</h2>
           <nav className="space-y-2">
-            <a href="#getting-started" className="block text-sm hover:text-primary transition-colors py-1">Getting Started</a>
-            <a href="#watching" className="block text-sm hover:text-primary transition-colors py-1">Watching Streams</a>
-            <a href="#tipping" className="block text-sm hover:text-primary transition-colors py-1">Tipping with KAS</a>
-            <a href="#streaming" className="block text-sm hover:text-primary transition-colors py-1">Live Streaming</a>
-            <a href="#clips" className="block text-sm hover:text-primary transition-colors py-1">Creating Clips</a>
-            <a href="#verification" className="block text-sm hover:text-primary transition-colors py-1">Getting Verified</a>
-            <a href="#profile" className="block text-sm hover:text-primary transition-colors py-1">Profile Management</a>
-            <a href="#following" className="block text-sm hover:text-primary transition-colors py-1">Following Users</a>
+            <a href="#getting-started" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('getting-started')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Getting Started</a>
+            <a href="#watching" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('watching')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Watching Streams</a>
+            <a href="#tipping" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('tipping')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Tipping with KAS</a>
+            <a href="#streaming" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('streaming')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Live Streaming</a>
+            <a href="#clips" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('clips')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Creating Clips</a>
+            <a href="#verification" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('verification')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Getting Verified</a>
+            <a href="#profile" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Profile Management</a>
+            <a href="#following" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); document.getElementById('following')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Following Users</a>
           </nav>
         </div>
       </div>
