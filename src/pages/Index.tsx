@@ -353,7 +353,7 @@ const Index = () => {
               <h3 className="font-semibold mt-1">{s.title}</h3>
               <p className="text-sm text-muted-foreground mt-1">{s.desc}</p>
             </motion.div>
-          ))}
+           ))}
         </div>
       </section>
 
@@ -362,32 +362,20 @@ const Index = () => {
         <div className="overflow-hidden rounded-xl border border-border">
           <div className="flex animate-marquee gap-8 py-4 will-change-transform hover:[animation-play-state:paused]">
             {[
-              "“Fastest go‑live I’ve used.” — Alex",
-              "“Clipping is magic.” — Priya",
-              "“Looks and feels premium.” — Ken",
-              "“Auto‑replay saves hours.” — Mei",
+              "Zero fees on tips is game changing - Alberto",
+              "Kaspa tips arrive instantly - Cesar",
+              "Finally a platform that doesn't steal from creators - Jonathan",
+              "Fastest go‑live I’ve used. — Alex",
+              "The clip feature is absolutely perfect - David",
             ].concat([
-              "“Fastest go‑live I’ve used.” — Alex",
-              "“Clipping is magic.” — Priya",
-              "“Looks and feels premium.” — Ken",
-              "“Auto‑replay saves hours.” — Mei",
+              "Zero fees on tips is game changing - Alberto",
+              "Kaspa tips arrive instantly - Cesar",
+              "Finally a platform that doesn't steal from creators - Jonathan",
+              "Fastest go‑live I’ve used. — Alex",
+              "The clip feature is absolutely perfect - David",
             ]).map((q, i) => (
               <span key={i} className="text-sm text-muted-foreground whitespace-nowrap">{q}</span>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="container mx-auto px-4 mt-16">
-        <div className="rounded-2xl p-[1px] bg-grad-primary">
-          <div className="rounded-2xl bg-background/70 backdrop-blur-md p-8 text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-gradient">Your moment, in motion.</h2>
-            <p className="mt-2 text-muted-foreground">Join now and bring your stories to life.</p>
-            <div className="mt-6 flex justify-center gap-3">
-              <Button variant="hero" size="lg" onClick={() => navigate('/app')}>Start Watching</Button>
-              <Button variant="gradientOutline" size="lg" onClick={() => navigate('/go-live')}>Start Streaming</Button>
-            </div>
           </div>
         </div>
       </section>
@@ -399,7 +387,7 @@ const Index = () => {
           <div className="glass rounded-xl p-6">
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Zap className="size-4 text-[hsl(var(--brand-pink))]" /> Near-instant</div>
             <div className="mt-2 text-lg font-bold">Tips settle in seconds</div>
-            <p className="text-sm text-muted-foreground mt-2">Kaspa’s blockDAG confirms fast: creators see KAS almost immediately.</p>
+            <p className="text-sm text-muted-foreground mt-2">Kaspa's blockDAG confirms fast: creators see KAS almost immediately.</p>
           </div>
           <div className="glass rounded-xl p-6">
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Circle className="size-4 text-[hsl(var(--brand-iris))]" /> 0% Platform Fee</div>
@@ -431,6 +419,20 @@ const Index = () => {
               <div className="text-sm text-muted-foreground mt-1">{f.a}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="container mx-auto px-4 mt-16">
+        <div className="rounded-2xl p-[1px] bg-grad-primary">
+          <div className="rounded-2xl bg-background/70 backdrop-blur-md p-8 text-center">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-gradient">Your moment, in motion.</h2>
+            <p className="text-muted-foreground mt-3 max-w-lg mx-auto">Record and share your most exciting moments. With clipping, your highlights reach beyond the live moment.</p>
+            <div className="mt-6 flex flex-wrap gap-3 justify-center">
+              <Button variant="hero" size="lg" onClick={() => navigate('/go-live')}>Start Streaming</Button>
+              <Button variant="glass" size="lg" onClick={() => navigate('/app')}>Explore Clips</Button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
