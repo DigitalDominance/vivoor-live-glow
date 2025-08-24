@@ -728,16 +728,19 @@ const Watch = () => {
                   open={tipOpen}
                   onOpenChange={setTipOpen}
                   isLoggedIn={!!identity}
-                  onRequireLogin={() => navigate('/auth')}
+                  onRequireLogin={React.useCallback(() => navigate('/auth'), [navigate])}
                   toAddress={streamerKaspaAddress}
-                  senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)}
+                  senderHandle={React.useMemo(() => 
+                    currentUserProfile?.handle || identity?.id?.slice(0, 8) || 'Anonymous', 
+                    [currentUserProfile?.handle, identity?.id]
+                  )}
                   streamId={streamId}
                   senderProfile={currentUserProfile}
                   triggerElement={
                     <Button
                       variant="gradientOutline"
                       size="sm"
-                      onClick={() => {
+                      onClick={React.useCallback(() => {
                         console.log('Tip button values:', { 
                           identity: !!identity, 
                           streamerKaspaAddress, 
@@ -745,7 +748,7 @@ const Watch = () => {
                           disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
                         });
                         setTipOpen(true);
-                      }}
+                      }, [identity, streamerKaspaAddress, livepeerIsLive])}
                       disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
                       className="flex-1 sm:flex-none"
                     >
