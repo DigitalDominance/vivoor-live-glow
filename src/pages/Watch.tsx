@@ -140,8 +140,8 @@ const Watch = () => {
     queryKey: ['tip-address', streamId],
     queryFn: async () => {
       if (!streamId) return null;
-      const { data } = await supabase.rpc('get_tip_address', { 
-        stream_id: streamId 
+      const { data } = await supabase.rpc('get_stream_tip_address', { 
+        _stream_id: streamId 
       });
       return data;
     },
