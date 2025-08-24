@@ -48,7 +48,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.9 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="relative max-w-md w-full pointer-events-auto"
+          className="relative max-w-lg w-full pointer-events-auto"
         >
           {/* Glass container with gradient outline */}
           <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
