@@ -549,7 +549,6 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
                       preload="metadata"
                       poster={clip.thumbnail_url || undefined}
                       controls={false}
-                      webkit-playsinline="true"
                       onMouseEnter={(e) => {
                         if (window.innerWidth > 768) {
                           const video = e.currentTarget;

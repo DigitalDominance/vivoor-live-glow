@@ -66,7 +66,6 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
               preload="metadata"
               poster={clip.thumbnail_url || undefined}
               controls={false}
-              webkit-playsinline="true"
               onMouseEnter={(e) => {
                 if (window.innerWidth > 768) {
                   const video = e.currentTarget;

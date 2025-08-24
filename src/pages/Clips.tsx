@@ -330,17 +330,16 @@ const ClipsPage = () => {
                        {/* Thumbnail */}
                        <div
                          className="relative aspect-video cursor-pointer overflow-hidden rounded-t-xl"
-                         onClick={() => handleClipClick(clip.id)}
-                       >
-                      {clip.download_url ? (
-                        <video
-                          className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                          muted
-                          playsInline
-                          preload="metadata"
-                          poster={clip.thumbnail_url || undefined}
-                          controls={false}
-                          webkit-playsinline="true"
+                          onClick={() => handleClipClick(clip.id)}
+                        >
+                       {clip.download_url ? (
+                         <video
+                           className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                           muted
+                           playsInline
+                           preload="metadata"
+                           poster={clip.thumbnail_url || undefined}
+                           controls={false}
                           onMouseEnter={(e) => {
                             if (window.innerWidth > 768) {
                               const video = e.currentTarget;
