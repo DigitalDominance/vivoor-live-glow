@@ -8,9 +8,10 @@ interface TipDisplayProps {
   newTips: ProcessedTip[];
   onTipShown: (tipId: string) => void;
   isFullscreen?: boolean;
+  userJoinedAt: Date;
 }
 
-const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false }) => {
+const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false, userJoinedAt }) => {
   const [activeTips, setActiveTips] = useState<TipNotificationData[]>([]);
   const MAX_TIPS = 3; // Maximum 3 tips displayed at once
 
@@ -20,14 +21,28 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
       for (const tip of newTips) {
         console.log('Processing tip:', tip);
         
+        // Skip tips that occurred before user joined
+        if (tip.timestamp && new Date(tip.timestamp) < userJoinedAt) {
+          console.log('Skipping tip from before user joined:', tip.id);
+          onTipShown(tip.id);
+          continue;
+        }
+        
         // Get the tip data from database to access the stored sender info
         const { data: tipData, error: tipError } = await supabase
           .from('tips')
-          .select('sender_name, sender_avatar, tip_message, sender_address')
+          .select('sender_name, sender_avatar, tip_message, sender_address, created_at')
           .eq('id', tip.id)
           .single();
 
         console.log('Tip data from DB:', tipData);
+        
+        // Double-check timestamp filtering using DB data
+        if (tipData?.created_at && new Date(tipData.created_at) < userJoinedAt) {
+          console.log('Skipping tip from before user joined (DB timestamp):', tip.id);
+          onTipShown(tip.id);
+          continue;
+        }
 
         let finalSenderName = tipData?.sender_name || 'Anonymous';
         let finalSenderAvatar = tipData?.sender_avatar;
@@ -76,7 +91,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
     if (newTips.length > 0) {
       processNewTips();
     }
-  }, [newTips, onTipShown]);
+  }, [newTips, onTipShown, userJoinedAt]);
 
   const handleTipComplete = (tipId: string) => {
     setActiveTips(prev => prev.filter(tip => tip.id !== tipId));

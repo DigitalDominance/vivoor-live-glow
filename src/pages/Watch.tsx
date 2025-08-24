@@ -45,6 +45,7 @@ const Watch = () => {
   const [isMuted, setIsMuted] = React.useState(true); // Start muted for autoplay, will unmute immediately
   const [showControls, setShowControls] = React.useState(true);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [userJoinedAt] = React.useState(new Date()); // Track when user joined this watch session
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const playerContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -665,7 +666,7 @@ const Watch = () => {
               )}
 
               {/* Tip notifications positioned within player */}
-              <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} />
+              <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} userJoinedAt={userJoinedAt} />
             </div>
           </div>
 

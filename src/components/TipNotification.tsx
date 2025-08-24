@@ -48,11 +48,11 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.9 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="relative max-w-sm pointer-events-auto"
+          className="relative max-w-md w-full pointer-events-auto"
         >
           {/* Glass container with gradient outline */}
           <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
-            <div className="bg-black/90 backdrop-blur-md rounded-[10px] p-4 shadow-2xl">
+            <div className="bg-black/95 backdrop-blur-md rounded-[10px] p-4 shadow-2xl">
               {/* Close button */}
               <button
                 onClick={handleDismiss}
@@ -61,44 +61,44 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 <X size={14} className="text-white" />
               </button>
 
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar className="w-8 h-8 ring-1 ring-brand-cyan/30">
+                    <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
+                    <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
+                      {tip.sender.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-white font-medium text-sm">
+                    {tip.sender}
+                  </span>
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Avatar className="w-6 h-6 ring-1 ring-brand-cyan/30">
-                      <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
-                      <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
-                        {tip.sender.slice(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-white font-medium text-sm">
-                      {tip.sender}
-                    </span>
-                  </div>
                   
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.3 }}
-                    className="flex items-center gap-2 text-white font-bold text-lg mb-2"
+                    className="flex items-center gap-2 text-white font-bold text-lg mb-2 ml-auto"
                   >
                     <span className="bg-gradient-to-r from-brand-cyan to-brand-iris bg-clip-text text-transparent">
                       {tip.amount}
                     </span>
                     <KaspaIcon size={20} />
                   </motion.div>
-                  
-                  {tip.message && (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.4, duration: 0.3 }}
-                      className="text-white/90 text-sm line-clamp-2 bg-white/5 rounded-lg p-2 border border-white/10"
-                    >
-                      {tip.message}
-                    </motion.p>
-                  )}
                 </div>
               </div>
+              
+              {tip.message && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.3 }}
+                  className="text-white/90 text-sm line-clamp-2 bg-white/5 rounded-lg p-2 border border-white/10 mt-2"
+                >
+                  {tip.message}
+                </motion.p>
+              )}
               
               {/* Animated progress bar with gradient */}
               <motion.div

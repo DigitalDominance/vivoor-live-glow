@@ -442,7 +442,7 @@ const Stream = () => {
       />
       
       {/* Tip notifications overlay */}
-      <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
+      <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} />
     </main>
   );
 };
