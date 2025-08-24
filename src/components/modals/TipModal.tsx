@@ -36,8 +36,9 @@ const TipModal: React.FC<{
       return;
     }
 
-    // Validate tip message for bad words
-    if (message && containsBadWords(message)) {
+    // Get current message value and validate for bad words
+    const currentMessage = message.trim();
+    if (currentMessage && containsBadWords(currentMessage)) {
       toast.error("Tip message contains inappropriate language. Please revise your message.");
       return;
     }
@@ -54,7 +55,7 @@ const TipModal: React.FC<{
       
       // Create encrypted payload for tips
       const encryptedPayload = await encryptTipMessage(
-        message || "Thanks for the stream!", 
+        currentMessage || "Thanks for the stream!", 
         kas, 
         senderHandle || "Anonymous"
       );
@@ -115,7 +116,7 @@ const TipModal: React.FC<{
               senderAddress: senderHandle || 'Anonymous',
               senderName: senderProfile?.display_name || senderProfile?.handle || senderHandle || 'Anonymous',
               senderAvatar: senderProfile?.avatar_url,
-              tipMessage: cleanText(message || "Thanks for the stream!") // Clean the message before storing
+              tipMessage: cleanText(currentMessage || "Thanks for the stream!") // Clean the message before storing
             })
           });
           
