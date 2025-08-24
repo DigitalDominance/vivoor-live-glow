@@ -69,7 +69,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                     {tip.sender.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-white font-bold text-2xl truncate">
+                <span className="text-white font-bold text-2xl truncate -mt-4">
                   {tip.sender}
                 </span>
               </div>
