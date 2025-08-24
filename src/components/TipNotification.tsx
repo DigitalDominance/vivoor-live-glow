@@ -79,7 +79,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
-                className="flex items-center justify-center gap-3 mb-4"
+                className="flex items-center gap-3 mb-4 ml-20"
               >
                 <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent text-4xl font-bold">
                   {tip.amount}
