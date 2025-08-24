@@ -7,6 +7,7 @@ import React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type StreamCardProps = {
@@ -154,6 +155,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                   <AvatarFallback className="text-[10px]">{stream.username[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <span>@{stream.username}</span>
+                <ClipVerifiedBadge userId={stream.userId} size="sm" />
               </button>
             </div>
             <div className="flex items-center gap-2">
