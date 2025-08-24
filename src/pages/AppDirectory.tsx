@@ -8,6 +8,8 @@ import { useWallet } from "@/context/WalletContext";
 import { startStreamCleanupTimer } from "@/lib/streamCleanup";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 const categories = ['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'];
 
@@ -21,7 +23,9 @@ const AppDirectory: React.FC = () => {
   const [activeCats, setActiveCats] = React.useState<string[]>([]);
   const [showLive, setShowLive] = React.useState<'live' | 'replay' | 'all'>('live');
   const [sort, setSort] = React.useState<SortMode>('viewers');
-  const [visible, setVisible] = React.useState(9);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  
+  const ITEMS_PER_PAGE = 12;
 
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [activeProfile, setActiveProfile] = React.useState<any>();
@@ -120,20 +124,17 @@ const AppDirectory: React.FC = () => {
     return list;
   }, [allStreams, searchMode, query, activeCats, showLive, sort]);
 
-  // Infinite scroll sentinel
-  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+  // Calculate pagination
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const visibleItems = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Reset to page 1 when filters change
   React.useEffect(() => {
-    const el = sentinelRef.current; if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          setVisible((v) => Math.min(v + 6, filtered.length));
-        }
-      });
-    }, { rootMargin: '400px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [filtered.length]);
+    setCurrentPage(1);
+  }, [searchMode, query, activeCats, showLive, sort]);
+
 
   const openProfile = async (userId: string) => {
     try {
@@ -174,7 +175,7 @@ const AppDirectory: React.FC = () => {
     }
   };
 
-  const visibleItems = filtered.slice(0, visible);
+  
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -233,21 +234,79 @@ const AppDirectory: React.FC = () => {
             No results. Try a different category or search.
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {visibleItems.map((s) => (
               <StreamCard key={s.id} stream={s} isLoggedIn={isLoggedIn} onOpenProfile={(id)=>openProfile(id)} onRequireLogin={onRequireLogin} />
             ))}
           </div>
         )}
-        {/* skeletons for loading more (mock) */}
-        {visible < filtered.length && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-56 rounded-xl bg-muted/40 animate-pulse" />
-            ))}
-          </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-8 flex justify-center"
+          >
+            <div className="flex items-center gap-2 p-1 rounded-xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-background">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium rounded-lg bg-background hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-background"
+                >
+                  <ChevronLeft className="size-4 mr-1" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                      page = i + 1;
+                    } else if (currentPage <= 3) {
+                      page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i;
+                    } else {
+                      page = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-10 h-10 rounded-lg text-sm font-medium transition-all duration-300 ${
+                          currentPage === page
+                            ? "bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink text-white shadow-lg"
+                            : "hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20"
+                        }`}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm font-medium rounded-lg bg-background hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-background"
+                >
+                  Next
+                  <ChevronRight className="size-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
         )}
-        <div ref={sentinelRef} className="h-8" />
       </section>
 
       {/* Modals */}

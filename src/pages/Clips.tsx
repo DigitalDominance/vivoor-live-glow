@@ -441,56 +441,62 @@ const ClipsPage = () => {
                 transition={{ delay: 0.3 }}
                 className="mt-16 flex justify-center relative z-50"
               >
-                <Pagination>
-                  <PaginationContent className="gap-2">
-                    {currentPage > 1 && (
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          className="bg-background/60 backdrop-blur-sm border-border/30 hover:bg-brand-iris/10 hover:border-brand-iris/40 transition-all duration-300"
-                        />
-                      </PaginationItem>
-                    )}
+                <div className="flex items-center gap-2 p-1 rounded-xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-background">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 text-sm font-medium rounded-lg bg-background hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-background"
+                    >
+                      <ChevronLeft className="size-4 mr-1" />
+                      Previous
+                    </Button>
                     
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <PaginationItem key={pageNum}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(pageNum)}
-                            isActive={pageNum === currentPage}
-                            className={`transition-all duration-300 ${
-                              pageNum === currentPage
-                                ? 'bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink text-white border-transparent'
-                                : 'bg-background/60 backdrop-blur-sm border-border/30 hover:bg-brand-iris/10 hover:border-brand-iris/40'
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let page;
+                        if (totalPages <= 5) {
+                          page = i + 1;
+                        } else if (currentPage <= 3) {
+                          page = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          page = totalPages - 4 + i;
+                        } else {
+                          page = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-10 h-10 rounded-lg text-sm font-medium transition-all duration-300 ${
+                              currentPage === page
+                                ? "bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink text-white shadow-lg"
+                                : "hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20"
                             }`}
                           >
-                            {pageNum}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    })}
+                            {page}
+                          </Button>
+                        );
+                      })}
+                    </div>
                     
-                    {currentPage < totalPages && (
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                          className="bg-background/60 backdrop-blur-sm border-border/30 hover:bg-brand-iris/10 hover:border-brand-iris/40 transition-all duration-300"
-                        />
-                      </PaginationItem>
-                    )}
-                  </PaginationContent>
-                </Pagination>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-2 text-sm font-medium rounded-lg bg-background hover:bg-gradient-to-r hover:from-brand-cyan/20 hover:via-brand-iris/20 hover:to-brand-pink/20 transition-all duration-300 disabled:opacity-50 disabled:hover:bg-background"
+                    >
+                      Next
+                      <ChevronRight className="size-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             )}
           </div>
