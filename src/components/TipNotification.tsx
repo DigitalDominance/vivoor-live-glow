@@ -62,9 +62,9 @@ const TipNotification: React.FC<TipNotificationProps> = ({
               </button>
 
               {/* Profile and name row */}
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8 ring-1 ring-brand-cyan/30 flex-shrink-0">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <Avatar className="w-7 h-7 ring-1 ring-brand-cyan/30">
                     <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                     <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                       {tip.sender.slice(0, 1).toUpperCase()}
@@ -80,9 +80,9 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
-                  className="flex items-center gap-1 text-white font-bold text-lg"
+                  className="flex items-center gap-2"
                 >
-                  <span className="bg-gradient-to-r from-brand-cyan to-brand-iris bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-brand-cyan to-brand-iris bg-clip-text text-transparent text-lg font-bold">
                     {tip.amount}
                   </span>
                   <KaspaIcon size={18} />

@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import KaspaIcon from "@/components/KaspaIcon";
@@ -20,7 +20,8 @@ const TipModal: React.FC<{
     handle?: string;
     avatar_url?: string;
   } | null;
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
+  triggerElement?: React.ReactNode;
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile, triggerElement }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -152,95 +153,116 @@ const TipModal: React.FC<{
     }
   };
 
+  const ModalContent = () => (
+    <div className="relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink border-0 max-w-md rounded-lg">
+      <div className="bg-black/95 backdrop-blur-md rounded-lg p-6">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <KaspaIcon size={20} /> Tip in KAS
+          </DialogTitle>
+        </DialogHeader>
+        {isLoggedIn ? (
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-white/70">Choose an amount and add a message. Your wallet will open to confirm.</p>
+            <div className="flex gap-2 flex-wrap">
+              {["1","5","10"].map(v => (
+                <Button 
+                  key={v} 
+                  variant="outline" 
+                  onClick={() => setAmount(v)} 
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
+                  aria-label={`Tip ${v} KAS`}
+                >
+                  {v} KAS
+                </Button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/90">Custom amount (minimum 1 KAS)</label>
+              <input 
+                value={amount} 
+                onChange={(e)=>setAmount(e.target.value)} 
+                type="number" 
+                min="1" 
+                step="1" 
+                className="w-full rounded-md bg-white/10 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder-white/50 focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all duration-300" 
+                placeholder="Enter amount..."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/90">Message (optional)</label>
+              <Textarea 
+                value={message} 
+                onChange={(e) => setMessage(e.target.value)} 
+                placeholder="Say something nice to the streamer..."
+                className="resize-none bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-white/50 focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all duration-300"
+                rows={3}
+                maxLength={200}
+              />
+              <p className="text-xs text-white/50">{message.length}/200 characters</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                disabled={sending} 
+                onClick={sendTip}
+                className="bg-gradient-to-r from-brand-cyan to-brand-iris text-white border-0 hover:scale-105 transition-all duration-300 shadow-lg"
+              >
+                {sending ? "Sending..." : "Send Tip"}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => onOpenChange(false)}
+                className="text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-white/70">Login / connect wallet to tip in Kaspa.</p>
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={onRequireLogin}
+                className="bg-gradient-to-r from-brand-cyan to-brand-iris text-white border-0 hover:scale-105 transition-all duration-300"
+              >
+                Login
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => onOpenChange(false)}
+                className="text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // If we have a trigger element, use it for positioning
+  if (triggerElement) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          {triggerElement}
+        </DialogTrigger>
+        <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-md">
+          <ModalContent />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Fallback to centered modal
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="relative p-[2px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink border-0 max-w-md mx-auto">
-        <div className="bg-black/95 backdrop-blur-md rounded-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <KaspaIcon size={20} /> Tip in KAS
-            </DialogTitle>
-          </DialogHeader>
-          {isLoggedIn ? (
-            <div className="space-y-4 mt-4">
-              <p className="text-sm text-white/70">Choose an amount and add a message. Your wallet will open to confirm.</p>
-              <div className="flex gap-2 flex-wrap">
-                {["1","5","10"].map(v => (
-                  <Button 
-                    key={v} 
-                    variant="outline" 
-                    onClick={() => setAmount(v)} 
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all duration-300 hover:scale-105"
-                    aria-label={`Tip ${v} KAS`}
-                  >
-                    {v} KAS
-                  </Button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm text-white/90">Custom amount (minimum 1 KAS)</label>
-                <input 
-                  value={amount} 
-                  onChange={(e)=>setAmount(e.target.value)} 
-                  type="number" 
-                  min="1" 
-                  step="1" 
-                  className="w-full rounded-md bg-white/10 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder-white/50 focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all duration-300" 
-                  placeholder="Enter amount..."
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm text-white/90">Message (optional)</label>
-                <Textarea 
-                  value={message} 
-                  onChange={(e) => setMessage(e.target.value)} 
-                  placeholder="Say something nice to the streamer..."
-                  className="resize-none bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder-white/50 focus:border-brand-cyan focus:ring-1 focus:ring-brand-cyan transition-all duration-300"
-                  rows={3}
-                  maxLength={200}
-                />
-                <p className="text-xs text-white/50">{message.length}/200 characters</p>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  disabled={sending} 
-                  onClick={sendTip}
-                  className="bg-gradient-to-r from-brand-cyan to-brand-iris text-white border-0 hover:scale-105 transition-all duration-300 shadow-lg"
-                >
-                  {sending ? "Sending..." : "Send Tip"}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => onOpenChange(false)}
-                  className="text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 mt-4">
-              <p className="text-sm text-white/70">Login / connect wallet to tip in Kaspa.</p>
-              <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={onRequireLogin}
-                  className="bg-gradient-to-r from-brand-cyan to-brand-iris text-white border-0 hover:scale-105 transition-all duration-300"
-                >
-                  Login
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => onOpenChange(false)}
-                  className="text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+      <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-md">
+        <ModalContent />
       </DialogContent>
     </Dialog>
   );
