@@ -169,6 +169,51 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_verifications: {
+        Row: {
+          amount_kas: number
+          amount_sompi: number
+          block_time: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          payment_type: string
+          treasury_address: string
+          txid: string
+          updated_at: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          amount_kas: number
+          amount_sompi: number
+          block_time: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_type: string
+          treasury_address?: string
+          txid: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          amount_kas?: number
+          amount_sompi?: number
+          block_time?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_type?: string
+          treasury_address?: string
+          txid?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
