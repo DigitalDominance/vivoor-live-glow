@@ -657,7 +657,7 @@ const Watch = () => {
                   variant="gradientOutline"
                   size="sm"
                   onClick={() => setTipOpen(true)}
-                  disabled={!identity?.id || !streamerKaspaAddress || !livepeerIsLive}
+                  disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
                   className="flex-1 sm:flex-none"
                 >
                   Tip KAS
@@ -732,8 +732,10 @@ const Watch = () => {
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
       
-      {/* Tip notifications overlay - positioned for fullscreen compatibility */}
-      <TipDisplay newTips={newTips} onTipShown={handleTipShown} />
+      {/* Tip notifications overlay - positioned over video player */}
+      <div className={`fixed z-[10000] pointer-events-none ${isFullscreen ? 'inset-0' : 'inset-0'}`}>
+        <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} />
+      </div>
       
       {/* Clip Creator Modal */}
       {livepeerIsLive && streamData?.playback_url && (

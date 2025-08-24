@@ -5,9 +5,10 @@ import { ProcessedTip } from '@/hooks/useTipMonitoring';
 interface TipDisplayProps {
   newTips: ProcessedTip[];
   onTipShown: (tipId: string) => void;
+  isFullscreen?: boolean;
 }
 
-const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown }) => {
+const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false }) => {
   const [activeTips, setActiveTips] = useState<TipNotificationData[]>([]);
 
   // Process new tips into notifications
@@ -39,13 +40,14 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown }) => {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+    <div className={`${isFullscreen ? 'fixed top-4 right-4' : 'absolute top-4 right-4'} z-[10001] space-y-2 pointer-events-none`}>
       {activeTips.map(tip => (
         <TipNotification
           key={tip.id}
           tip={tip}
           onComplete={() => handleTipComplete(tip.id)}
           duration={5000}
+          isFullscreen={isFullscreen}
         />
       ))}
     </div>

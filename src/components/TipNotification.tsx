@@ -15,12 +15,14 @@ interface TipNotificationProps {
   tip: TipNotificationData;
   onComplete: () => void;
   duration?: number;
+  isFullscreen?: boolean;
 }
 
 const TipNotification: React.FC<TipNotificationProps> = ({ 
   tip, 
   onComplete, 
-  duration = 5000 
+  duration = 5000,
+  isFullscreen = false
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -41,7 +43,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.9 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="fixed top-4 right-4 z-50 max-w-sm"
+          className="relative max-w-sm pointer-events-auto"
         >
           <div className="bg-gradient-to-r from-green-500/90 to-emerald-600/90 backdrop-blur-md rounded-xl p-4 shadow-2xl border border-green-400/20">
             <div className="flex items-start gap-3">
