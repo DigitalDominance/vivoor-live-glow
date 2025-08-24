@@ -79,16 +79,21 @@ serve(async (req) => {
 
     const { userAddress, paymentType, txid, startTime }: PaymentRequest = await req.json();
     
-    console.log('Verifying payment:', { userAddress, paymentType, txid: typeof txid === 'string' ? txid.slice(0, 20) + '...' : typeof txid, startTime });
+    console.log('RAW REQUEST DATA:', JSON.stringify({ userAddress, paymentType, txid: typeof txid, startTime }));
+    console.log('TXID TYPE:', typeof txid);
+    console.log('TXID LENGTH:', typeof txid === 'string' ? txid.length : 'NOT STRING');
+    console.log('TXID SAMPLE:', typeof txid === 'string' ? txid.slice(0, 100) : txid);
 
     // Validate payment type and amount
     const expectedPayment = PAYMENT_AMOUNTS[paymentType];
     if (!expectedPayment) {
+      console.log('INVALID PAYMENT TYPE:', paymentType);
       return new Response(
         JSON.stringify({ error: 'Invalid payment type' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('EXPECTED PAYMENT:', expectedPayment);
 
     // Extract transaction ID if txid is passed as a JSON object
     let cleanTxid: string;
@@ -96,29 +101,39 @@ serve(async (req) => {
       try {
         // Try to parse as JSON first (in case it's the full transaction object)
         const parsed = JSON.parse(txid);
+        console.log('PARSED TXID AS JSON:', typeof parsed, Object.keys(parsed || {}));
         if (parsed.id) {
           cleanTxid = parsed.id;
+          console.log('USING PARSED ID:', cleanTxid);
         } else if (parsed.transaction_id) {
           cleanTxid = parsed.transaction_id;
+          console.log('USING PARSED TRANSACTION_ID:', cleanTxid);
         } else {
           cleanTxid = txid.trim();
+          console.log('USING TRIMMED ORIGINAL:', cleanTxid);
         }
-      } catch {
+      } catch (e) {
         // Not JSON, treat as plain txid
         cleanTxid = txid.trim();
+        console.log('NOT JSON, USING TRIMMED:', cleanTxid);
       }
     } else {
+      console.log('TXID NOT STRING, TYPE:', typeof txid);
       return new Response(
         JSON.stringify({ error: 'Transaction ID must be a string' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('CLEAN TXID:', cleanTxid);
+    console.log('CLEAN TXID LENGTH:', cleanTxid.length);
+    console.log('HEX REGEX TEST:', /^[a-f0-9]{64}$/i.test(cleanTxid));
+
     // Validate txid format
     if (!/^[a-f0-9]{64}$/i.test(cleanTxid)) {
-      console.error('Invalid txid format:', cleanTxid, 'Length:', cleanTxid.length);
+      console.error('INVALID TXID FORMAT - Expected 64 char hex, got:', cleanTxid, 'Length:', cleanTxid.length);
       return new Response(
-        JSON.stringify({ error: 'Invalid transaction ID format - must be 64 character hex string' }),
+        JSON.stringify({ error: `Invalid transaction ID format - must be 64 character hex string. Got ${cleanTxid.length} characters.` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
