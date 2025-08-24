@@ -137,7 +137,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
           {stream.live ? (
             <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-400/50">LIVE</span>
           ) : (
-            <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-medium bg-background/80 border border-border">{stream.duration ?? 'Replay'}</span>
+            <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-xs font-medium bg-background/80 border border-border">{stream.duration ?? 'Ended'}</span>
           )}
         </div>
         <div className="p-4">

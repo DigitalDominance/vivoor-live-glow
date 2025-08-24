@@ -7,7 +7,7 @@ import { StreamCard } from "@/components/streams/StreamCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
 import { useQuery } from "@tanstack/react-query";
-import { Settings } from "lucide-react";
+import { Settings, Play, Eye, Heart, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
@@ -218,8 +218,9 @@ const Channel: React.FC = () => {
         </div>
       </div>
 
-      {/* User's Streams */}
+      {/* User's Streams and Clips */}
       <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
+      <ChannelClips userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
     </div>
   );
 };
@@ -318,6 +319,193 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
           />
         ))}
       </div>
+    </div>
+  );
+};
+
+// Component to fetch and display user's clips
+const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: any }> = ({ userId, isOwnChannel, profile }) => {
+  const navigate = useNavigate();
+  
+  const { data: clips = [], isLoading } = useQuery({
+    queryKey: ['user-clips', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clips')
+        .select(`
+          id,
+          title,
+          start_seconds,
+          end_seconds,
+          thumbnail_url,
+          download_url,
+          created_at,
+          views
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      
+      if (error) {
+        console.error('Error fetching clips:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!userId
+  });
+
+  const handleClipClick = async (clipId: string) => {
+    // Increment view count
+    try {
+      await supabase.rpc('increment_clip_views', { clip_id_param: clipId });
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+    }
+    
+    // Navigate to clip page
+    navigate(`/clip/${clipId}`);
+  };
+
+  const formatDuration = (startSeconds: number, endSeconds: number) => {
+    const duration = endSeconds - startSeconds;
+    return `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+  };
+
+  if (clips.length === 0) {
+    return null; // Don't show the section if there are no clips
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h2 className="text-xl font-semibold mb-6">
+        Clips
+      </h2>
+      
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <motion.div 
+              key={i} 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05 }}
+              className="relative rounded-xl overflow-hidden border border-border/20 bg-background/40 backdrop-blur-xl animate-pulse p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink"
+            >
+              <div className="relative rounded-xl overflow-hidden bg-background h-full">
+                <div className="aspect-video bg-gradient-to-br from-brand-cyan/10 via-brand-iris/10 to-brand-pink/10" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3 bg-gradient-to-r from-brand-cyan/20 to-brand-iris/20 rounded" />
+                  <div className="h-2 bg-gradient-to-r from-brand-iris/20 to-brand-pink/20 rounded w-2/3" />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        >
+          {clips.map((clip, index) => (
+            <motion.div
+              key={clip.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="group relative rounded-xl backdrop-blur-xl hover:shadow-2xl hover:shadow-brand-iris/10 transition-all duration-500 p-0.5 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink"
+            >
+              {/* Inner content container */}
+              <div className="relative rounded-xl overflow-hidden bg-background h-full"
+                style={{
+                  background: `linear-gradient(135deg, 
+                    hsl(var(--background) / 0.95) 0%, 
+                    hsl(var(--background) / 0.8) 50%, 
+                    hsl(var(--background) / 0.95) 100%)`
+                }}
+              >
+                {/* Thumbnail */}
+                <div
+                  className="relative aspect-video cursor-pointer overflow-hidden rounded-t-xl"
+                  onClick={() => handleClipClick(clip.id)}
+                >
+                  {clip.download_url ? (
+                    <video
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                      muted
+                      playsInline
+                      preload="metadata"
+                      onMouseEnter={(e) => {
+                        const video = e.currentTarget;
+                        video.currentTime = 0.5; // Show frame at 0.5s
+                      }}
+                    >
+                      <source src={clip.download_url} type="video/mp4" />
+                    </video>
+                  ) : clip.thumbnail_url ? (
+                    <img
+                      src={clip.thumbnail_url}
+                      alt={clip.title}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 flex items-center justify-center">
+                      <Play className="size-8 text-muted-foreground" />
+                    </div>
+                  )}
+                  
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Play button overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/90 backdrop-blur-sm hover:bg-background scale-75 group-hover:scale-100"
+                    >
+                      <Play className="size-4 fill-current" />
+                    </Button>
+                  </div>
+                  
+                  {/* Duration */}
+                  <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded text-white text-xs font-medium bg-black/90 backdrop-blur-sm z-10">
+                    {formatDuration(clip.start_seconds, clip.end_seconds)}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-3">
+                  <h3 className="font-medium text-xs mb-2 line-clamp-2 cursor-pointer hover:text-primary transition-colors text-foreground leading-tight" 
+                      onClick={() => handleClipClick(clip.id)}>
+                    {clip.title}
+                  </h3>
+                  
+                  {/* Stats */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <div className="flex items-center gap-1">
+                      <Eye className="size-2.5" />
+                      {clip.views || 0}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Heart className="size-2.5" />
+                      0
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(clip.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </div>
   );
 };

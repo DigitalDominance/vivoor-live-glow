@@ -10,7 +10,7 @@ import WalletConnectModal from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
-import MyClipsModal from "@/components/modals/MyClipsModal";
+
 
 const Wordmark = () => (
   <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
@@ -41,7 +41,7 @@ const SiteHeader = () => {
   const [walletOpen, setWalletOpen] = useState(false);
   const [usernameOpen, setUsernameOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showClipsModal, setShowClipsModal] = useState(false);
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -111,10 +111,6 @@ const SiteHeader = () => {
                 <DropdownMenuItem onClick={() => navigate(`/channel/${profile?.username || identity?.id}`)} className="cursor-pointer hover:bg-accent/50">
                   <Video className="h-4 w-4 mr-2" />
                   My Channel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowClipsModal(true)} className="cursor-pointer hover:bg-accent/50">
-                  <Clapperboard className="h-4 w-4 mr-2" />
-                  My Clips
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/following")} className="cursor-pointer hover:bg-accent/50">
                   My Following
@@ -256,8 +252,7 @@ const SiteHeader = () => {
                           
                           {[
                             { icon: User, label: "Profile", action: () => setShowProfileModal(true) },
-                            { icon: Video, label: "My Channel", action: () => navigate(`/channel/${profile?.username || wallet.identity?.id}`) },
-                            { icon: Clapperboard, label: "My Clips", action: () => setShowClipsModal(true) }
+                            { icon: Video, label: "My Channel", action: () => navigate(`/channel/${profile?.username || wallet.identity?.id}`) }
                           ].map((item, index) => (
                             <motion.div
                               key={item.label}
@@ -310,7 +305,7 @@ const SiteHeader = () => {
       <WalletConnectModal open={walletOpen} onOpenChange={setWalletOpen} />
       <UsernameModal open={usernameOpen} onOpenChange={setUsernameOpen} />
       <MyProfileModal open={showProfileModal} onOpenChange={setShowProfileModal} onEditUsername={() => { setShowProfileModal(false); setUsernameOpen(true); }} />
-      <MyClipsModal open={showClipsModal} onOpenChange={setShowClipsModal} />
+      
     </header>
   );
 };
