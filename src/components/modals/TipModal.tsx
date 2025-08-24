@@ -1,7 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import KaspaIcon from "@/components/KaspaIcon";
 import { toast } from "sonner";
 import { encryptTipMessage } from "@/lib/crypto";
@@ -176,18 +175,10 @@ const TipModal: React.FC<{
               <X size={16} className="text-white" />
             </button>
 
-            {/* Header with profile */}
-            <div className="flex items-center gap-3 mb-6">
-              <Avatar className="w-10 h-10 ring-2 ring-brand-cyan/30">
-                <AvatarImage src={senderProfile?.avatar_url} alt={senderProfile?.display_name || senderProfile?.handle} />
-                <AvatarFallback className="bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
-                  {(senderProfile?.display_name || senderProfile?.handle || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex items-center gap-2 flex-1">
-                <KaspaIcon size={20} />
-                <h2 className="text-xl font-bold text-white">Tip in KAS</h2>
-              </div>
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-6">
+              <KaspaIcon size={20} />
+              <h2 className="text-xl font-bold text-white">Tip in KAS</h2>
             </div>
           {isLoggedIn ? (
             <div className="space-y-4 mt-4">
