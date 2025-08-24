@@ -32,8 +32,8 @@ const Channel: React.FC = () => {
       
       if (!profileData) return null;
       
-      // Then get follower counts separately
-      const [followerResult, followingResult] = await Promise.all([
+      // Get follower counts, stream likes, and clip likes
+      const [followerResult, followingResult, streamLikesResult, clipLikesResult] = await Promise.all([
         supabase
           .from('follows')
           .select('id', { count: 'exact', head: true })
@@ -41,13 +41,38 @@ const Channel: React.FC = () => {
         supabase
           .from('follows')
           .select('id', { count: 'exact', head: true })
-          .eq('follower_id', profileData.id)
+          .eq('follower_id', profileData.id),
+        // Get likes for user's streams
+        supabase
+          .from('likes')
+          .select('id', { count: 'exact', head: true })
+          .in('stream_id', 
+            await supabase
+              .from('streams')
+              .select('id')
+              .eq('user_id', profileData.id)
+              .then(({ data }) => data?.map(s => s.id) || [])
+          ),
+        // Get likes for user's clips
+        supabase
+          .from('clip_likes')
+          .select('id', { count: 'exact', head: true })
+          .in('clip_id',
+            await supabase
+              .from('clips')
+              .select('id')
+              .eq('user_id', profileData.id)
+              .then(({ data }) => data?.map(c => c.id) || [])
+          )
       ]);
+      
+      const totalLikes = (streamLikesResult.count || 0) + (clipLikesResult.count || 0);
       
       return {
         ...profileData,
         follower_count: followerResult.count || 0,
-        following_count: followingResult.count || 0
+        following_count: followingResult.count || 0,
+        total_likes: totalLikes
       };
     },
     enabled: !!username
@@ -203,6 +228,10 @@ const Channel: React.FC = () => {
                 </div>
                 
                 <div className="flex gap-6 text-sm mb-4">
+                  <div>
+                    <span className="font-semibold">{profile.total_likes || 0}</span>
+                    <span className="text-muted-foreground ml-1">total likes</span>
+                  </div>
                   <div>
                     <span className="font-semibold">{profile.follower_count || 0}</span>
                     <span className="text-muted-foreground ml-1">followers</span>
