@@ -14,9 +14,11 @@ export function containsBadWords(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   
   const lowerText = text.toLowerCase();
-  return badWordsList.some(badWord => 
-    lowerText.includes(badWord.toLowerCase())
-  );
+  return badWordsList.some(badWord => {
+    // Use word boundaries to ensure we only match complete words
+    const regex = new RegExp(`\\b${badWord.toLowerCase()}\\b`);
+    return regex.test(lowerText);
+  });
 }
 
 /**
