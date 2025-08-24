@@ -232,11 +232,11 @@ const Index = () => {
               Go live in seconds. Replay forever.
             </h1>
             <p className="mt-4 text-lg text-muted-foreground max-w-prose">
-              Vivoor blends effortless live streaming with instant replays and one‑tap clips — all with buttery animations and zero friction.
+              The world's first Kaspa-powered streaming platform. Stream live, earn with zero-fee KAS tips, and build your community on decentralized infrastructure powered by Livepeer.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="hero" size="lg">Start a Stream</Button>
-              <Button variant="glass" size="lg">Watch Demos</Button>
+              <Button variant="hero" size="lg" onClick={() => navigate('/go-live')}>Start Streaming</Button>
+              <Button variant="glass" size="lg" onClick={() => navigate('/docs')}>Read Documentation</Button>
             </div>
             <div className="mt-6 flex gap-3">
               <LivePill label="LIVE now" delay={0.3} />
@@ -250,16 +250,16 @@ const Index = () => {
       {/* Kaspa highlight */}
       <section className="container mx-auto px-4 mt-10">
         <div className="rounded-xl border border-border p-4 bg-card/60 backdrop-blur-md text-center">
-          <p className="text-sm font-medium">Built on <span className="text-gradient font-semibold">Kaspa</span> — the first live streaming platform on Kaspa.</p>
+          <p className="text-sm font-medium">Built on <span className="text-gradient font-semibold">Kaspa</span> + <span className="text-gradient font-semibold">Livepeer</span> — pioneering web3 streaming with zero-fee creator economy.</p>
         </div>
       </section>
 
       {/* Feature Trio */}
       <section id="features" className="container mx-auto px-4 mt-16">
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FeatureCard icon={Zap} title="Instant Live" desc="Go from tap to live in under a second with optimized start times." />
-          <FeatureCard icon={Repeat} title="Auto Replay" desc="Streams are saved instantly — rewind and replay without uploads." />
-          <FeatureCard icon={Scissors} title="Clips in One Tap" desc="Capture highlights with a tap; shareable links auto‑generated." />
+          <FeatureCard icon={Zap} title="Zero-Fee Tips" desc="100% of KAS tips go to creators. No platform cuts, powered by Kaspa blockchain." />
+          <FeatureCard icon={Repeat} title="Instant Streaming" desc="Go live in seconds with Livepeer's decentralized video infrastructure." />
+          <FeatureCard icon={Scissors} title="One-Tap Clips" desc="Create and share highlights instantly with automatic processing." />
         </div>
       </section>
 
@@ -385,8 +385,8 @@ const Index = () => {
             <h2 className="font-display text-3xl md:text-4xl font-bold text-gradient">Your moment, in motion.</h2>
             <p className="mt-2 text-muted-foreground">Join now and bring your stories to life.</p>
             <div className="mt-6 flex justify-center gap-3">
-              <Button variant="hero" size="lg">Get the App</Button>
-              <Button variant="gradientOutline" size="lg">Join as Creator</Button>
+              <Button variant="hero" size="lg" onClick={() => navigate('/app')}>Start Watching</Button>
+              <Button variant="gradientOutline" size="lg" onClick={() => navigate('/go-live')}>Start Streaming</Button>
             </div>
           </div>
         </div>

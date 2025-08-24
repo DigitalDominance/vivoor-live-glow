@@ -23,6 +23,7 @@ import Channel from "@/pages/Channel";
 import ChannelSettings from "@/pages/ChannelSettings";
 import ClipsPage from "@/pages/Clips";
 import Verification from "@/pages/Verification";
+import DocsPage from "@/pages/Docs";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 
@@ -54,6 +55,7 @@ const App = () => (
                 <Route path="/profile/:id" element={<Profile />} />
                 <Route path="/channel/:username" element={<Channel />} />
                 <Route path="/channel/settings" element={<ChannelSettings />} />
+                <Route path="/docs" element={<DocsPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

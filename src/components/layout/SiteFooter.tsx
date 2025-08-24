@@ -11,10 +11,10 @@ const SiteFooter = () => {
           ivoor
         </a>
         <nav className="flex gap-4 text-sm text-muted-foreground">
-          <a className="story-link" href="#features">Features</a>
-          <a className="story-link" href="#creators">Creators</a>
-          <a className="story-link" href="#pricing">Pricing</a>
-          <a className="story-link" href="#faq">FAQ</a>
+          <a className="story-link" href="/docs">Documentation</a>
+          <a className="story-link" href="/app">Browse Streams</a>
+          <a className="story-link" href="/clips">Clips</a>
+          <a className="story-link" href="/verification">Get Verified</a>
         </nav>
         <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Vivoor. All rights reserved.</div>
       </div>
