@@ -1,35 +1,31 @@
-import React from "react";
-import { Shield } from "lucide-react";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 interface VerifiedBadgeProps {
-  isVerified: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
+  isVerified?: boolean;
 }
 
-const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ 
-  isVerified, 
-  size = "md", 
-  className 
-}) => {
+const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ size = 'sm', className = '', isVerified = true }) => {
   if (!isVerified) return null;
 
   const sizeClasses = {
-    sm: "size-3",
-    md: "size-4", 
-    lg: "size-5"
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-6 h-6'
   };
 
   return (
-    <div className={cn(
-      "inline-flex items-center justify-center rounded-full bg-blue-600 text-white",
-      size === "sm" && "p-0.5",
-      size === "md" && "p-1",
-      size === "lg" && "p-1.5",
-      className
-    )}>
-      <Shield className={sizeClasses[size]} />
+    <div className="relative inline-flex">
+      <CheckCircle2 
+        className={`${sizeClasses[size]} text-white ${className}`}
+        style={{
+          background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+          borderRadius: '50%',
+          padding: '2px'
+        }}
+      />
     </div>
   );
 };

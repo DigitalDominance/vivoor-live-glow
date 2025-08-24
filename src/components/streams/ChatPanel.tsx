@@ -3,6 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SendHorizonal } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import { useUserVerification } from "@/hooks/useUserVerification";
+
+// Component to show verified badge for a user
+const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: verification } = useUserVerification(userId);
+  return <VerifiedBadge size="sm" isVerified={verification?.isVerified} />;
+};
 
 export type ChatMessage = { 
   id: string; 
@@ -58,6 +66,7 @@ const ChatPanel: React.FC<{
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="text-primary font-medium truncate">{m.user.name}</span>
+                  <VerifiedUserBadge userId={m.user.id} />
                   <span className="text-xs text-muted-foreground">{m.time}</span>
                 </div>
                 <div 

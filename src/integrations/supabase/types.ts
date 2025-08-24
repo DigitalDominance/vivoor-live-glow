@@ -733,6 +733,14 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: boolean
       }
+      user_has_active_verification: {
+        Args: { user_id_param: string }
+        Returns: {
+          expires_at: string
+          is_verified: boolean
+          payment_type: string
+        }[]
+      }
       user_has_valid_stream_payment: {
         Args: { user_id_param: string }
         Returns: boolean

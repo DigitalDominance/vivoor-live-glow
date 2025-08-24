@@ -11,6 +11,14 @@ import { Settings, Play, Eye, Heart, ExternalLink } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import { useUserVerification } from "@/hooks/useUserVerification";
+
+// Component to show verified badge for a user
+const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: verification } = useUserVerification(userId);
+  return <VerifiedBadge size="md" isVerified={verification?.isVerified} />;
+};
 
 const Channel: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -207,7 +215,10 @@ const Channel: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                   <div>
-                    <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
+                      <VerifiedUserBadge userId={profile.id} />
+                    </div>
                     {profile.bio ? (
                       <p className="text-muted-foreground">{profile.bio}</p>
                     ) : (

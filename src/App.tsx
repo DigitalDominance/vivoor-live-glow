@@ -22,6 +22,7 @@ import Profile from "@/pages/Profile";
 import Channel from "@/pages/Channel";
 import ChannelSettings from "@/pages/ChannelSettings";
 import ClipsPage from "@/pages/Clips";
+import Verification from "@/pages/Verification";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 
@@ -43,6 +44,7 @@ const App = () => (
                 <Route path="/app" element={<AppDirectory />} />
                 <Route path="/watch/:streamId" element={<Watch />} />
                 <Route path="/go-live" element={<GoLive />} />
+                <Route path="/verification" element={<Verification />} />
                 <Route path="/clips" element={<ClipsPage />} />
                 <Route path="/stream/:streamId" element={<Stream />} />
                 {/* Recordings removed to save storage costs */}

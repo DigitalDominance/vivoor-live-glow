@@ -189,7 +189,7 @@ const GoLive = () => {
     }
     
     const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
-    const feeAmountSompi = 20000000; // 0.2 KAS in sompi
+    const feeAmountSompi = 120000000; // 1.2 KAS in sompi
     
     try {
       const txid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
@@ -256,7 +256,7 @@ const GoLive = () => {
       }
       
       // Send treasury fee
-      toast.info('Processing treasury fee (0.2 KAS)...');
+      toast.info('Processing treasury fee (1.2 KAS)...');
       const treasuryTxid = await sendTreasuryFee();
       console.log('Treasury fee paid:', treasuryTxid);
       

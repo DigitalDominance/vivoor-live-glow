@@ -63,14 +63,14 @@ const TipNotification: React.FC<TipNotificationProps> = ({
 
               {/* Profile and name row */}
               <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1 ml-6 mt-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1 ml-8 mt-4">
                   <Avatar className="w-10 h-10 ring-1 ring-brand-cyan/30 flex-shrink-0">
                     <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                     <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                       {tip.sender.slice(0, 1).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-white font-medium text-sm truncate">
+                  <span className="text-white font-medium text-sm truncate -mt-1">
                     {tip.sender}
                   </span>
                 </div>

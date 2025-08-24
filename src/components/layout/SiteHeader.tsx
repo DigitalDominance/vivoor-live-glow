@@ -120,6 +120,10 @@ const SiteHeader = () => {
                   <Zap className="h-4 w-4 mr-2 text-brand-cyan" />
                   <span className="font-bold">GO LIVE</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/verification")} className="cursor-pointer hover:bg-accent/20">
+                  <User className="h-4 w-4 mr-2 text-brand-iris" />
+                  <span className="font-bold">Verification</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem onClick={wallet.disconnect} className="cursor-pointer hover:bg-destructive/10 text-destructive">
                   Disconnect
