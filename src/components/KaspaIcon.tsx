@@ -1,5 +1,4 @@
 import React from 'react';
-import kaspaLogo from '@/assets/kaspa-logo.png';
 
 interface KaspaIconProps {
   size?: number;
@@ -9,7 +8,7 @@ interface KaspaIconProps {
 const KaspaIcon: React.FC<KaspaIconProps> = ({ size = 24, className = '' }) => {
   return (
     <img 
-      src={kaspaLogo}
+      src="/lovable-uploads/a759010b-dfc9-4e39-a99a-2a2fb1104f6a.png"
       alt="Kaspa"
       width={size}
       height={size}
