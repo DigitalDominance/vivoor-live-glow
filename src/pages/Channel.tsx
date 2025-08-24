@@ -284,7 +284,22 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
         return [];
       }
       
-      return data || [];
+      if (!data) return [];
+      
+      // Fetch like counts for each stream
+      const streamsWithLikes = await Promise.all(
+        data.map(async (stream) => {
+          const { data: likeData } = await supabase.rpc('get_stream_like_count', { 
+            stream_id_param: stream.id 
+          });
+          return {
+            ...stream,
+            likeCount: likeData || 0
+          };
+        })
+      );
+      
+      return streamsWithLikes;
     },
     enabled: !!userId
   });
@@ -350,7 +365,7 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
               username: profile?.handle || profile?.display_name || 'Unknown',
               userId: userId,
               thumbnail: stream.thumbnail_url,
-              likeCount: 0,
+              likeCount: stream.likeCount || 0,
               avatar: profile?.avatar_url
             }}
           />
