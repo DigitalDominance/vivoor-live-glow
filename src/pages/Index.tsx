@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
+import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
   <motion.div
@@ -125,7 +126,10 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
                 {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <span>@{clip.profile_handle || 'Unknown'}</span>
+            <div className="flex items-center gap-1">
+              <span>@{clip.profile_handle || 'Unknown'}</span>
+              <ClipVerifiedBadge userId={clip.user_id} size="sm" />
+            </div>
           </div>
 
           {/* Stats */}

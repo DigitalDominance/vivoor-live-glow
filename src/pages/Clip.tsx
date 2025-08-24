@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { useWallet } from "@/context/WalletContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 
 const ClipPage: React.FC = () => {
   const { id } = useParams();
@@ -236,7 +237,10 @@ const ClipPage: React.FC = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{creator.display_name || creator.handle}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{creator.display_name || creator.handle}</span>
+                      <ClipVerifiedBadge userId={creator.id} size="sm" />
+                    </div>
                     <div className="text-sm text-muted-foreground">@{creator.handle}</div>
                   </div>
                   <Button

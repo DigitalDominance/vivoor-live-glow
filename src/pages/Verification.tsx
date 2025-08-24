@@ -185,7 +185,7 @@ const Verification = () => {
                 className="w-full" 
                 variant="outline"
                 onClick={() => handlePayment('monthly_verification')}
-                disabled={isVerifying || (pendingType === 'monthly_verification' && !!pendingTxid)}
+                disabled={isVerifying || (pendingType === 'monthly_verification' && !!pendingTxid) || (verificationStatus?.is_verified && verificationStatus?.payment_type === 'monthly_verification')}
               >
                 {pendingType === 'monthly_verification' && pendingTxid ? (
                   <>
