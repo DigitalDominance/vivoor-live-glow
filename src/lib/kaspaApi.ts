@@ -5,6 +5,7 @@ export type KaspaTx = {
   transaction_id: string;
   accepting_block_blue_score: number; // DAA score
   block_time: number;
+  payload?: string; // Hex-encoded transaction payload where tips are stored
   inputs: Array<{
     signature_script?: string | null;
   }>;

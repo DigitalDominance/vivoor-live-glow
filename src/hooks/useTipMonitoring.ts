@@ -89,24 +89,34 @@ export function useTipMonitoring({
   // Use Kaspa tip scanner
   useKaspaTipScanner({
     address: kaspaAddress,
-    startDaa: streamStartBlockTime,
+    startDaa: streamStartBlockTime || 0,
     enabled: isMonitoring && !!kaspaAddress,
     onTip: handleTipEvent
   });
 
   // Start/stop monitoring
   useEffect(() => {
-    if (kaspaAddress && streamStartBlockTime) {
+    if (kaspaAddress && typeof streamStartBlockTime === 'number') {
       setIsMonitoring(true);
-      console.log('Started tip monitoring for address:', kaspaAddress);
+      console.log('Started tip monitoring:', {
+        address: kaspaAddress,
+        startBlockTime: streamStartBlockTime,
+        streamId
+      });
     } else {
       setIsMonitoring(false);
+      console.log('Not monitoring tips:', {
+        hasAddress: !!kaspaAddress,
+        hasBlockTime: typeof streamStartBlockTime === 'number',
+        streamStartBlockTime,
+        streamId
+      });
     }
 
     return () => {
       setIsMonitoring(false);
     };
-  }, [kaspaAddress, streamStartBlockTime]);
+  }, [kaspaAddress, streamStartBlockTime, streamId]);
 
   // Load existing tips from database when stream changes
   useEffect(() => {

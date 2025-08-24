@@ -1,33 +1,46 @@
 import { useEffect, useMemo, useRef } from "react";
 import { asciiToHex, fetchAddressFullTxs, KaspaTx, sumOutputsToAddress } from "@/lib/kaspaApi";
+import { extractTipFromSignature } from "@/lib/crypto";
 
 export type TipEvent = {
   txid: string;
   daa: number;
   amountSompi: number;
-  message?: string; // raw payload portion if we can decode
+  message?: string; // extracted tip payload
 };
 
 const TIP_PREFIX = "VIVR-TIP1:";
 const TIP_PREFIX_HEX = asciiToHex(TIP_PREFIX);
 
-function extractTipPayloadFromSigHex(sigHex?: string | null): string | undefined {
-  if (!sigHex) return undefined;
-  const idx = sigHex.toLowerCase().indexOf(TIP_PREFIX_HEX.toLowerCase());
-  if (idx === -1) return undefined;
-  const after = sigHex.slice(idx + TIP_PREFIX_HEX.length);
-  // Best-effort UTF-8 decode (may include binary). Trim non-printables.
+function extractTipPayloadFromHex(hexPayload?: string | null): string | undefined {
+  if (!hexPayload) return undefined;
+  
+  // Convert hex to string to check for our prefix
   try {
     const bytes: number[] = [];
-    for (let i = 0; i < after.length; i += 2) {
-      const byte = parseInt(after.slice(i, i + 2), 16);
+    for (let i = 0; i < hexPayload.length; i += 2) {
+      const byte = parseInt(hexPayload.slice(i, i + 2), 16);
       if (!Number.isNaN(byte)) bytes.push(byte);
     }
     const txt = new TextDecoder().decode(new Uint8Array(bytes));
-    return txt.replace(/[\u0000-\u001F\u007F]/g, "").trim();
+    
+    // Check if it contains our tip prefix
+    if (txt.includes(TIP_PREFIX)) {
+      const idx = txt.indexOf(TIP_PREFIX);
+      if (idx !== -1) {
+        return txt.slice(idx); // Return from prefix onwards
+      }
+    }
   } catch {
-    return undefined;
+    // If direct decode fails, try to find hex-encoded prefix
+    const idx = hexPayload.toLowerCase().indexOf(TIP_PREFIX_HEX.toLowerCase());
+    if (idx !== -1) {
+      const afterPrefixHex = hexPayload.slice(idx);
+      return TIP_PREFIX + afterPrefixHex.slice(TIP_PREFIX_HEX.length);
+    }
   }
+  
+  return undefined;
 }
 
 export function useKaspaTipScanner(params: {
@@ -50,29 +63,53 @@ export function useKaspaTipScanner(params: {
     async function tick() {
       if (!address) return;
       try {
+        console.log(`Checking transactions for ${address} with minDaa: ${minDaa}`);
         const txs: KaspaTx[] = await fetchAddressFullTxs(address, 50);
+        console.log(`Found ${txs.length} transactions for address`);
+        
         for (const tx of txs) {
           const daa = tx.accepting_block_blue_score || 0;
-          if (daa <= minDaa) continue; // respect baseline
+          
+          // Check if transaction is too old
+          if (daa <= minDaa) {
+            console.log(`Skipping old transaction ${tx.transaction_id} (daa: ${daa} <= ${minDaa})`);
+            continue;
+          }
 
           // Must be incoming (has output to our address)
           const amt = sumOutputsToAddress(tx, address);
-          if (!amt) continue;
+          if (!amt) {
+            console.log(`No output to our address in tx ${tx.transaction_id}`);
+            continue;
+          }
 
-          // Look for our prefix in any input signature_script
-          const hasPrefix = tx.inputs?.some((i) =>
-            (i.signature_script || "").toLowerCase().includes(TIP_PREFIX_HEX.toLowerCase())
-          );
-          if (!hasPrefix) continue;
+          console.log(`Processing transaction ${tx.transaction_id} with amount ${amt} and payload:`, tx.payload?.substring(0, 100));
 
-          if (seen.current.has(tx.transaction_id)) continue;
+          // Look for our prefix in the transaction payload (this is where tips are stored)
+          const tipPayload = extractTipPayloadFromHex(tx.payload);
+          if (!tipPayload) {
+            console.log(`No tip payload found in tx ${tx.transaction_id}`);
+            continue;
+          }
+
+          if (seen.current.has(tx.transaction_id)) {
+            console.log(`Already processed tx ${tx.transaction_id}`);
+            continue;
+          }
+          
           seen.current.add(tx.transaction_id);
 
-          const payload = extractTipPayloadFromSigHex(tx.inputs?.[0]?.signature_script);
-          onTip?.({ txid: tx.transaction_id, daa, amountSompi: amt, message: payload });
+          console.log('🎉 Found NEW tip transaction:', {
+            txid: tx.transaction_id,
+            daa,
+            amount: amt,
+            payload: tipPayload.substring(0, 100) + '...'
+          });
+
+          onTip?.({ txid: tx.transaction_id, daa, amountSompi: amt, message: tipPayload });
         }
       } catch (e) {
-        console.warn("Kaspa scan error:", e);
+        console.error("Kaspa scan error:", e);
       }
     }
 
