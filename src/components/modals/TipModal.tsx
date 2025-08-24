@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { encryptTipMessage } from "@/lib/crypto";
 import { containsBadWords, cleanText } from "@/lib/badWords";
 
-const TipModal: React.FC<{
+interface TipModalProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   isLoggedIn: boolean;
@@ -20,7 +20,9 @@ const TipModal: React.FC<{
     handle?: string;
     avatar_url?: string;
   } | null;
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
+}
+
+const TipModal: React.FC<TipModalProps> = React.memo(({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -251,6 +253,8 @@ const TipModal: React.FC<{
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+TipModal.displayName = 'TipModal';
 
 export default TipModal;

@@ -733,16 +733,6 @@ const Watch = () => {
                 >
                   Tip KAS
                 </Button>
-                <TipModal
-                  open={tipOpen}
-                  onOpenChange={setTipOpen}
-                  isLoggedIn={!!identity}
-                  onRequireLogin={() => navigate('/auth')}
-                  toAddress={streamerKaspaAddress}
-                  senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)}
-                  streamId={streamId}
-                  senderProfile={currentUserProfile}
-                />
               </div>
             </div>
           </div>
@@ -785,27 +775,36 @@ const Watch = () => {
       </div>
 
       {/* Modals */}
-            {streamerProfile && (
-              <ProfileModal
-                open={profileOpen}
-                onOpenChange={setProfileOpen}
-                profile={{
-                  id: streamerProfile.id,
-                  handle: streamerProfile.handle || 'streamer',
-                  displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
-                  bio: streamerProfile.bio || '',
-                  followers: streamerProfile.follower_count || 0,
-                  following: streamerProfile.following_count || 0,
-                  tags: [],
-                  avatar: streamerProfile.avatar_url || ''
-                }}
-                isLoggedIn={!!identity?.id}
-                onRequireLogin={() => toast.error('Please connect your wallet to continue')}
-              />
-            )}
-      
-      
-      
+      <TipModal
+        open={tipOpen}
+        onOpenChange={setTipOpen}
+        isLoggedIn={!!identity}
+        onRequireLogin={() => navigate('/auth')}
+        toAddress={streamerKaspaAddress}
+        senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)}
+        streamId={streamId}
+        senderProfile={currentUserProfile}
+      />
+
+      {streamerProfile && (
+        <ProfileModal
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          profile={{
+            id: streamerProfile.id,
+            handle: streamerProfile.handle || 'streamer',
+            displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
+            bio: streamerProfile.bio || '',
+            followers: streamerProfile.follower_count || 0,
+            following: streamerProfile.following_count || 0,
+            tags: [],
+            avatar: streamerProfile.avatar_url || ''
+          }}
+          isLoggedIn={!!identity?.id}
+          onRequireLogin={() => toast.error('Please connect your wallet to continue')}
+        />
+      )}
+
       {/* Clip Creator Modal */}
       {livepeerIsLive && streamData?.playback_url && (
         <LivepeerClipCreator
