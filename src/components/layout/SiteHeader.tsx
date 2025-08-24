@@ -170,7 +170,7 @@ const SiteHeader = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9998]"
                     onClick={() => setMobileMenuOpen(false)}
                   />
                   
@@ -185,7 +185,7 @@ const SiteHeader = () => {
                       damping: 30,
                       duration: 0.3
                     }}
-                    className="absolute top-full right-0 mt-2 w-72 p-4 bg-gradient-to-br from-background/95 via-background/90 to-background/95 backdrop-blur-lg border border-border/50 rounded-xl shadow-2xl z-50"
+                    className="absolute top-full right-0 mt-2 w-72 p-4 bg-gradient-to-br from-background/95 via-background/90 to-background/95 backdrop-blur-lg border border-border/50 rounded-xl shadow-2xl z-[9999]"
                     style={{
                       background: 'linear-gradient(135deg, hsl(var(--background)/0.95) 0%, hsl(var(--card)/0.9) 50%, hsl(var(--background)/0.95) 100%)'
                     }}

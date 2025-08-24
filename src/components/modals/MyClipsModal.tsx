@@ -215,9 +215,24 @@ const MyClipsModal: React.FC<MyClipsModalProps> = ({ open, onOpenChange }) => {
                           muted
                           playsInline
                           preload="metadata"
+                          webkit-playsinline="true"
+                          x-webkit-airplay="deny"
+                          poster=""
+                          onLoadedMetadata={(e) => {
+                            const video = e.currentTarget;
+                            video.currentTime = Math.min(0.5, video.duration / 2);
+                          }}
                           onMouseEnter={(e) => {
                             const video = e.currentTarget;
-                            video.currentTime = 0.5; // Show frame at 0.5s
+                            if (video.readyState >= 1) {
+                              video.currentTime = Math.min(0.5, video.duration / 2);
+                            }
+                          }}
+                          onTouchStart={(e) => {
+                            const video = e.currentTarget;
+                            if (video.readyState >= 1) {
+                              video.currentTime = Math.min(0.5, video.duration / 2);
+                            }
                           }}
                         >
                           <source src={clip.download_url} type="video/mp4" />
