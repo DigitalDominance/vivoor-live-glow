@@ -2,8 +2,8 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import KaspaLogo from "@/components/icons/KaspaLogo";
-import { useToast } from "@/components/ui/use-toast";
+import KasLogo from "@/components/KasLogo";
+import { toast } from "sonner";
 import { encryptTipMessage } from "@/lib/crypto";
 
 const TipModal: React.FC<{
@@ -13,17 +13,22 @@ const TipModal: React.FC<{
   onRequireLogin: () => void;
   toAddress?: string | null; // Streamer's Kaspa address (not displayed)
   senderHandle?: string; // Sender's handle for encryption
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle }) => {
-  const { toast } = useToast();
+  streamId?: string; // Stream ID for verification
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
 
   const sendTip = async () => {
     if (!toAddress) {
-      toast({ title: "Streamer not tip-enabled", description: "No Kaspa address found.", variant: "destructive" });
+      toast.error("Streamer not tip-enabled - No Kaspa address found.");
       return;
     }
+    if (!streamId) {
+      toast.error("Stream not found - Cannot process tip.");
+      return;
+    }
+    
     const kas = Math.max(1, Number(amount) || 1); // Minimum 1 KAS
     const sompi = kas * 100000000; // Convert KAS to sompi (1e8)
     
@@ -41,17 +46,48 @@ const TipModal: React.FC<{
         senderHandle || "Anonymous"
       );
       
+      // Send the transaction
       const txid = await window.kasware.sendKaspa(toAddress, sompi, {
         priorityFee: 10000,
         payload: encryptedPayload
       });
       
-      toast({ title: "Tip sent successfully!", description: `${kas} KAS sent. Txid: ${txid.slice(0, 8)}...` });
+      toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
+      
+      // Now verify the transaction with our backend
+      try {
+        const response = await fetch(`https://qcowmxypihinteajhnjw.supabase.co/functions/v1/verify-tip-transaction`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjb3dteHlwaWhpbnRlYWpobmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDI4MTMsImV4cCI6MjA3MDYxODgxM30.KrSQYsOzPPhErffzdLzMS_4pC2reuONNc134tdtVPbA`
+          },
+          body: JSON.stringify({
+            txid,
+            streamId,
+            expectedAmount: sompi,
+            recipientAddress: toAddress,
+            senderAddress: senderHandle || 'Anonymous'
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          toast.success(`Tip verified! ${kas} KAS sent successfully.`);
+        } else {
+          toast.error(`Tip verification failed: ${result.error}`);
+        }
+      } catch (verificationError) {
+        console.error('Tip verification error:', verificationError);
+        toast.warning('Tip sent but verification failed - it may take a moment to appear.');
+      }
+      
       setMessage("");
       setAmount("1");
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Failed to send tip", description: e?.message || "Try again.", variant: "destructive" });
+      toast.error(`Failed to send tip: ${e?.message || "Try again."}`);
     } finally {
       setSending(false);
     }
@@ -62,7 +98,7 @@ const TipModal: React.FC<{
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <KaspaLogo className="size-5 text-[hsl(var(--brand-cyan))]" /> Tip in KAS
+            <KasLogo size={20} /> Tip in KAS
           </DialogTitle>
         </DialogHeader>
         {isLoggedIn ? (

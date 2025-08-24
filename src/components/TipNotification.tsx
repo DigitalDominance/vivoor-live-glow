@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import KaspaLogo from '@/components/icons/KaspaLogo';
+import KasLogo from '@/components/KasLogo';
 
 export interface TipNotificationData {
   id: string;
@@ -55,7 +55,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 className="flex-shrink-0"
               >
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <KaspaLogo className="w-6 h-6 text-white" />
+                  <KasLogo size={24} />
                 </div>
               </motion.div>
               
@@ -76,9 +76,10 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.2, duration: 0.3 }}
-                  className="text-white font-bold text-lg mb-1"
+                  className="flex items-center gap-2 text-white font-bold text-lg mb-1"
                 >
-                  {tip.amount} KAS
+                  <span>{tip.amount}</span>
+                  <KasLogo size={20} />
                 </motion.div>
                 
                 {tip.message && (
@@ -122,7 +123,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
                 }}
                 className="absolute"
               >
-                <KaspaLogo className="w-4 h-4 text-green-400" />
+                <KasLogo size={16} />
               </motion.div>
             ))}
           </div>

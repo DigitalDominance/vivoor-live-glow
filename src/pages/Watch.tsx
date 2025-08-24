@@ -13,7 +13,7 @@ import TipDisplay from "@/components/TipDisplay";
 import ChatPanel from "@/components/streams/ChatPanel";
 import { StreamCard } from "@/components/streams/StreamCard";
 import { useWallet } from "@/context/WalletContext";
-import { useTipMonitoring } from "@/hooks/useTipMonitoring";
+import { useRealtimeTips } from "@/hooks/useRealtimeTips";
 import { useStreamStatus } from "@/hooks/useStreamStatus";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -220,15 +220,12 @@ const Watch = () => {
       }));
   }, [wsMessages]);
 
-  // Monitor tips for this stream
-  const { tips: allTips, totalAmountReceived } = useTipMonitoring({
+  // Monitor tips for this stream using real-time Supabase
+  const { tips: allTips, totalAmountReceived, isConnected } = useRealtimeTips({
     streamId: streamData?.id,
-    kaspaAddress: streamerKaspaAddress,
-    streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
         setNewTips(prev => [...prev, tip]);
-        toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
       }
     }
   });
@@ -740,6 +737,7 @@ const Watch = () => {
         onRequireLogin={onRequireLogin} 
         toAddress={streamerKaspaAddress}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
+        streamId={streamData?.id}
       />
       
       {/* Tip notifications overlay - positioned over video player */}
