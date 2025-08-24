@@ -245,7 +245,7 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
           viewers,
           thumbnail_url,
           created_at,
-          playbook_url
+          playback_url
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
@@ -329,48 +329,68 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
       </div>
       
       {totalPages > 1 && (
-        <div className="mt-8 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (currentPage > 1) setCurrentPage(currentPage - 1);
-                  }}
-                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 flex justify-center"
+        >
+          <div className="p-0.5 rounded-xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+            <Pagination className="bg-background rounded-xl">
+              <PaginationContent className="gap-1">
+                <PaginationItem>
+                  <PaginationPrevious 
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(page);
+                      if (currentPage > 1) setCurrentPage(currentPage - 1);
                     }}
-                    isActive={currentPage === page}
-                  >
-                    {page}
-                  </PaginationLink>
+                    className={`transition-all duration-300 ${
+                      currentPage === 1 
+                        ? 'pointer-events-none opacity-50' 
+                        : 'hover:bg-gradient-to-r hover:from-brand-cyan/10 hover:to-brand-iris/10 hover:border-brand-iris/30'
+                    }`}
+                  />
                 </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                  }}
-                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(page);
+                      }}
+                      isActive={currentPage === page}
+                      className={`transition-all duration-300 ${
+                        currentPage === page
+                          ? 'bg-gradient-to-r from-brand-iris to-brand-pink text-white border-transparent'
+                          : 'hover:bg-gradient-to-r hover:from-brand-cyan/10 hover:to-brand-iris/10 hover:border-brand-iris/30'
+                      }`}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                    }}
+                    className={`transition-all duration-300 ${
+                      currentPage === totalPages 
+                        ? 'pointer-events-none opacity-50' 
+                        : 'hover:bg-gradient-to-r hover:from-brand-iris/10 hover:to-brand-pink/10 hover:border-brand-pink/30'
+                    }`}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </motion.div>
       )}
     </div>
   );
@@ -568,48 +588,68 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
       )}
       
       {totalPages > 1 && (
-        <div className="mt-8 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (currentPage > 1) setCurrentPage(currentPage - 1);
-                  }}
-                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8 flex justify-center"
+        >
+          <div className="p-0.5 rounded-xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+            <Pagination className="bg-background rounded-xl">
+              <PaginationContent className="gap-1">
+                <PaginationItem>
+                  <PaginationPrevious 
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      setCurrentPage(page);
+                      if (currentPage > 1) setCurrentPage(currentPage - 1);
                     }}
-                    isActive={currentPage === page}
-                  >
-                    {page}
-                  </PaginationLink>
+                    className={`transition-all duration-300 ${
+                      currentPage === 1 
+                        ? 'pointer-events-none opacity-50' 
+                        : 'hover:bg-gradient-to-r hover:from-brand-cyan/10 hover:to-brand-iris/10 hover:border-brand-iris/30'
+                    }`}
+                  />
                 </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                  }}
-                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(page);
+                      }}
+                      isActive={currentPage === page}
+                      className={`transition-all duration-300 ${
+                        currentPage === page
+                          ? 'bg-gradient-to-r from-brand-iris to-brand-pink text-white border-transparent'
+                          : 'hover:bg-gradient-to-r hover:from-brand-cyan/10 hover:to-brand-iris/10 hover:border-brand-iris/30'
+                      }`}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                    }}
+                    className={`transition-all duration-300 ${
+                      currentPage === totalPages 
+                        ? 'pointer-events-none opacity-50' 
+                        : 'hover:bg-gradient-to-r hover:from-brand-iris/10 hover:to-brand-pink/10 hover:border-brand-pink/30'
+                    }`}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </motion.div>
       )}
     </div>
   );
