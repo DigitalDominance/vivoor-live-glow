@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import KaspaIcon from '@/components/KaspaIcon';
 import { X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface TipNotificationData {
   id: string;
@@ -26,6 +27,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
   isFullscreen = false
 }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -48,7 +50,7 @@ const TipNotification: React.FC<TipNotificationProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.9 }}
           transition={{ type: "spring", damping: 20, stiffness: 300 }}
-          className="relative w-80 pointer-events-auto"
+          className={`relative pointer-events-auto ${isMobile ? 'w-64' : 'w-80'}`}
         >
           {/* Glass container with gradient outline */}
           <div className="relative rounded-lg p-[1px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
@@ -63,8 +65,8 @@ const TipNotification: React.FC<TipNotificationProps> = ({
 
               {/* Main content row */}
               <div className="flex items-center gap-3 relative">
-                {/* Profile picture - positioned down and to the right */}
-                <Avatar className="w-6 h-6 ring-1 ring-brand-cyan/30 flex-shrink-0 ml-30">
+                {/* Profile picture - positioned to the right */}
+                <Avatar className={`w-6 h-6 ring-1 ring-brand-cyan/30 flex-shrink-0 ${isMobile ? 'ml-8' : 'ml-16'}`}>
                   <AvatarImage src={tip.senderAvatar} alt={tip.sender} />
                   <AvatarFallback className="text-xs bg-gradient-to-br from-brand-cyan to-brand-iris text-white font-medium">
                     {tip.sender.slice(0, 1).toUpperCase()}

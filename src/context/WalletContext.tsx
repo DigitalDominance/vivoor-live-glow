@@ -163,6 +163,18 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     async (username: string) => {
       if (!identity) return;
       
+      // Check if username is already taken
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('handle', username)
+        .neq('id', identity.id)
+        .maybeSingle();
+      
+      if (existingProfile) {
+        throw new Error('Username is already taken');
+      }
+      
       // Update Supabase database
       const { error } = await supabase
         .from('profiles')
@@ -231,6 +243,20 @@ const saveAvatarUrl = useCallback(
   const saveProfile = useCallback(
     async (updates: { handle?: string; display_name?: string; bio?: string; banner_url?: string }) => {
       if (!identity) return;
+      
+      // Check if handle is already taken (if updating handle)
+      if (updates.handle) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('handle', updates.handle)
+          .neq('id', identity.id)
+          .maybeSingle();
+        
+        if (existingProfile) {
+          throw new Error('Username is already taken');
+        }
+      }
       
       // Update Supabase database
       const { error } = await supabase
