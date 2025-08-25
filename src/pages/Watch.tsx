@@ -456,13 +456,53 @@ const Watch = () => {
   const handleFullscreen = () => {
     if (!playerContainerRef.current) return;
     
+    const container = playerContainerRef.current;
+    
     if (!isFullscreen) {
-      if (playerContainerRef.current.requestFullscreen) {
-        playerContainerRef.current.requestFullscreen();
+      // Try modern fullscreen API first
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(console.error);
+      }
+      // Webkit (Safari)
+      else if ((container as any).webkitRequestFullscreen) {
+        (container as any).webkitRequestFullscreen();
+      }
+      // For mobile webkit with video
+      else if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+        (videoRef.current as any).webkitEnterFullscreen();
+      }
+      // Fallback for older webkit
+      else if ((container as any).webkitRequestFullScreen) {
+        (container as any).webkitRequestFullScreen();
+      }
+      // Mozilla
+      else if ((container as any).mozRequestFullScreen) {
+        (container as any).mozRequestFullScreen();
+      }
+      // Microsoft
+      else if ((container as any).msRequestFullscreen) {
+        (container as any).msRequestFullscreen();
       }
     } else {
+      // Exit fullscreen
       if (document.exitFullscreen) {
-        document.exitFullscreen();
+        document.exitFullscreen().catch(console.error);
+      }
+      // Webkit
+      else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+      // Fallback for older webkit
+      else if ((document as any).webkitCancelFullScreen) {
+        (document as any).webkitCancelFullScreen();
+      }
+      // Mozilla
+      else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      }
+      // Microsoft
+      else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
       }
     }
   };
@@ -534,11 +574,27 @@ const Watch = () => {
   // Handle fullscreen changes
   React.useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
     };
 
+    // Add listeners for all browser variants
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
   }, []);
 
   // Hide controls after inactivity
