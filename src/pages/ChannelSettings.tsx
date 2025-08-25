@@ -13,17 +13,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Save, ArrowLeft } from "lucide-react";
 import AvatarCropper from "@/components/modals/AvatarCropper";
-import VerificationSection from "@/components/VerificationSection";
-import { validateUsername, validateBio } from "@/lib/badWords";
+import { validateBio } from "@/lib/badWords";
 
 const ChannelSettings: React.FC = () => {
   const navigate = useNavigate();
   const { identity } = useWallet();
   const queryClient = useQueryClient();
   
-  const [displayName, setDisplayName] = React.useState('');
   const [bio, setBio] = React.useState('');
-  const [handle, setHandle] = React.useState('');
   
   // Banner states
   const [bannerFile, setBannerFile] = React.useState<File | null>(null);
@@ -49,9 +46,7 @@ const ChannelSettings: React.FC = () => {
         .single();
       
       if (data) {
-        setDisplayName(data.display_name || '');
         setBio(data.bio || '');
-        setHandle(data.handle || '');
       }
       
       return data;
@@ -61,7 +56,7 @@ const ChannelSettings: React.FC = () => {
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { display_name?: string; bio?: string; handle?: string }) => {
+    mutationFn: async (data: { bio?: string }) => {
       if (!identity?.id) throw new Error('Not authenticated');
       
       const { error } = await supabase
@@ -84,13 +79,6 @@ const ChannelSettings: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate username
-    const usernameValidation = validateUsername(handle);
-    if (!usernameValidation.isValid) {
-      toast({ title: "Invalid username", description: usernameValidation.error, variant: "destructive" });
-      return;
-    }
-    
     // Validate bio
     const bioValidation = validateBio(bio);
     if (!bioValidation.isValid) {
@@ -99,9 +87,7 @@ const ChannelSettings: React.FC = () => {
     }
     
     updateProfileMutation.mutate({
-      display_name: displayName,
-      bio: bio,
-      handle: handle
+      bio: bio
     });
   };
 
@@ -242,31 +228,6 @@ const ChannelSettings: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="handle">Username</Label>
-                <Input
-                  id="handle"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="your-username"
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your unique username for your channel URL
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your Display Name"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
                 <Label htmlFor="bio">Bio</Label>
                 <Textarea
                   id="bio"
@@ -292,12 +253,7 @@ const ChannelSettings: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-
-        {/* Verification Section */}
-        <VerificationSection />
       </div>
-
-      {/* Banner Cropper Modal */}
       <AvatarCropper
         open={showBannerCropper}
         onOpenChange={setShowBannerCropper}
