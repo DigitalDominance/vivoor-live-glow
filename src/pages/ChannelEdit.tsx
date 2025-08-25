@@ -17,9 +17,7 @@ import { motion } from "framer-motion";
 const ChannelEdit: React.FC = () => {
   const navigate = useNavigate();
   const { identity } = useWallet();
-  const [displayName, setDisplayName] = React.useState("");
   const [bio, setBio] = React.useState("");
-  const [handle, setHandle] = React.useState("");
   const [saving, setSaving] = React.useState(false);
 
   // Fetch current profile data
@@ -36,9 +34,7 @@ const ChannelEdit: React.FC = () => {
   // Initialize form with profile data
   React.useEffect(() => {
     if (profile) {
-      setDisplayName(profile.display_name || "");
       setBio(profile.bio || "");
-      setHandle(profile.handle || "");
     }
   }, [profile]);
 
@@ -58,9 +54,7 @@ const ChannelEdit: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          display_name: displayName,
           bio: bio,
-          handle: handle,
           updated_at: new Date().toISOString()
         })
         .eq('id', identity.id);
@@ -155,7 +149,7 @@ const ChannelEdit: React.FC = () => {
               <Avatar className="size-20">
                 <AvatarImage src={profile?.avatar_url} alt="Channel avatar" />
                 <AvatarFallback className="text-lg">
-                  {(displayName || handle || 'U')[0].toUpperCase()}
+                  {(profile?.display_name || profile?.handle || 'U')[0].toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
@@ -182,31 +176,6 @@ const ChannelEdit: React.FC = () => {
 
             {/* Form Fields */}
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="handle">Username</Label>
-                <Input
-                  id="handle"
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                  placeholder="your-username"
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  This is your unique identifier on Vivoor.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your display name"
-                  className="mt-1"
-                />
-              </div>
-
               <div>
                 <Label htmlFor="bio">Bio</Label>
                 <Textarea
