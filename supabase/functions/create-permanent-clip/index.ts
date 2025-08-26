@@ -49,7 +49,15 @@ serve(async (req) => {
         playbackId,
         startTime,
         endTime,
-        name: `Live Clip ${seconds}s - ${new Date().toISOString()}`
+        name: `Live Clip ${seconds}s - ${new Date().toISOString()}`,
+        sessionId: playbackId, // Use playbackId as session identifier
+        // Add watermark configuration
+        watermark: {
+          url: "https://vivoor.com/logo.png", // Watermark image URL
+          position: "bottom-right",
+          opacity: 0.8,
+          size: "10%" // Size as percentage of video width
+        }
       }),
     });
 
