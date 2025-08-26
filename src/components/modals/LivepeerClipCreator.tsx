@@ -88,11 +88,21 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         }
       });
 
+      // Handle failures from the edge function.  The function now returns
+      // { success: false, error: string, details?: string } for known errors
+      // rather than using non-2xx statuses.  We check both the error property
+      // on the response and the success flag in the data.
       if (clipResponse.error) {
         throw new Error(clipResponse.error.message || 'Failed to create clip');
       }
+      if (!clipResponse.data || (clipResponse.data as any).success === false) {
+        const errData: any = clipResponse.data;
+        const errMsg = errData?.error || 'Failed to create clip';
+        const errDetails = errData?.details ? `: ${errData.details}` : '';
+        throw new Error(`${errMsg}${errDetails}`);
+      }
 
-      const { clip, downloadUrl, playbackUrl } = clipResponse.data;
+      const { clip, downloadUrl, playbackUrl } = clipResponse.data as any;
       console.log('Permanent clip created:', clip.id);
 
       // Try to apply a watermark using our Supabase edge function.  The edge
