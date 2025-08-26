@@ -33,6 +33,29 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const { identity } = useWallet();
   const queryClient = useQueryClient();
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const pollAssetReady = async (assetId: string, maxMs = 180000) => {
+    const started = Date.now();
+    while (Date.now() - started < maxMs) {
+      const status = await supabase.functions.invoke("get-clip-status", {
+        body: { assetId }
+      });
+
+      if (!status.error) {
+        const { phase, downloadUrl } = status.data || {};
+        if (phase === "ready" && downloadUrl) {
+          return { downloadUrl };
+        }
+        if (phase === "failed") {
+          throw new Error("Clip processing failed at Livepeer.");
+        }
+      }
+      await sleep(3000);
+    }
+    throw new Error("Timeout waiting for clip to become ready.");
+  };
+
   const createClip = async () => {
     if (!identity?.id) {
       toast({
@@ -73,7 +96,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           "You will be notified when your clip is ready. You can continue watching!",
       });
 
-      // Create permanent clip (server handles buffering/timing); pass client clock to avoid drift
+      // Create clip window on the server (returns quickly with assetId; no long polling server-side)
       const clipResponse = await supabase.functions.invoke(
         "create-permanent-clip",
         {
@@ -89,7 +112,6 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       );
 
       if (clipResponse.error) {
-        // Supabase surfaces non-2xx as this generic error; surface details if present
         const msg =
           clipResponse.error.message ||
           clipResponse.error.name ||
@@ -97,10 +119,11 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         throw new Error(msg);
       }
 
-      const { clip, downloadUrl, playbackUrl } = clipResponse.data || {};
-      if (!downloadUrl && !playbackUrl) {
-        throw new Error("Clip created but no asset URL was returned.");
-      }
+      const { assetId } = clipResponse.data || {};
+      if (!assetId) throw new Error("Clip created but no assetId was returned.");
+
+      // Poll status from client (avoids Supabase 60s edge timeout and CORS on 504)
+      const { downloadUrl } = await pollAssetReady(assetId);
 
       // Apply watermark using the backend API (unchanged)
       toast({
@@ -109,7 +132,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       });
 
       const formData = new FormData();
-      formData.append("videoUrl", downloadUrl || playbackUrl);
+      formData.append("videoUrl", downloadUrl);
       formData.append("position", "br");
       formData.append("margin", "24");
       formData.append("wmWidth", "180");
@@ -142,7 +165,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
 
       // Show preview modal with watermarked URL
       setClipPreview({
-        clipId: clip?.id,
+        clipId: undefined,
         downloadUrl: watermarkedUrl,
         playbackUrl: watermarkedUrl,
         title: clipTitle,
@@ -150,7 +173,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       });
       setShowPreview(true);
 
-      // Invalidate clips queries to refresh the clips page
+      // Refresh any cached lists (if your backend later persists the clip)
       queryClient.invalidateQueries({ queryKey: ["clips-with-profiles"] });
     } catch (error: any) {
       console.error("Error creating clip:", error);
