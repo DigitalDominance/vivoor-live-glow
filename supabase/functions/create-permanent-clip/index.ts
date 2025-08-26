@@ -100,60 +100,11 @@ serve(async (req) => {
       throw new Error('Asset processing timeout');
     }
 
-    console.log('Asset ready, downloading and watermarking...');
+    console.log('Asset ready, using Livepeer download URL directly');
 
-    // 3. Download the clip from Livepeer
-    const clipData = await fetch(assetReady.downloadUrl);
-    if (!clipData.ok) {
-      throw new Error('Failed to download clip from Livepeer');
-    }
-
-    // 4. Send to watermark service
+    // Use Livepeer's download URL directly without watermarking
     const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
-    const formData = new FormData();
-    formData.append('video', await clipData.blob(), 'clip.mp4');
-    formData.append('position', 'br');
-    formData.append('margin', '24');
-    formData.append('wmWidth', '180');
-    
-    const filename = `${clipTitle.replace(/[^a-zA-Z0-9]/g, '-')}.mp4`;
-    formData.append('filename', filename);
-
-    const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!watermarkResponse.ok) {
-      throw new Error('Watermarking failed');
-    }
-
-    // 5. Get watermarked video
-    const watermarkedBlob = await watermarkResponse.blob();
-    const watermarkedBuffer = await watermarkedBlob.arrayBuffer();
-
-    // 6. Upload to Supabase storage
-    const clipFilename = `${userId}/${Date.now()}-${filename}`;
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-      .from('clips')
-      .upload(clipFilename, watermarkedBuffer, {
-        contentType: 'video/mp4',
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error('Failed to upload clip to storage');
-    }
-
-    console.log('Clip uploaded to storage:', uploadData.path);
-
-    // 7. Get public URL
-    const { data: urlData } = supabaseClient.storage
-      .from('clips')
-      .getPublicUrl(clipFilename);
-
-    const publicUrl = urlData.publicUrl;
+    const publicUrl = assetReady.downloadUrl;
 
     // 8. Save clip to database with permanent URLs
     const { data: savedClip, error: saveError } = await supabaseClient
