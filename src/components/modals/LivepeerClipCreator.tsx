@@ -82,17 +82,43 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const { clip, downloadUrl, playbackUrl } = clipResponse.data;
       console.log('Permanent clip created:', clip.id);
 
+      // Apply watermark using the backend API
+      toast({
+        title: "Adding watermark...",
+        description: "Applying watermark to your clip...",
+      });
+
+      const formData = new FormData();
+      formData.append('videoUrl', downloadUrl);
+      formData.append('position', 'br');
+      formData.append('margin', '24');
+      formData.append('wmWidth', '180');
+      formData.append('filename', `${clipTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`);
+
+      const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!watermarkResponse.ok) {
+        throw new Error('Failed to apply watermark');
+      }
+
+      // Get the watermarked video as blob
+      const watermarkedBlob = await watermarkResponse.blob();
+      const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
+
       // Show success toast
       toast({
         title: "Clip Ready!",
-        description: `Your ${selectedDuration}-second clip is ready to watch!`,
+        description: `Your ${selectedDuration}-second clip is ready to download!`,
       });
 
-      // Show preview modal with permanent clip URLs
+      // Show preview modal with watermarked URL
       setClipPreview({
         clipId: clip.id,
-        downloadUrl,
-        playbackUrl,
+        downloadUrl: watermarkedUrl,
+        playbackUrl: watermarkedUrl,
         title: clipTitle,
         isWatermarked: true
       });

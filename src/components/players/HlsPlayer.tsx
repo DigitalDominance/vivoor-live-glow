@@ -145,11 +145,31 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         
         // Update quality levels when manifest is loaded
         if (onQualityLevelsUpdate && hls.levels.length > 0) {
-          const levels = hls.levels.map((level, index) => ({
-            label: level.height ? `${level.height}p` : `Level ${index}`,
-            value: index
+          // Create a map to track unique heights and avoid duplicates
+          const uniqueHeights = new Map<number, number>();
+          const levelsByHeight: Array<{label: string, value: number, height: number}> = [];
+          
+          hls.levels.forEach((level, index) => {
+            if (level.height && !uniqueHeights.has(level.height)) {
+              uniqueHeights.set(level.height, index);
+              levelsByHeight.push({
+                label: `${level.height}p`,
+                value: index,
+                height: level.height
+              });
+            }
+          });
+          
+          // Sort by height descending (1080p, 720p, 480p, etc.)
+          levelsByHeight.sort((a, b) => b.height - a.height);
+          
+          // Convert to the expected format
+          const levels = levelsByHeight.map(level => ({
+            label: level.label,
+            value: level.value
           }));
-          // Add auto quality option
+          
+          // Add auto quality option at the beginning
           levels.unshift({ label: 'Auto', value: -1 });
           onQualityLevelsUpdate(levels);
         }
