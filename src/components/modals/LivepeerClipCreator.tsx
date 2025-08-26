@@ -95,45 +95,87 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const { clip, downloadUrl, playbackUrl } = clipResponse.data;
       console.log('Permanent clip created:', clip.id);
 
-      // Apply watermark using the backend API
-      toast({
-        title: "Adding watermark...",
-        description: "Applying watermark to your clip...",
-      });
-
-      const formData = new FormData();
-      formData.append('videoUrl', downloadUrl);
-      formData.append('position', 'br');
-      formData.append('margin', '24');
-      formData.append('wmWidth', '180');
-      formData.append('filename', `${clipTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`);
-
-      const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!watermarkResponse.ok) {
-        throw new Error('Failed to apply watermark');
+      // Try to apply a watermark via the backend API. We only attempt this if the
+      // current page origin is allowed by the watermark service. When running
+      // locally or from a non-approved domain, the call would be blocked by
+      // CORS, so we skip the request entirely. Additionally we send the video
+      // content as a file rather than a remote URL to avoid the backend having
+      // to download the clip, which can sometimes fail. If the watermark
+      // request fails (e.g. due to CORS or service downtime) we gracefully fall
+      // back to using the original clip URL without a watermark. The user will
+      // still receive a working clip and be notified of the issue.
+      let finalUrl = downloadUrl;
+      let watermarked = false;
+      try {
+        // Define the exact origins the backend allows.  This list must stay
+        // synchronized with the ALLOWED_ORIGINS in the watermark server.
+        const ALLOWED_WM_ORIGINS = [
+          'https://preview--vivoor-live-glow.lovable.app',
+          'https://www.vivoor.xyz',
+          'https://vivoor.xyz'
+        ];
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+        if (ALLOWED_WM_ORIGINS.includes(currentOrigin)) {
+          toast({
+            title: "Adding watermark...",
+            description: "Applying watermark to your clip...",
+          });
+          // Fetch the clip file from the download URL so we can send it as a
+          // multipart file.  This avoids the backend needing to fetch a remote
+          // URL, which may not be publicly accessible.
+          const videoResponse = await fetch(downloadUrl);
+          if (!videoResponse.ok) {
+            throw new Error(`Failed to fetch clip for watermarking: ${videoResponse.status}`);
+          }
+          const videoBlob = await videoResponse.blob();
+          const formData = new FormData();
+          // Use a File so the backend sees a "video" upload.  The third argument
+          // provides a filename for the uploaded file.  The MIME type helps FFmpeg.
+          formData.append(
+            'video',
+            new File([videoBlob], `${clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip'}.mp4`, {
+              type: 'video/mp4'
+            })
+          );
+          formData.append('position', 'br');
+          formData.append('margin', '24');
+          formData.append('wmWidth', '180');
+          formData.append('filename', `${clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'watermarked'}.mp4`);
+          const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
+            method: 'POST',
+            body: formData,
+          });
+          if (watermarkResponse.ok) {
+            const watermarkedBlob = await watermarkResponse.blob();
+            finalUrl = URL.createObjectURL(watermarkedBlob);
+            watermarked = true;
+          } else {
+            console.warn('Watermark request failed with status', watermarkResponse.status);
+          }
+        } else {
+          // If the origin is not allowed, log for debugging but do not attempt the request.
+          console.warn('Skipping watermark request due to disallowed origin:', currentOrigin);
+        }
+      } catch (err) {
+        console.warn('Error applying watermark:', err);
       }
 
-      // Get the watermarked video as blob
-      const watermarkedBlob = await watermarkResponse.blob();
-      const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
-
-      // Show success toast
+      // Notify the user that the clip is ready.  If watermarking failed we
+      // include a note that the original clip is used instead.
       toast({
         title: "Clip Ready!",
-        description: `Your ${selectedDuration}-second clip is ready to download!`,
+        description: watermarked
+          ? `Your ${selectedDuration}-second clip is ready to download!`
+          : `Your clip is ready, but watermarking failed. Original clip provided.`,
       });
 
-      // Show preview modal with watermarked URL
+      // Show preview modal with the final URL (watermarked or original)
       setClipPreview({
         clipId: clip.id,
-        downloadUrl: watermarkedUrl,
-        playbackUrl: watermarkedUrl,
+        downloadUrl: finalUrl,
+        playbackUrl: finalUrl,
         title: clipTitle,
-        isWatermarked: true
+        isWatermarked: watermarked
       });
       setShowPreview(true);
       
