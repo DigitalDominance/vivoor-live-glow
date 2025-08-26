@@ -54,10 +54,21 @@ serve(async (req) => {
     });
 
     if (!wmResponse.ok || !wmResponse.body) {
+      // If the downstream service fails, capture the response text to aid
+      // debugging and return it in a JSON payload.  We deliberately return
+      // status 200 so that the Supabase client does not throw an exception.  The
+      // caller can inspect the `success` flag and `error` message to decide
+      // whether to fall back to the original clip.
       const errorText = await wmResponse.text().catch(() => '');
+      const errorPayload = {
+        success: false,
+        status: wmResponse.status,
+        error: `Watermark service responded with ${wmResponse.status}`,
+        details: errorText || undefined,
+      };
       return new Response(
-        JSON.stringify({ error: `Watermark service responded with ${wmResponse.status}`, details: errorText }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify(errorPayload),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -74,9 +85,14 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('apply-watermark error:', error);
+    // Return a JSON payload indicating failure rather than a non-2xx status.
+    const errPayload = {
+      success: false,
+      error: error?.message || 'Internal Server Error',
+    };
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal Server Error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(errPayload),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
