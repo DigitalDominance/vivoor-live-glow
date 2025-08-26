@@ -125,10 +125,18 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         // client will deserialize it as a Blob.  We can then create
         // an object URL for the preview.
         if (wmData instanceof Blob) {
+          // Successful watermark – generate a local URL for preview
           finalUrl = URL.createObjectURL(wmData);
           watermarked = true;
+        } else if (wmData && typeof wmData === 'object' && (wmData as any).success === false) {
+          // The edge function returned a structured error object. Log the
+          // message and any details to aid debugging, then fall back to the
+          // original clip.  We do not treat this as fatal – the user will
+          // still receive an unwatermarked clip.
+          const errObj = wmData as any;
+          console.warn('Watermarking failed:', errObj.error, errObj.details);
         } else {
-          console.warn('Unexpected watermark function response type');
+          console.warn('Unexpected watermark function response type', wmData);
         }
       } catch (err) {
         console.warn('Error applying watermark:', err);
