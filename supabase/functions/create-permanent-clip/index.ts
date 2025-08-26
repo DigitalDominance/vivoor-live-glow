@@ -1,158 +1,187 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// ---------- CORS ----------
-const ALLOWED_ORIGINS = new Set<string>([
-  "https://vivoor.xyz",
-  "https://www.vivoor.xyz",
-  "https://preview--vivoor-live-glow.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:3000",
-]);
-function corsHeaders(req: Request) {
-  const origin = req.headers.get("origin") ?? "";
-  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "*";
-  const headers: Record<string, string> = {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Vary": "Origin",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type, x-supabase-authorization",
-    "Access-Control-Max-Age": "86400",
-  };
-  if (allowOrigin !== "*") headers["Access-Control-Allow-Credentials"] = "true";
-  return headers;
-}
-// --------------------------
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
-const LIVEPEER_API_KEY = Deno.env.get("LIVEPEER_API_KEY") ?? "";
+const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY')!;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-async function fetchWithRetry(
-  url: string,
-  init: RequestInit & { timeoutMs?: number } = {},
-  attempts = 3,
-): Promise<Response> {
-  const timeoutMs = init.timeoutMs ?? 15000;
-  for (let i = 1; i <= attempts; i++) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, {
-        ...init,
-        signal: controller.signal,
-        headers: { Accept: "application/json", ...(init.headers || {}) },
-      });
-      clearTimeout(t);
-      if (!res.ok && (res.status >= 500 || res.status === 429)) {
-        if (i === attempts) return res;
-      } else {
-        return res;
-      }
-    } catch {
-      clearTimeout(t);
-      if (i === attempts) throw new Error("network error");
-    }
-    await sleep(Math.min(8000, 500 * 2 ** (i - 1)));
-  }
-  throw new Error("fetchWithRetry exhausted");
-}
-
-serve(async (req: Request) => {
-  const baseCors = corsHeaders(req);
-
-  // Preflight must return 200 + CORS
-  if (req.method === "OPTIONS") {
-    return new Response("", { status: 200, headers: baseCors });
-  }
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: baseCors });
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    if (!LIVEPEER_API_KEY) {
-      return new Response(JSON.stringify({ error: "LIVEPEER_API_KEY missing" }), {
-        status: 500,
-        headers: { ...baseCors, "Content-Type": "application/json" },
-      });
-    }
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    const body = await req.json().catch(() => ({}));
-    const { playbackId, seconds, nowMs } = body as {
-      playbackId?: string;
-      seconds?: number;
-      nowMs?: number;
-    };
+    // Accept optional startTime and endTime values from the client.  If they are not
+    // provided we will calculate them below based off of the current server time.
+    const {
+      playbackId,
+      seconds,
+      title,
+      userId,
+      streamTitle,
+      startTime: clientStartTime,
+      endTime: clientEndTime,
+    } = await req.json();
 
-    if (!playbackId || !seconds) {
-      return new Response(JSON.stringify({ error: "Missing playbackId or seconds" }), {
-        status: 400,
-        headers: { ...baseCors, "Content-Type": "application/json" },
-      });
-    }
-
-    // compute window (use client clock if provided)
-    const BASE_BUFFER_SECONDS = 25;
-    const now = typeof nowMs === "number" && isFinite(nowMs) ? nowMs : Date.now();
-    const endTime = now - BASE_BUFFER_SECONDS * 1000;
-    const startTime = endTime - seconds * 1000;
-
-    const postClip = (s: number, e: number, note?: string) =>
-      fetchWithRetry(
-        "https://livepeer.studio/api/clip",
-        {
-          method: "POST",
-          timeoutMs: 15000,
-          headers: {
-            Authorization: `Bearer ${LIVEPEER_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            playbackId,
-            startTime: s,
-            endTime: e,
-            name: `Live Clip ${seconds}s - ${new Date().toISOString()}${note ? " " + note : ""}`,
-          }),
-        },
-        3,
+    if (!playbackId || !seconds || !userId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: playbackId, seconds, userId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-
-    let clipRes = await postClip(startTime, endTime);
-    if (!clipRes.ok) {
-      // retry once with bigger buffer to avoid segment edge
-      const retryBuffer = BASE_BUFFER_SECONDS + 20;
-      const retryEnd = now - retryBuffer * 1000;
-      const retryStart = retryEnd - seconds * 1000;
-      const retryRes = await postClip(retryStart, retryEnd, "(retry)");
-      if (!retryRes.ok) {
-        const err1 = await clipRes.text().catch(() => "");
-        const err2 = await retryRes.text().catch(() => "");
-        return new Response(
-          JSON.stringify({ error: "Livepeer /clip failed", details: err1, retry: err2 }),
-          { status: 500, headers: { ...baseCors, "Content-Type": "application/json" } },
-        );
-      }
-      clipRes = retryRes;
     }
 
-    const js = await clipRes.json().catch(() => ({} as any));
-    const assetId = js?.asset?.id as string | undefined;
-    if (!assetId) {
-      return new Response(JSON.stringify({ error: "Unexpected Livepeer response", response: js }), {
-        status: 500,
-        headers: { ...baseCors, "Content-Type": "application/json" },
+    console.log(`Creating ${seconds}s clip for playbackId: ${playbackId}`);
+
+    // ------------------------------------------------------------------------
+    // 1. Create the clip via the Livepeer API
+    //
+    // The Livepeer clip API expects startTime and endTime values that reflect
+    // timestamps from the viewer's playhead.  When the client does not pass
+    // explicit values we fall back to a simple heuristic based off of the
+    // current server clock.  We subtract a small buffer from the current
+    // time to ensure we never request time ranges that are still being
+    // processed by Livepeer.  If the client passed `startTime` and
+    // `endTime` we use those values directly.
+    const BUFFER_SECONDS = 13;
+    const now = Date.now();
+    let computedEndTime = now - BUFFER_SECONDS * 1000;
+    let computedStartTime = computedEndTime - seconds * 1000;
+    // Use client provided timestamps if present.  These should already be
+    // expressed in milliseconds from the viewer's perspective.
+    if (typeof clientEndTime === 'number' && typeof clientStartTime === 'number') {
+      computedEndTime = clientEndTime;
+      computedStartTime = clientStartTime;
+    }
+
+    console.log(
+      `Clipping from ${new Date(computedStartTime).toISOString()} to ${new Date(computedEndTime).toISOString()} (${seconds}s duration with ${BUFFER_SECONDS}s buffer)`
+    );
+
+    const clipBody: Record<string, any> = {
+      playbackId,
+      startTime: computedStartTime,
+      endTime: computedEndTime,
+      name: `Live Clip ${seconds}s - ${new Date().toISOString()}`,
+    };
+    // Livepeer's API accepts an optional sessionId.  A unique session identifier
+    // can help group clips together, but using the playbackId for every clip
+    // request can cause conflicts if multiple clips are created concurrently.
+    // Only include sessionId if supplied by the client; otherwise omit it to
+    // allow Livepeer to generate its own session.
+    const clientSessionId = req.headers.get('x-session-id');
+    if (clientSessionId) {
+      clipBody.sessionId = clientSessionId;
+    }
+
+    const clipResponse = await fetch('https://livepeer.studio/api/clip', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${LIVEPEER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(clipBody),
+    });
+
+    if (!clipResponse.ok) {
+      const errorText = await clipResponse.text();
+      console.error('Livepeer clip creation failed:', errorText);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create clip via Livepeer API' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { asset } = await clipResponse.json();
+    console.log('Livepeer clip asset created:', asset.id);
+
+    // 2. Wait for the asset to be ready
+    let attempts = 0;
+    const maxAttempts = 30;
+    let assetReady = null;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const statusResponse = await fetch(`https://livepeer.studio/api/asset/${asset.id}`, {
+        headers: {
+          'Authorization': `Bearer ${LIVEPEER_API_KEY}`,
+        },
       });
+
+      if (statusResponse.ok) {
+        const assetData = await statusResponse.json();
+        console.log(`Asset status check ${attempts + 1}: ${assetData.status?.phase}`);
+        
+        if (assetData.status?.phase === 'ready') {
+          assetReady = assetData;
+          break;
+        }
+        
+        if (assetData.status?.phase === 'failed') {
+          throw new Error('Asset processing failed');
+        }
+      }
+      
+      attempts++;
     }
 
-    // Return quickly so the browser can poll (avoids 60s Edge limit)
-    return new Response(JSON.stringify({ assetId }), {
-      status: 200,
-      headers: { ...baseCors, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...baseCors, "Content-Type": "application/json" },
-    });
+    if (!assetReady) {
+      throw new Error('Asset processing timeout');
+    }
+
+    console.log('Asset ready, using Livepeer download URL directly');
+
+    // Use Livepeer's download URL directly without watermarking
+    const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+    const publicUrl = assetReady.downloadUrl;
+
+    // 8. Save clip to database with permanent URLs
+    const { data: savedClip, error: saveError } = await supabaseClient
+      .from('clips')
+      .insert({
+        title: clipTitle,
+        user_id: userId,
+        start_seconds: 0,
+        end_seconds: seconds,
+        download_url: publicUrl,
+        thumbnail_url: publicUrl, // Could generate thumbnail later
+        playback_id: playbackId,
+        livepeer_asset_id: asset.id
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving clip to database:', saveError);
+      throw new Error('Failed to save clip to database');
+    }
+
+    console.log('Clip successfully created and stored:', savedClip.id);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        clip: savedClip,
+        downloadUrl: publicUrl,
+        playbackUrl: publicUrl
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in create-permanent-clip:', error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
