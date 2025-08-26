@@ -35,10 +35,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const slug = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "");
+    s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
 
   const pollAssetReady = async (assetId: string, maxMs = 180000) => {
     const started = Date.now();
@@ -101,7 +98,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           "You will be notified when your clip is ready. You can continue watching!",
       });
 
-      // 1) Ask server to create the Livepeer clip window (quick response with assetId)
+      // 1) Quick server request to create the Livepeer clip window (returns assetId)
       const clipResponse = await supabase.functions.invoke(
         "create-permanent-clip",
         {
@@ -115,26 +112,18 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           },
         }
       );
-
       if (clipResponse.error) {
-        const msg =
-          clipResponse.error.message ||
-          clipResponse.error.name ||
-          "Failed to create clip";
+        const msg = clipResponse.error.message || clipResponse.error.name || "Failed to create clip";
         throw new Error(msg);
       }
-
       const { assetId } = clipResponse.data || {};
       if (!assetId) throw new Error("Clip created but no assetId was returned.");
 
-      // 2) Poll Livepeer until ready (client-side to avoid Edge timeouts)
+      // 2) Poll Livepeer until asset is ready
       const { downloadUrl } = await pollAssetReady(assetId);
 
-      // 3) Watermark via our Supabase proxy (fixes CORS)
-      toast({
-        title: "Adding watermark...",
-        description: "Applying watermark to your clip...",
-      });
+      // 3) Watermark via Supabase proxy (avoids Heroku CORS)
+      toast({ title: "Adding watermark...", description: "Applying watermark to your clip..." });
 
       const functionsBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
       const safeNameCore = slug(clipTitle) || `clip-${Date.now()}`;
@@ -151,22 +140,14 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           filename: safeFileName,
         }),
       });
-
       if (!wmRes.ok) {
         let msg = "Failed to apply watermark";
-        try {
-          const j = await wmRes.json();
-          msg = j?.error || msg;
-        } catch {
-          /* ignore */
-        }
+        try { const j = await wmRes.json(); msg = j?.error || msg; } catch {}
         throw new Error(msg);
       }
-
       const watermarkedBlob = await wmRes.blob();
 
-      // 4) Upload the watermarked MP4 to Supabase Storage (so the clip page has a stable URL)
-      // Ensure you have a public bucket named "clips"
+      // 4) Upload to Supabase Storage (public bucket "clips"); fall back to Livepeer URL if upload fails
       const filePath = `${identity.id}/${Date.now()}_${safeFileName}`;
       let publicUrl: string | undefined;
 
@@ -178,62 +159,55 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
             upsert: true,
             contentType: "video/mp4",
           });
-
         if (upErr) {
-          console.warn("Storage upload failed, falling back to blob URL:", upErr);
+          console.warn("Storage upload failed, using Livepeer URL instead:", upErr);
         } else {
           const { data: pub } = supabase.storage.from("clips").getPublicUrl(filePath);
           publicUrl = pub?.publicUrl;
         }
       } catch (e) {
-        console.warn("Storage upload threw, falling back to blob URL:", e);
+        console.warn("Storage upload threw; using Livepeer URL instead:", e);
       }
 
-      // 5) Save DB row so the clip page has an id/endpoint
+      const persistedUrl = publicUrl || downloadUrl;
+
+      // 5) Persist DB row via service-role Edge Function (bypasses RLS)
       let savedClipId: string | undefined;
-      const finalUrlForDb = publicUrl || downloadUrl; // if upload failed, persist the Livepeer URL
-
       try {
-        const { data: saved, error: saveErr } = await supabase
-          .from("clips")
-          .insert({
+        const saveRes = await supabase.functions.invoke("save-clip", {
+          body: {
             title: clipTitle,
-            user_id: identity.id,
-            start_seconds: 0,
-            end_seconds: selectedDuration,
-            duration_seconds: selectedDuration,
-            download_url: finalUrlForDb,
-            thumbnail_url: finalUrlForDb,
-            livepeer_asset_id: assetId,
-            playback_id: livepeerPlaybackId,
-            is_watermarked: !!publicUrl, // optional if column exists
-          })
-          .select("*")
-          .single();
-
-        if (saveErr) {
-          console.warn("DB insert failed; preview will still show:", saveErr);
+            userId: identity.id,
+            playbackId: livepeerPlaybackId,
+            livepeerAssetId: assetId,
+            durationSeconds: selectedDuration,
+            startSeconds: 0,
+            endSeconds: selectedDuration,
+            downloadUrl: persistedUrl,
+            thumbnailUrl: persistedUrl,
+            isWatermarked: !!publicUrl,
+          },
+        });
+        if (saveRes.error) {
+          console.warn("save-clip failed:", saveRes.error);
         } else {
-          savedClipId = saved?.id;
+          savedClipId = saveRes.data?.clip?.id;
         }
       } catch (e) {
-        console.warn("DB insert threw; preview will still show:", e);
+        console.warn("save-clip threw:", e);
       }
 
-      // 6) Build a preview URL:
-      // Prefer the public URL from storage; otherwise fallback to the local blob so the user can still see/download it.
-      const watermarkedObjectUrl = URL.createObjectURL(watermarkedBlob);
-      const previewUrl = publicUrl || watermarkedObjectUrl;
+      // 6) Build preview URL
+      const fallbackBlobUrl = URL.createObjectURL(watermarkedBlob);
+      const previewUrl = publicUrl || fallbackBlobUrl;
 
-      // Success toast
       toast({
         title: "Clip Ready!",
         description: `Your ${selectedDuration}-second clip is ready to download!`,
       });
 
-      // Show preview modal
       setClipPreview({
-        clipId: savedClipId, // enables the clip page route to work
+        clipId: savedClipId,
         downloadUrl: previewUrl,
         playbackUrl: previewUrl,
         title: clipTitle,
@@ -241,7 +215,6 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       });
       setShowPreview(true);
 
-      // Refresh any cached lists
       queryClient.invalidateQueries({ queryKey: ["clips-with-profiles"] });
     } catch (error: any) {
       console.error("Error creating clip:", error);
