@@ -18,12 +18,6 @@ interface LivepeerClipCreatorProps {
   streamTitle: string;
 }
 
-interface ClipContext {
-  playbackId: string;
-  startTime: number;
-  endTime: number;
-}
-
 const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   open,
   onOpenChange,
@@ -42,9 +36,18 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const createClip = async () => {
     if (!identity?.id) {
       toast({
-        title: "Login required", 
+        title: "Login required",
         description: "Connect your wallet to create clips.",
-        variant: "destructive"
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!livepeerPlaybackId || livepeerPlaybackId.trim().length < 6) {
+      toast({
+        title: "Stream not ready",
+        description: "Missing or invalid Livepeer playback ID.",
+        variant: "destructive",
       });
       return;
     }
@@ -52,63 +55,86 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
     setIsCreating(true);
 
     try {
-      const clipTitle = title || `${streamTitle} - ${selectedDuration}s Clip`;
-      console.log(`Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`);
+      const clipTitle =
+        (title && title.trim()) ||
+        `${streamTitle} - Epic ${selectedDuration}s Clip`;
 
-      // Close the modal immediately
+      console.log(
+        `Creating ${selectedDuration}s clip from live stream with playbackId: ${livepeerPlaybackId}`
+      );
+
+      // Close the modal immediately so user can keep watching
       handleClose();
 
       // Show loading toast
       toast({
         title: "Creating clip...",
-        description: "You will be notified when your clip is ready. You can continue watching!",
+        description:
+          "You will be notified when your clip is ready. You can continue watching!",
       });
 
-      // Create permanent clip with proper storage in background
-      const clipResponse = await supabase.functions.invoke('create-permanent-clip', {
-        body: {
-          playbackId: livepeerPlaybackId,
-          seconds: selectedDuration,
-          title: clipTitle,
-          userId: identity.id,
-          streamTitle
+      // Create permanent clip (server handles buffering/timing); pass client clock to avoid drift
+      const clipResponse = await supabase.functions.invoke(
+        "create-permanent-clip",
+        {
+          body: {
+            playbackId: livepeerPlaybackId,
+            seconds: selectedDuration,
+            title: clipTitle,
+            userId: identity.id,
+            streamTitle,
+            nowMs: Date.now(),
+          },
         }
-      });
+      );
 
       if (clipResponse.error) {
-        throw new Error(clipResponse.error.message || 'Failed to create clip');
+        // Supabase surfaces non-2xx as this generic error; surface details if present
+        const msg =
+          clipResponse.error.message ||
+          clipResponse.error.name ||
+          "Failed to create clip";
+        throw new Error(msg);
       }
 
-      const { clip, downloadUrl, playbackUrl } = clipResponse.data;
-      console.log('Permanent clip created:', clip.id);
+      const { clip, downloadUrl, playbackUrl } = clipResponse.data || {};
+      if (!downloadUrl && !playbackUrl) {
+        throw new Error("Clip created but no asset URL was returned.");
+      }
 
-      // Apply watermark using the backend API
+      // Apply watermark using the backend API (unchanged)
       toast({
         title: "Adding watermark...",
         description: "Applying watermark to your clip...",
       });
 
       const formData = new FormData();
-      formData.append('videoUrl', downloadUrl);
-      formData.append('position', 'br');
-      formData.append('margin', '24');
-      formData.append('wmWidth', '180');
-      formData.append('filename', `${clipTitle.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`);
+      formData.append("videoUrl", downloadUrl || playbackUrl);
+      formData.append("position", "br");
+      formData.append("margin", "24");
+      formData.append("wmWidth", "180");
+      formData.append(
+        "filename",
+        `${clipTitle.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`
+      );
 
-      const watermarkResponse = await fetch('https://vivoor-e15c882142f5.herokuapp.com/watermark', {
-        method: 'POST',
-        body: formData,
-      });
+      const watermarkResponse = await fetch(
+        "https://vivoor-e15c882142f5.herokuapp.com/watermark",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!watermarkResponse.ok) {
-        throw new Error('Failed to apply watermark');
+        throw new Error("Failed to apply watermark");
       }
 
       // Get the watermarked video as blob
       const watermarkedBlob = await watermarkResponse.blob();
       const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
 
-      // Show success toast
+      // Success toast
       toast({
         title: "Clip Ready!",
         description: `Your ${selectedDuration}-second clip is ready to download!`,
@@ -116,29 +142,27 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
 
       // Show preview modal with watermarked URL
       setClipPreview({
-        clipId: clip.id,
+        clipId: clip?.id,
         downloadUrl: watermarkedUrl,
         playbackUrl: watermarkedUrl,
         title: clipTitle,
-        isWatermarked: true
+        isWatermarked: true,
       });
       setShowPreview(true);
-      
-      // Invalidate clips queries to refresh the clips page
-      queryClient.invalidateQueries({ queryKey: ['clips-with-profiles'] });
 
+      // Invalidate clips queries to refresh the clips page
+      queryClient.invalidateQueries({ queryKey: ["clips-with-profiles"] });
     } catch (error: any) {
-      console.error('Error creating clip:', error);
+      console.error("Error creating clip:", error);
       toast({
         title: "Failed to create clip",
-        description: error.message || "Please try again.",
-        variant: "destructive"
+        description: error?.message || "Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsCreating(false);
     }
   };
-
 
   const handleClose = () => {
     setTitle("");
@@ -155,7 +179,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
   const durations = [
     { value: 15, label: "15 Seconds", description: "Quick highlights" },
     { value: 30, label: "30 Seconds", description: "Extended moments" },
-    { value: 60, label: "60 Seconds", description: "Full sequences" }
+    { value: 60, label: "60 Seconds", description: "Full sequences" },
   ] as const;
 
   return (
@@ -163,7 +187,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-2xl border-0 bg-background/95 backdrop-blur-xl">
           <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/20 via-brand-iris/10 to-brand-pink/20 rounded-lg -z-10" />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -186,7 +210,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                 </DialogTitle>
               </motion.div>
             </DialogHeader>
-            
+
             <div className="space-y-6 mt-6">
               {/* Clip Title Input */}
               <motion.div
@@ -224,27 +248,34 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
               >
                 <Label className="text-sm font-medium">Duration</Label>
                 <div className="grid grid-cols-3 gap-3">
-                  {durations.map((duration) => (
+                  {([15, 30, 60] as const).map((value) => (
                     <motion.button
-                      key={duration.value}
-                      onClick={() => setSelectedDuration(duration.value)}
+                      key={value}
+                      onClick={() => setSelectedDuration(value)}
                       disabled={isCreating}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       className={`
                         relative p-4 rounded-lg border-2 transition-all duration-300 text-left
-                        ${selectedDuration === duration.value
-                          ? 'border-brand-iris/60 bg-brand-iris/10 shadow-lg shadow-brand-iris/20'
-                          : 'border-border/50 bg-background/30 hover:border-brand-iris/30'
+                        ${
+                          selectedDuration === value
+                            ? "border-brand-iris/60 bg-brand-iris/10 shadow-lg shadow-brand-iris/20"
+                            : "border-border/50 bg-background/30 hover:border-brand-iris/30"
                         }
                       `}
                     >
-                      <div className="font-semibold text-sm">{duration.label}</div>
+                      <div className="font-semibold text-sm">
+                        {value} Seconds
+                      </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        {duration.description}
+                        {value === 15
+                          ? "Quick highlights"
+                          : value === 30
+                          ? "Extended moments"
+                          : "Full sequences"}
                       </div>
                       <AnimatePresence>
-                        {selectedDuration === duration.value && (
+                        {selectedDuration === value && (
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
@@ -265,9 +296,9 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
                 transition={{ delay: 0.4 }}
                 className="flex justify-end gap-3 pt-4"
               >
-                <Button 
-                  variant="ghost" 
-                  onClick={handleClose} 
+                <Button
+                  variant="ghost"
+                  onClick={handleClose}
                   disabled={isCreating}
                   className="hover:bg-background/50"
                 >
