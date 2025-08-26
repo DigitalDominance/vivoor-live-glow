@@ -96,7 +96,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           "You will be notified when your clip is ready. You can continue watching!",
       });
 
-      // Create clip window on the server (returns quickly with assetId; no long polling server-side)
+      // Create clip window on the server (returns quickly with assetId)
       const clipResponse = await supabase.functions.invoke(
         "create-permanent-clip",
         {
@@ -122,40 +122,48 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const { assetId } = clipResponse.data || {};
       if (!assetId) throw new Error("Clip created but no assetId was returned.");
 
-      // Poll status from client (avoids Supabase 60s edge timeout and CORS on 504)
+      // Poll status from client
       const { downloadUrl } = await pollAssetReady(assetId);
 
-      // Apply watermark using the backend API (unchanged)
+      // ---- Watermark via Supabase proxy (fixes CORS) ----
       toast({
         title: "Adding watermark...",
         description: "Applying watermark to your clip...",
       });
 
-      const formData = new FormData();
-      formData.append("videoUrl", downloadUrl);
-      formData.append("position", "br");
-      formData.append("margin", "24");
-      formData.append("wmWidth", "180");
-      formData.append(
-        "filename",
-        `${clipTitle.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`
-      );
+      // Build the functions base URL from env; this exists in Vite projects
+      const functionsBase =
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
-      const watermarkResponse = await fetch(
-        "https://vivoor-e15c882142f5.herokuapp.com/watermark",
-        {
-          method: "POST",
-          body: formData,
+      const safeName = `${clipTitle.replace(/[^a-zA-Z0-9_.-]/g, "_")}.mp4`;
+
+      const wmRes = await fetch(`${functionsBase}/watermark-proxy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Pass plain JSON; the proxy will build form-data for the upstream service
+        body: JSON.stringify({
+          videoUrl: downloadUrl,
+          position: "br",
+          margin: 24,
+          wmWidth: 180,
+          filename: safeName,
+        }),
+      });
+
+      if (!wmRes.ok) {
+        let msg = "Failed to apply watermark";
+        try {
+          const j = await wmRes.json();
+          msg = j?.error || msg;
+        } catch {
+          /* ignore parse errors, keep default message */
         }
-      );
-
-      if (!watermarkResponse.ok) {
-        throw new Error("Failed to apply watermark");
+        throw new Error(msg);
       }
 
-      // Get the watermarked video as blob
-      const watermarkedBlob = await watermarkResponse.blob();
+      const watermarkedBlob = await wmRes.blob();
       const watermarkedUrl = URL.createObjectURL(watermarkedBlob);
+      // ---------------------------------------------------
 
       // Success toast
       toast({
