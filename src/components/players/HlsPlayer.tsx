@@ -10,14 +10,17 @@ type HlsPlayerProps = {
   onStreamReady?: () => void;
   isLiveStream?: boolean;
   videoRef?: React.RefObject<HTMLVideoElement>;
+  onQualityLevelsUpdate?: (levels: Array<{label: string, value: number}>) => void;
+  onQualityChange?: React.MutableRefObject<((qualityLevel: number) => void) | null>;
 };
 
-const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className, onStreamReady, isLiveStream = false, videoRef: externalVideoRef }) => {
+const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, controls = true, className, onStreamReady, isLiveStream = false, videoRef: externalVideoRef, onQualityLevelsUpdate, onQualityChange }) => {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [retryCount, setRetryCount] = React.useState(0);
   const [streamReadyCalled, setStreamReadyCalled] = React.useState(false);
+  const hlsRef = React.useRef<Hls | null>(null);
   const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
@@ -98,6 +101,9 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         highBufferWatchdogPeriod: 2
       });
       
+      // Store hls reference for quality control
+      hlsRef.current = hls;
+      
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
         
@@ -136,6 +142,17 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       
       hls.on(Hls.Events.MANIFEST_LOADED, () => {
         console.log('🎬 HLS: Manifest loaded');
+        
+        // Update quality levels when manifest is loaded
+        if (onQualityLevelsUpdate && hls.levels.length > 0) {
+          const levels = hls.levels.map((level, index) => ({
+            label: level.height ? `${level.height}p` : `Level ${index}`,
+            value: index
+          }));
+          // Add auto quality option
+          levels.unshift({ label: 'Auto', value: -1 });
+          onQualityLevelsUpdate(levels);
+        }
       });
       
       hls.on(Hls.Events.LEVEL_LOADED, () => {
@@ -163,7 +180,18 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         hls.destroy();
       }
     };
-  }, [src, autoPlay]);
+   }, [src, autoPlay]);
+
+  // Expose quality change function
+  React.useEffect(() => {
+    if (onQualityChange) {
+      onQualityChange.current = (qualityLevel: number) => {
+        if (hlsRef.current) {
+          hlsRef.current.currentLevel = qualityLevel;
+        }
+      };
+    }
+  }, [onQualityChange]);
 
   return (
     <div className={"relative rounded-xl overflow-hidden border border-border bg-card/60 backdrop-blur-md " + (className || "")}

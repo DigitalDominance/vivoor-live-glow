@@ -50,6 +50,9 @@ const Watch = () => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const playerContainerRef = React.useRef<HTMLDivElement>(null);
   const tipButtonRef = React.useRef<HTMLButtonElement>(null);
+  const qualityChangeRef = React.useRef<((qualityLevel: number) => void) | null>(null);
+  const [qualityLevels, setQualityLevels] = React.useState<Array<{label: string, value: number}>>([]);
+  const [currentQuality, setCurrentQuality] = React.useState<number>(-1); // -1 for auto
 
   // WebSocket chat
   const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || '');
@@ -523,6 +526,13 @@ const Watch = () => {
     }
   };
 
+  const handleQualityChange = (qualityLevel: number) => {
+    setCurrentQuality(qualityLevel);
+    if (qualityChangeRef.current) {
+      qualityChangeRef.current(qualityLevel);
+    }
+  };
+
   // Handle video events for control state sync and auto-unmute
   React.useEffect(() => {
     const video = videoRef.current;
@@ -683,6 +693,8 @@ const Watch = () => {
                     key={streamData.id}
                     className="w-full h-full"
                     videoRef={videoRef}
+                    onQualityLevelsUpdate={setQualityLevels}
+                    onQualityChange={qualityChangeRef}
                   />
                   {showControls && (
                     <CustomVideoControls
@@ -698,6 +710,9 @@ const Watch = () => {
                       viewers={viewerCount}
                       isLive={livepeerIsLive}
                       showClipping={true}
+                      qualityLevels={qualityLevels}
+                      currentQuality={currentQuality}
+                      onQualityChange={handleQualityChange}
                     />
                   )}
                 </>
