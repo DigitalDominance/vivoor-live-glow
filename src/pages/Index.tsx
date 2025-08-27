@@ -381,20 +381,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="container mx-auto px-4 mt-16">
-        <div className="rounded-2xl p-[1px] bg-grad-primary">
-          <div className="rounded-2xl bg-background/70 backdrop-blur-md p-8 text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-gradient">Your moment, in motion.</h2>
-            <p className="mt-2 text-muted-foreground">Join now and bring your stories to life.</p>
-            <div className="mt-6 flex justify-center gap-3">
-              <Button variant="hero" size="lg">Get the App</Button>
-              <Button variant="gradientOutline" size="lg">Join as Creator</Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Instant Tips */}
       <section id="instant-tips" className="container mx-auto px-4 mt-16">
         <h2 className="font-semibold mb-4">Instant Tips on Kaspa</h2>
