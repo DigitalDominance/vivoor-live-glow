@@ -294,8 +294,8 @@ const Stream = () => {
               </span>
             )}
             {isOwnStream && (
-              <Button variant="destructive" size="sm" onClick={handleEndStream}>
-                End Stream
+              <Button variant="destructive" size="sm" >
+                Stream Live
               </Button>
             )}
           </div>
