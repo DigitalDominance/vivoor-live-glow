@@ -65,18 +65,13 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       });
 
       // Compute approximate start and end times from the client perspective.
-      // Livepeer expects timestamps in milliseconds relative to the stream's playhead.
-      // We subtract a small buffer to ensure we never request content that may still
-      // be processing.  These values are optional and will be used by the edge
-      // function if present.
       const clientNow = Date.now();
       const bufferMs = 13 * 1000;
       const clientEndTime = clientNow - bufferMs;
       const clientStartTime = clientEndTime - (selectedDuration * 1000);
 
-      // Create permanent clip with proper storage in background.  Include the
-      // computed timestamps so the edge function can use them directly.
-      const clipResponse = await supabase.functions.invoke('create-permanent-clip', {
+      // Create clip and watermark it using our edge function
+      const { data: watermarkData, error: watermarkError } = await supabase.functions.invoke('watermark-clip', {
         body: {
           playbackId: livepeerPlaybackId,
           seconds: selectedDuration,
@@ -88,68 +83,21 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
         }
       });
 
-      // Handle failures from the edge function.  The function now returns
-      // { success: false, error: string, details?: string } for known errors
-      // rather than using non-2xx statuses.  We check both the error property
-      // on the response and the success flag in the data.
-      if (clipResponse.error) {
-        throw new Error(clipResponse.error.message || 'Failed to create clip');
-      }
-      if (!clipResponse.data || (clipResponse.data as any).success === false) {
-        const errData: any = clipResponse.data;
-        const errMsg = errData?.error || 'Failed to create clip';
-        const errDetails = errData?.details ? `: ${errData.details}` : '';
-        throw new Error(`${errMsg}${errDetails}`);
+      if (watermarkError) {
+        throw new Error(watermarkError.message || 'Failed to create and watermark clip');
       }
 
-      const { clip, downloadUrl, playbackUrl } = clipResponse.data as any;
-      console.log('Permanent clip created:', clip.id);
-
-      // Try to apply a watermark using our Supabase edge function.  The edge
-      // function proxies the request to the external watermark API, which
-      // circumvents CORS restrictions.  If the function invocation fails or
-      // returns an error we fall back to the original clip URL.  Note: the
-      // Supabase client will automatically parse non-JSON responses into Blobs
-      // when the Content-Type header is not application/json.
-      let finalUrl = downloadUrl;
-      let watermarked = false;
-      try {
-        toast({
-          title: "Adding watermark...",
-          description: "Applying watermark to your clip...",
-        });
-        const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip';
-        const { data: wmData, error: wmError } = await supabase.functions.invoke('apply-watermark', {
-          body: {
-            videoUrl: downloadUrl,
-            position: 'br',
-            margin: 24,
-            wmWidth: 180,
-            filename: `${sanitizedTitle}.mp4`,
-          },
-        });
-        if (wmError) {
-          throw new Error(wmError.message || 'Watermark function error');
-        }
-        // When the edge function returns a binary stream, the Supabase
-        // client will deserialize it as a Blob.  We can then create
-        // an object URL for the preview.
-        if (wmData instanceof Blob) {
-          // Successful watermark – generate a local URL for preview
-          finalUrl = URL.createObjectURL(wmData);
-          watermarked = true;
-        } else if (wmData && typeof wmData === 'object' && (wmData as any).success === false) {
-          // The edge function returned a structured error object. Log the
-          // message and any details to aid debugging, then fall back to the
-          // original clip.  We do not treat this as fatal – the user will
-          // still receive an unwatermarked clip.
-          const errObj = wmData as any;
-          console.warn('Watermarking failed:', errObj.error, errObj.details);
-        } else {
-          console.warn('Unexpected watermark function response type', wmData);
-        }
-      } catch (err) {
-        console.warn('Error applying watermark:', err);
+      // The watermark-clip function returns the watermarked video as a blob
+      let finalUrl: string;
+      let watermarked = true;
+      
+      if (watermarkData instanceof Blob) {
+        // Successful watermarking
+        finalUrl = URL.createObjectURL(watermarkData);
+        console.log('Watermarked clip created successfully');
+      } else {
+        // Should not happen with the new edge function, but handle gracefully
+        throw new Error('Unexpected response from watermark service');
       }
 
       // Notify the user that the clip is ready.  If watermarking failed we
@@ -161,9 +109,12 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           : `Your clip is ready, but watermarking failed. Original clip provided.`,
       });
 
-      // Show preview modal with the final URL (watermarked or original)
+      // Generate a temporary clip ID for preview
+      const clipId = `temp-${Date.now()}`;
+      
+      // Show preview modal with the final URL (watermarked)
       setClipPreview({
-        clipId: clip.id,
+        clipId: clipId,
         downloadUrl: finalUrl,
         playbackUrl: finalUrl,
         title: clipTitle,
