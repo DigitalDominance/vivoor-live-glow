@@ -129,32 +129,32 @@ serve(async (req) => {
 
     console.log('Asset ready, sending to watermark service');
 
-    // 3. Send to watermark service
+    // 3. Send to watermark service via proxy
     const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
     const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip';
     
-    const formData = new FormData();
-    formData.append('videoUrl', assetReady.downloadUrl);
-    formData.append('position', 'br');
-    formData.append('margin', '24');
-    formData.append('wmWidth', '180');
-    formData.append('filename', `${sanitizedTitle}.mp4`);
-
-    console.log('Sending request to watermark service:', {
+    console.log('Sending request to watermark proxy:', {
       url: WATERMARK_API_URL,
       videoUrl: assetReady.downloadUrl,
       position: 'br',
-      margin: '24',
-      wmWidth: '180',
+      margin: 24,
+      wmWidth: 180,
       filename: `${sanitizedTitle}.mp4`
     });
 
     const watermarkResponse = await fetch(WATERMARK_API_URL, {
       method: 'POST',
-      body: formData,
       headers: {
-        'Accept': 'video/mp4',
-      }
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+      },
+      body: JSON.stringify({
+        videoUrl: assetReady.downloadUrl,
+        position: 'br',
+        margin: 24,
+        wmWidth: 180,
+        filename: `${sanitizedTitle}.mp4`
+      })
     });
 
     if (!watermarkResponse.ok) {
