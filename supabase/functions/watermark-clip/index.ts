@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY')!;
+const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY');
 const WATERMARK_API_URL = 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
 
 serve(async (req) => {
@@ -16,6 +16,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check for required environment variables
+    if (!LIVEPEER_API_KEY) {
+      console.error('LIVEPEER_API_KEY environment variable is not set');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: LIVEPEER_API_KEY not set' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
