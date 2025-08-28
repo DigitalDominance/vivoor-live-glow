@@ -127,78 +127,13 @@ serve(async (req) => {
       throw new Error('Asset processing timeout');
     }
 
-    console.log('Asset ready, sending to watermark service');
+    console.log('Asset ready, preparing database record and watermark request');
 
-    // 3. Send to watermark service via proxy
+    // 3. Save clip to database once. We store the original Livepeer download URL since
+    // the watermark service may fail; in that case we still want the clip recorded.
     const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
     const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip';
-    
-    console.log('Sending request to watermark proxy:', {
-      url: WATERMARK_API_URL,
-      videoUrl: assetReady.downloadUrl,
-      position: 'br',
-      margin: 24,
-      wmWidth: 180,
-      filename: `${sanitizedTitle}.mp4`
-    });
 
-    const watermarkResponse = await fetch(WATERMARK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
-      },
-      body: JSON.stringify({
-        videoUrl: assetReady.downloadUrl,
-        position: 'br',
-        margin: 24,
-        wmWidth: 180,
-        filename: `${sanitizedTitle}.mp4`
-      })
-    });
-
-    if (!watermarkResponse.ok) {
-      const errorText = await watermarkResponse.text();
-      console.error('Watermark service failed:', {
-        status: watermarkResponse.status,
-        statusText: watermarkResponse.statusText,
-        headers: Object.fromEntries(watermarkResponse.headers.entries()),
-        response: errorText
-      });
-      // Fall back to original clip if watermarking fails
-      const { data: savedClip, error: saveError } = await supabaseClient
-        .from('clips')
-        .insert({
-          title: clipTitle,
-          user_id: userId,
-          start_seconds: 0,
-          end_seconds: seconds,
-          download_url: assetReady.downloadUrl,
-          thumbnail_url: assetReady.downloadUrl,
-          playback_id: playbackId,
-          livepeer_asset_id: asset.id
-        })
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error('Error saving clip to database:', saveError);
-        throw new Error('Failed to save clip to database');
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          clip: savedClip,
-          downloadUrl: assetReady.downloadUrl,
-          watermarked: false,
-          error: 'Watermarking failed, returning original clip'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 4. Save clip to database
     const { data: savedClip, error: saveError } = await supabaseClient
       .from('clips')
       .insert({
@@ -219,11 +154,74 @@ serve(async (req) => {
       throw new Error('Failed to save clip to database');
     }
 
-    console.log('Clip successfully created and watermarked:', savedClip.id);
+    console.log('Database clip saved:', savedClip.id);
 
-    // 5. Return the watermarked video as binary
+    // 4. Request watermarking via proxy. We include Supabase anon key for authorization
+    const watermarkResponse = await fetch(WATERMARK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+      },
+      body: JSON.stringify({
+        videoUrl: assetReady.downloadUrl,
+        position: 'br',
+        margin: 24,
+        wmWidth: 180,
+        filename: `${sanitizedTitle}.mp4`
+      })
+    });
+
+    if (!watermarkResponse.ok) {
+      // The watermark service failed or returned an error. We'll log details and
+      // return the original clip as the response body. This ensures that the
+      // client still receives a binary response (Blob) rather than JSON so that
+      // front-end code does not throw "Unexpected response from watermark service".
+      const errorText = await watermarkResponse.text().catch(() => '');
+      console.error('Watermark service failed:', {
+        status: watermarkResponse.status,
+        statusText: watermarkResponse.statusText,
+        headers: Object.fromEntries(watermarkResponse.headers.entries()),
+        response: errorText
+      });
+
+      // Attempt to fetch the original asset as a fallback
+      try {
+        const originalRes = await fetch(assetReady.downloadUrl);
+        if (originalRes.ok && originalRes.body) {
+          const ct = originalRes.headers.get('content-type') || 'video/mp4';
+          // return original clip binary with headers
+          return new Response(originalRes.body, {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': ct,
+              'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+              'X-Clip-Id': savedClip.id,
+              'X-Watermarked': 'false'
+            }
+          });
+        }
+      } catch (fetchErr) {
+        console.error('Failed to fetch original clip as fallback:', fetchErr);
+      }
+
+      // If we cannot fetch the original clip, return a JSON payload indicating
+      // failure. Although this is less ideal (front-end will throw), it still
+      // communicates the error.
+      return new Response(
+        JSON.stringify({
+          success: false,
+          clip: savedClip,
+          downloadUrl: assetReady.downloadUrl,
+          watermarked: false,
+          error: 'Watermarking failed and fallback download failed',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 5. Watermarking succeeded. Return the binary video and mark watermarked
     const watermarkedVideo = await watermarkResponse.blob();
-    
     return new Response(watermarkedVideo, {
       headers: {
         ...corsHeaders,
