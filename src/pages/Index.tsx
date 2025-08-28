@@ -360,25 +360,28 @@ const Index = () => {
 
       {/* Testimonials Ticker */}
       <section className="container mx-auto px-4 mt-16">
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="overflow-hidden rounded-xl p-[1.5px] bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
+          <div className="rounded-xl bg-background">
           <div className="flex animate-marquee gap-8 py-4 will-change-transform hover:[animation-play-state:paused]">
             {[
-              "Zero fees on tips is game changing - Alberto",
-              "Kaspa tips arrive instantly - Cesar",
-              "Finally a platform that doesn't steal from creators - Jonathan",
-              "Fastest go‑live I’ve used. — Alex",
-              "The clip feature is absolutely perfect - David",
+              '"Zero fees on tips is game changing" - Alberto',
+              '"Kaspa tips arrive instantly" - Cesar',
+              '"Finally a platform that doesn\'t steal from creators" - Jonathan',
+              '"Fastest go‑live I’ve used" - Alex',
+              '"The clip feature is absolutely perfect" - David',
             ].concat([
-              "Zero fees on tips is game changing - Alberto",
-              "Kaspa tips arrive instantly - Cesar",
-              "Finally a platform that doesn't steal from creators - Jonathan",
-              "Fastest go‑live I’ve used. — Alex",
-              "The clip feature is absolutely perfect - David",
+              '"Zero fees on tips is game changing" - Alberto',
+              '"Kaspa tips arrive instantly" - Cesar',
+              '"Finally a platform that doesn\'t steal from creators" - Jonathan',
+              '"Fastest go‑live I’ve used" - Alex',
+              '"The clip feature is absolutely perfect" - David',
             ]).map((q, i) => (
-              <span key={i} className="text-sm text-muted-foreground whitespace-nowrap">{q}</span>
+              <span key={i} className="text-sm text-muted-foreground whitespace-nowrap ">{q}</span>
             ))}
           </div>
-        </div>
+            </div>
+      </div>
+      
       </section>
 
       {/* Instant Tips */}
