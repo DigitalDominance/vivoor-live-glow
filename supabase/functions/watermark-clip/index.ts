@@ -1,13 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
+const corsHeaders: Record<string, string> = {
+  // Allow all origins by default; if you need to restrict origins,
+  // adjust this header accordingly. We include the necessary CORS
+  // response headers so browsers can make requests from
+  // https://vivoor.xyz or local development domains.
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  // Expose custom headers so the client can read clip metadata
+  'Access-Control-Expose-Headers': 'Content-Disposition, X-Clip-Id, X-Watermarked',
 };
 
 const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY');
-const WATERMARK_API_URL = `${Deno.env.get('SUPABASE_URL')}/functions/v1/watermark-proxy`;
+/**
+ * Compute the URL of the watermark proxy at runtime.  When running inside the
+ * Supabase edge environment, environment variables like SUPABASE_URL are not
+ * guaranteed to be set.  Deriving the base URL from the incoming request
+ * ensures that we always call the correct origin (e.g. https://<project>.supabase.co).
+ */
+function getWatermarkProxyUrl(req: Request) {
+  try {
+    // Use the request URL to determine the origin of the current function call.
+    const url = new URL(req.url);
+    return `${url.origin}/functions/v1/watermark-proxy`;
+  } catch {
+    // Fallback to the SUPABASE_URL env var if parsing fails; if that isn't set
+    // then the caller will hit an invalid URL which will surface an error.
+    const envUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    return `${envUrl}/functions/v1/watermark-proxy`;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -156,58 +180,57 @@ serve(async (req) => {
 
     console.log('Database clip saved:', savedClip.id);
 
-    // 4. Request watermarking via proxy. We include Supabase anon key for authorization
-    const watermarkResponse = await fetch(WATERMARK_API_URL, {
+    // 4. Request watermarking via proxy.  Compute the proxy URL from the incoming
+    // request to avoid relying on the SUPABASE_URL environment variable.  Include
+    // the anon key in the Authorization header so the proxy can authenticate the
+    // caller if necessary.
+    const watermarkUrl = getWatermarkProxyUrl(req);
+    const watermarkResponse = await fetch(watermarkUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') ?? ''}`,
       },
       body: JSON.stringify({
         videoUrl: assetReady.downloadUrl,
         position: 'br',
         margin: 24,
         wmWidth: 180,
-        filename: `${sanitizedTitle}.mp4`
-      })
+        filename: `${sanitizedTitle}.mp4`,
+      }),
     });
 
-    if (!watermarkResponse.ok) {
-      // The watermark service failed or returned an error. We'll log details and
-      // return the original clip as the response body. This ensures that the
-      // client still receives a binary response (Blob) rather than JSON so that
-      // front-end code does not throw "Unexpected response from watermark service".
+    // 5. If watermarking failed, fall back to returning the original clip as binary.
+    if (!watermarkResponse.ok || !watermarkResponse.body) {
+      // Log the failure details for debugging
       const errorText = await watermarkResponse.text().catch(() => '');
       console.error('Watermark service failed:', {
         status: watermarkResponse.status,
         statusText: watermarkResponse.statusText,
         headers: Object.fromEntries(watermarkResponse.headers.entries()),
-        response: errorText
+        response: errorText,
       });
 
-      // Attempt to fetch the original asset as a fallback
+      // Attempt to fetch the original asset from Livepeer.  Because this call
+      // originates server-side, CORS restrictions do not apply.
       try {
         const originalRes = await fetch(assetReady.downloadUrl);
         if (originalRes.ok && originalRes.body) {
           const ct = originalRes.headers.get('content-type') || 'video/mp4';
-          // return original clip binary with headers
           return new Response(originalRes.body, {
             headers: {
               ...corsHeaders,
               'Content-Type': ct,
               'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
               'X-Clip-Id': savedClip.id,
-              'X-Watermarked': 'false'
-            }
+              'X-Watermarked': 'false',
+            },
           });
         }
       } catch (fetchErr) {
         console.error('Failed to fetch original clip as fallback:', fetchErr);
       }
-
-      // If we cannot fetch the original clip, return a JSON payload indicating
-      // failure. Although this is less ideal (front-end will throw), it still
-      // communicates the error.
+      // If we cannot fetch the original clip, return a generic error response.
       return new Response(
         JSON.stringify({
           success: false,
@@ -216,11 +239,11 @@ serve(async (req) => {
           watermarked: false,
           error: 'Watermarking failed and fallback download failed',
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // 5. Watermarking succeeded. Return the binary video and mark watermarked
+    // 6. Watermarking succeeded. Return the binary video and mark as watermarked.
     const watermarkedVideo = await watermarkResponse.blob();
     return new Response(watermarkedVideo, {
       headers: {
@@ -228,8 +251,8 @@ serve(async (req) => {
         'Content-Type': 'video/mp4',
         'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
         'X-Clip-Id': savedClip.id,
-        'X-Watermarked': 'true'
-      }
+        'X-Watermarked': 'true',
+      },
     });
 
   } catch (error) {
