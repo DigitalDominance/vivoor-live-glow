@@ -70,7 +70,11 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clientEndTime = clientNow - bufferMs;
       const clientStartTime = clientEndTime - (selectedDuration * 1000);
 
-      // Create clip and watermark it using our edge function
+      // Create clip and watermark it using our edge function.  Specify
+      // responseType: 'blob' so supabase-js returns the binary payload
+      // instead of attempting to parse JSON. Without this, the library
+      // will treat non-JSON responses as text and you will see
+      // "Unexpected response from watermark service" errors.
       const { data: watermarkData, error: watermarkError } = await supabase.functions.invoke('watermark-clip', {
         body: {
           playbackId: livepeerPlaybackId,
@@ -80,23 +84,31 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           streamTitle,
           startTime: clientStartTime,
           endTime: clientEndTime
-        }
+        },
+        // Ensure supabase returns the response as a Blob.  See docs:
+        // https://supabase.com/docs/reference/javascript/v2/functions-invoke#response-type
+        responseType: 'blob'
       });
 
       if (watermarkError) {
         throw new Error(watermarkError.message || 'Failed to create and watermark clip');
       }
 
-      // The watermark-clip function returns the watermarked video as a blob
+      // The watermark-clip function returns the watermarked video as a Blob
       let finalUrl: string;
       let watermarked = true;
-      
+
       if (watermarkData instanceof Blob) {
         // Successful watermarking
         finalUrl = URL.createObjectURL(watermarkData);
         console.log('Watermarked clip created successfully');
+      } else if (watermarkData && typeof watermarkData === 'object') {
+        // If the response is an object, it's likely a JSON error from the edge function.
+        // Provide a more descriptive error message to the user.
+        const message = (watermarkData as any).error || 'Unexpected response from watermark service';
+        throw new Error(message);
       } else {
-        // Should not happen with the new edge function, but handle gracefully
+        // Unexpected response type; throw a generic error
         throw new Error('Unexpected response from watermark service');
       }
 
