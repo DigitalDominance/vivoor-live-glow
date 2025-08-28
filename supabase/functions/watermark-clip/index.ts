@@ -180,80 +180,87 @@ serve(async (req) => {
 
     console.log('Database clip saved:', savedClip.id);
 
-    // 4. Request watermarking via proxy.  Compute the proxy URL from the incoming
-    // request to avoid relying on the SUPABASE_URL environment variable.  Include
-    // the anon key in the Authorization header so the proxy can authenticate the
-    // caller if necessary.
-    const watermarkUrl = getWatermarkProxyUrl(req);
-    const watermarkResponse = await fetch(watermarkUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') ?? ''}`,
-      },
-      body: JSON.stringify({
-        videoUrl: assetReady.downloadUrl,
-        position: 'br',
-        margin: 24,
-        wmWidth: 180,
-        filename: `${sanitizedTitle}.mp4`,
-      }),
-    });
+    // 4. Request watermarking directly from the external service. We avoid
+    // calling another edge function here because Supabase functions cannot
+    // reliably invoke each other (and may return 405 Method Not Allowed).
+    // Instead, we call the Heroku watermark service directly with a
+    // multipart/form-data payload.
+    const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
 
-    // 5. If watermarking failed, fall back to returning the original clip as binary.
-    if (!watermarkResponse.ok || !watermarkResponse.body) {
-      // Log the failure details for debugging
-      const errorText = await watermarkResponse.text().catch(() => '');
-      console.error('Watermark service failed:', {
-        status: watermarkResponse.status,
-        statusText: watermarkResponse.statusText,
-        headers: Object.fromEntries(watermarkResponse.headers.entries()),
-        response: errorText,
+    const form = new FormData();
+    form.set('videoUrl', assetReady.downloadUrl);
+    form.set('position', 'br');
+    form.set('margin', String(24));
+    form.set('wmWidth', String(180));
+    form.set('filename', `${sanitizedTitle}.mp4`);
+
+    let watermarkSuccess = false;
+    let watermarkedBody: ReadableStream<Uint8Array> | null = null;
+    let upstreamContentType = 'video/mp4';
+    try {
+      const upstreamRes = await fetch(upstreamUrl, {
+        method: 'POST',
+        body: form,
       });
-
-      // Attempt to fetch the original asset from Livepeer.  Because this call
-      // originates server-side, CORS restrictions do not apply.
-      try {
-        const originalRes = await fetch(assetReady.downloadUrl);
-        if (originalRes.ok && originalRes.body) {
-          const ct = originalRes.headers.get('content-type') || 'video/mp4';
-          return new Response(originalRes.body, {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': ct,
-              'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
-              'X-Clip-Id': savedClip.id,
-              'X-Watermarked': 'false',
-            },
-          });
-        }
-      } catch (fetchErr) {
-        console.error('Failed to fetch original clip as fallback:', fetchErr);
+      if (upstreamRes.ok && upstreamRes.body) {
+        watermarkSuccess = true;
+        watermarkedBody = upstreamRes.body;
+        upstreamContentType = upstreamRes.headers.get('content-type') || 'video/mp4';
+      } else {
+        const text = await upstreamRes.text().catch(() => '');
+        console.error('Watermark service failed:', {
+          status: upstreamRes.status,
+          statusText: upstreamRes.statusText,
+          headers: Object.fromEntries(upstreamRes.headers.entries()),
+          response: text,
+        });
       }
-      // If we cannot fetch the original clip, return a generic error response.
-      return new Response(
-        JSON.stringify({
-          success: false,
-          clip: savedClip,
-          downloadUrl: assetReady.downloadUrl,
-          watermarked: false,
-          error: 'Watermarking failed and fallback download failed',
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+    } catch (wmErr) {
+      console.error('Watermark service error:', wmErr);
     }
 
-    // 6. Watermarking succeeded. Return the binary video and mark as watermarked.
-    const watermarkedVideo = await watermarkResponse.blob();
-    return new Response(watermarkedVideo, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'video/mp4',
-        'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
-        'X-Clip-Id': savedClip.id,
-        'X-Watermarked': 'true',
-      },
-    });
+    // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
+    if (watermarkSuccess && watermarkedBody) {
+      return new Response(watermarkedBody, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': upstreamContentType,
+          'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+          'X-Clip-Id': savedClip.id,
+          'X-Watermarked': 'true',
+        },
+      });
+    }
+
+    // 6. Watermarking failed. Attempt to fetch the original asset as fallback.
+    try {
+      const originalRes = await fetch(assetReady.downloadUrl);
+      if (originalRes.ok && originalRes.body) {
+        const ct = originalRes.headers.get('content-type') || 'video/mp4';
+        return new Response(originalRes.body, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': ct,
+            'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+            'X-Clip-Id': savedClip.id,
+            'X-Watermarked': 'false',
+          },
+        });
+      }
+    } catch (fetchErr) {
+      console.error('Failed to fetch original clip as fallback:', fetchErr);
+    }
+    // If we cannot fetch the original clip, return a JSON error response.
+    return new Response(
+      JSON.stringify({
+        success: false,
+        clip: savedClip,
+        downloadUrl: assetReady.downloadUrl,
+        watermarked: false,
+        error: 'Watermarking failed and fallback download failed',
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
 
   } catch (error) {
     console.error('Error in watermark-clip:', error);
