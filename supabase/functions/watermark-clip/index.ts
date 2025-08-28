@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY');
-const WATERMARK_API_URL = 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
+const WATERMARK_API_URL = `${Deno.env.get('SUPABASE_URL')}/functions/v1/watermark-proxy`;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -140,14 +140,31 @@ serve(async (req) => {
     formData.append('wmWidth', '180');
     formData.append('filename', `${sanitizedTitle}.mp4`);
 
+    console.log('Sending request to watermark service:', {
+      url: WATERMARK_API_URL,
+      videoUrl: assetReady.downloadUrl,
+      position: 'br',
+      margin: '24',
+      wmWidth: '180',
+      filename: `${sanitizedTitle}.mp4`
+    });
+
     const watermarkResponse = await fetch(WATERMARK_API_URL, {
       method: 'POST',
       body: formData,
+      headers: {
+        'Accept': 'video/mp4',
+      }
     });
 
     if (!watermarkResponse.ok) {
       const errorText = await watermarkResponse.text();
-      console.error('Watermark service failed:', errorText);
+      console.error('Watermark service failed:', {
+        status: watermarkResponse.status,
+        statusText: watermarkResponse.statusText,
+        headers: Object.fromEntries(watermarkResponse.headers.entries()),
+        response: errorText
+      });
       // Fall back to original clip if watermarking fails
       const { data: savedClip, error: saveError } = await supabaseClient
         .from('clips')
