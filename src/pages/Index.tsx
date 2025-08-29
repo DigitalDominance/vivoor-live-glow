@@ -413,7 +413,7 @@ const Index = () => {
           <h2 className="font-semibold text-2xl mb-2">Swap Crypto Instantly</h2>
           <p className="text-muted-foreground text-sm">Exchange cryptocurrencies seamlessly before streaming</p>
         </div>
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <SwapWidget />
         </div>
       </section>
