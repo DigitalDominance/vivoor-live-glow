@@ -503,7 +503,7 @@ const Index = () => {
           sections on the page. Using max-w-7xl ensures the widget matches
           the overall page width rather than being constrained to 4xl.
         */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-8xl mx-auto">
           <SwapWidget />
         </div>
       </section>
@@ -534,7 +534,7 @@ const Index = () => {
             layout matches the width of other content sections on the page.
             Using max-w-7xl keeps it consistent with the wider desktop layout.
           */
-          className="max-w-7xl mx-auto"
+          className="max-w-8xl mx-auto"
         >
           {/* Display accordion items in two columns on medium+ screens */}
           <Accordion type="single" collapsible className="w-full grid gap-4 md:grid-cols-2">
