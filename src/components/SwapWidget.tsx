@@ -26,7 +26,7 @@ const SwapWidget: React.FC = () => {
         `&amount=0.01&amountFiat=1500&backgroundColor=00000` +
         `&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true` +
         `&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true` +
-        `&logo=false&primaryColor=00ffff&to=kas&toFiat=eth&toTheMoon=false`;
+        `&logo=false&primaryColor=b692f6&to=kas&toFiat=eth&toTheMoon=false`;
       iframeRef.current.src = newSrc;
     }
   }, [theme]);
@@ -37,7 +37,7 @@ const SwapWidget: React.FC = () => {
     `&amount=0.01&amountFiat=1500&backgroundColor=00000` +
     `&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true` +
     `&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true` +
-    `&logo=false&primaryColor=00ffff&to=kas&toFiat=eth&toTheMoon=false`;
+    `&logo=false&primaryColor=b692f6&to=kas&toFiat=eth&toTheMoon=false`;
 
   return (
     <div className="relative rounded-xl p-[1px] bg-grad-primary shadow-[0_10px_40px_-12px_hsl(var(--brand-iris)/0.5)] transition-all duration-300">
@@ -47,7 +47,7 @@ const SwapWidget: React.FC = () => {
           id="iframe-widget"
           src={iframeSrc}
           // Responsive height: taller on mobile (<768px) for better usability
-          className="rounded-xl w-full border-none h-[350px] md:h-[205px]"
+          className="rounded-xl w-full border-none h-[365px] md:h-[205px]"
           style={{ border: 'none' }}
           title="Crypto Exchange Widget"
         />
