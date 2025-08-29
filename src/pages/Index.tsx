@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; 
 import { Button } from "@/components/ui/button";
 import {
   Zap,
@@ -450,14 +450,14 @@ const Index = () => {
                 '"Zero fees on tips is game changing" - Alberto',
                 '"Kaspa tips arrive instantly" - Cesar',
                 '"Finally a platform that doesn\'t steal from creators" - Jonathan',
-                '"Fastest go‑live I’ve used" - Alex',
+                '"Fastest go-live I’ve used" - Alex',
                 '"The clip feature is absolutely perfect" - David',
               ]
                 .concat([
                   '"Zero fees on tips is game changing" - Alberto',
                   '"Kaspa tips arrive instantly" - Cesar',
                   '"Finally a platform that doesn\'t steal from creators" - Jonathan',
-                  '"Fastest go‑live I’ve used" - Alex',
+                  '"Fastest go-live I’ve used" - Alex',
                   '"The clip feature is absolutely perfect" - David',
                 ])
                 .map((q, i) => (
@@ -509,11 +509,9 @@ const Index = () => {
           <h2 className="font-semibold text-2xl md:text-3xl mb-2 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
             Swap Crypto Instantly
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Exchange cryptocurrencies seamlessly before streaming
-          </p>
         </div>
-        <div className="max-w-4xl mx-auto">
+        {/* Wider on desktop to match site width */}
+        <div className="max-w-7xl mx-auto">
           <SwapWidget />
         </div>
       </section>
@@ -539,7 +537,7 @@ const Index = () => {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="max-w-3xl mx-auto"
+          className="max-w-7xl mx-auto"
         >
           {/* Use a grid to get two columns on medium and larger screens */}
           <Accordion type="single" collapsible className="w-full grid gap-4 md:grid-cols-2">
@@ -612,12 +610,12 @@ const Index = () => {
                     className="font-medium hover:no-underline group-hover:text-foreground transition-all duration-300 py-4"
                   >
                     <motion.span
-                      className="flex items center gap-3"
+                      className="flex items-center gap-3"
                       whileHover={{ scale: 1.02 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     >
                       <motion.div
-                        className="w-2 h-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris"
+                        className="w-2 h-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris shrink-0 relative top-[1px]"
                         animate={{
                           scale: [1, 1.2, 1],
                           opacity: [0.5, 1, 0.5],
