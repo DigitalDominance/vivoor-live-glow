@@ -64,15 +64,54 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (last === "kasware" && typeof window !== "undefined" && (window as any).kasware) {
       (window as any).kasware
         .getAccounts()
-        .then((acc: string[]) => {
+        .then(async (acc: string[]) => {
           if (Array.isArray(acc) && acc[0]) {
             const addr = acc[0];
-            setIdentity({ provider: "kasware", id: addr, address: addr });
-            const map = readProfiles();
-            setProfile(map[addr] || null);
+            
+            // Get the correct user ID from database
+            const { data: userId, error } = await supabase.rpc('authenticate_wallet_user', {
+              wallet_address: addr,
+              user_handle: null,
+              user_display_name: null
+            });
+
+            if (error) {
+              console.error('Failed to restore wallet session:', error);
+              localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+              return;
+            }
+
+            setIdentity({ provider: "kasware", id: userId, address: addr });
+            
+            // Load profile from database to ensure consistency
+            const { data: dbProfile } = await supabase
+              .from('profiles')
+              .select('handle, display_name, avatar_url, last_avatar_change')
+              .eq('id', userId)
+              .maybeSingle();
+            
+            if (dbProfile) {
+              const profileRecord: ProfileRecord = {
+                username: dbProfile.handle || '',
+                avatarUrl: dbProfile.avatar_url || undefined,
+                lastAvatarChange: dbProfile.last_avatar_change || undefined,
+              };
+              setProfile(profileRecord);
+              
+              // Update local storage to match database
+              const map = readProfiles();
+              map[userId] = profileRecord;
+              writeProfiles(map);
+            } else {
+              const map = readProfiles();
+              setProfile(map[userId] || null);
+            }
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          // Clear invalid session
+          localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+        });
     }
   }, []);
 

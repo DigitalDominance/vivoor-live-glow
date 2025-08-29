@@ -131,44 +131,49 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
             </Button>
           )}
 
-          {/* Quality selector */}
-          {qualityLevels && qualityLevels.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
-                  title="Quality Settings"
-                >
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-                  <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="end" 
-                className="w-32 bg-black/90 backdrop-blur-md border border-white/20"
-                sideOffset={8}
-              >
-                {qualityLevels.map((level) => (
-                  <DropdownMenuItem
-                    key={level.value}
-                    onClick={() => onQualityChange?.(level.value)}
-                    className={`text-white hover:bg-white/10 cursor-pointer ${
-                      currentQuality === level.value ? 'bg-white/20' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span>{level.label}</span>
-                      {currentQuality === level.value && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris ml-2" />
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+           {/* Quality selector */}
+           {qualityLevels && qualityLevels.length > 1 && (
+             <DropdownMenu modal={false}>
+               <DropdownMenuTrigger asChild>
+                 <Button
+                   variant="ghost"
+                   size="icon"
+                   className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
+                   title="Quality Settings"
+                   onClick={(e) => e.stopPropagation()}
+                 >
+                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                   <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
+                 </Button>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent 
+                 align="end" 
+                 className="w-32 bg-background/95 backdrop-blur-md border border-border z-50"
+                 sideOffset={8}
+                 onCloseAutoFocus={(e) => e.preventDefault()}
+               >
+                 {qualityLevels.map((level) => (
+                   <DropdownMenuItem
+                     key={level.value}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       onQualityChange?.(level.value);
+                     }}
+                     className={`text-foreground hover:bg-accent focus:bg-accent cursor-pointer ${
+                       currentQuality === level.value ? 'bg-accent' : ''
+                     }`}
+                   >
+                     <div className="flex items-center justify-between w-full">
+                       <span>{level.label}</span>
+                       {currentQuality === level.value && (
+                         <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris ml-2" />
+                       )}
+                     </div>
+                   </DropdownMenuItem>
+                 ))}
+               </DropdownMenuContent>
+             </DropdownMenu>
+           )}
 
           {/* Fullscreen button */}
           <Button

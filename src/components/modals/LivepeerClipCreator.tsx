@@ -84,10 +84,7 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           streamTitle,
           startTime: clientStartTime,
           endTime: clientEndTime
-        },
-        // Ensure supabase returns the response as a Blob.  See docs:
-        // https://supabase.com/docs/reference/javascript/v2/functions-invoke#response-type
-        responseType: 'blob'
+        }
       });
 
       if (watermarkError) {
