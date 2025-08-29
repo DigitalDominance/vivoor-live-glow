@@ -47,7 +47,7 @@ const SwapWidget: React.FC = () => {
           id="iframe-widget"
           src={iframeSrc}
           // Responsive height: taller on mobile (<768px) for better usability
-          className="rounded-xl w-full border-none h-[365px] md:h-[205px]"
+          className="rounded-xl w-full border-none h-[350px] md:h-[205px]"
           style={{ border: 'none' }}
           title="Crypto Exchange Widget"
         />
