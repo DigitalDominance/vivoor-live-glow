@@ -495,7 +495,7 @@ const Index = () => {
             Swap Crypto Instantly
           </h2>
           <p className="text-muted-foreground text-sm">
-            Exchange cryptocurrencies seamlessly before streaming
+            Exchange Cryptocurrencies for Kaspa seamlessly
           </p>
         </div>
         {/*
