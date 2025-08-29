@@ -146,12 +146,13 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                    <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
                  </Button>
                </DropdownMenuTrigger>
-               <DropdownMenuContent 
-                 align="end" 
-                 className="w-32 bg-background/95 backdrop-blur-md border border-border z-50"
-                 sideOffset={8}
-                 onCloseAutoFocus={(e) => e.preventDefault()}
-               >
+                <DropdownMenuContent 
+                  side="top"
+                  align="end" 
+                  className="w-32 bg-background/95 backdrop-blur-md border border-border z-[9999]"
+                  sideOffset={8}
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                >
                  {qualityLevels.map((level) => (
                    <DropdownMenuItem
                      key={level.value}
