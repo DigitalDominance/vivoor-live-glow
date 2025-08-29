@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import SwapWidget from "@/components/SwapWidget";
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
   <motion.div
@@ -406,27 +407,127 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Swap Widget */}
+      <section className="container mx-auto px-4 mt-16">
+        <div className="text-center mb-8">
+          <h2 className="font-semibold text-xl mb-2">Swap Crypto Instantly</h2>
+          <p className="text-muted-foreground text-sm">Exchange cryptocurrencies seamlessly before streaming</p>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <SwapWidget />
+        </div>
+      </section>
+
       {/* FAQ */}
       <section id="faq" className="container mx-auto px-4 mt-16 mb-20">
-        <h2 className="font-semibold mb-6 text-xl">Frequently Asked Questions</h2>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8"
+        >
+          <h2 className="font-semibold mb-2 text-xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-muted-foreground text-sm">Everything you need to know about Vivoor</p>
+        </motion.div>
       
-        <Accordion type="single" collapsible className="w-full">
-          {[
-            { q: 'How do I start streaming on Vivoor?', a: 'Connect your Kaspa wallet, go to /go-live, pay the 1.2 KAS treasury fee, and get your RTMP details for OBS streaming.' },
-            { q: 'Do you really take 0% fees on tips?', a: 'Yes! Unlike traditional platforms that take 30-50% cuts, we take 0% from tips. 100% goes directly to creators.' },
-            { q: 'What makes Kaspa better for tips?', a: 'Kaspa has sub-second confirmation times and ultra-low fees, making it perfect for instant micro-payments to creators.' },
-            { q: 'How do I create clips from streams?', a: 'While watching any stream, click the scissors icon to create clips up to 60 seconds long. They process instantly via Livepeer.' },
-            { q: 'Can I get verified on Vivoor?', a: 'Yes! Visit /verification to purchase monthly (100 KAS) or yearly (1000 KAS) verification for enhanced credibility and priority features.' },
-            { q: 'What is Livepeer and why do you use it?', a: 'Livepeer is a decentralized video infrastructure that provides high-quality, low-latency streaming at 50x lower cost than traditional CDNs.' },
-          ].map((f, i) => (
-            <AccordionItem key={i} value={`item-${i}`}>
-              <AccordionTrigger className="font-medium">{f.q}</AccordionTrigger>
-              <AccordionContent className="text-sm text-muted-foreground">
-                {f.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="max-w-3xl mx-auto"
+        >
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            {[
+              { q: 'How do I start streaming on Vivoor?', a: 'Connect your Kaspa wallet, go to /go-live, pay the 1.2 KAS treasury fee, and get your RTMP details for OBS streaming.' },
+              { q: 'Do you really take 0% fees on tips?', a: 'Yes! Unlike traditional platforms that take 30-50% cuts, we take 0% from tips. 100% goes directly to creators.' },
+              { q: 'What makes Kaspa better for tips?', a: 'Kaspa has sub-second confirmation times and ultra-low fees, making it perfect for instant micro-payments to creators.' },
+              { q: 'How do I create clips from streams?', a: 'While watching any stream, click the scissors icon to create clips up to 60 seconds long. They process instantly via Livepeer.' },
+              { q: 'Can I get verified on Vivoor?', a: 'Yes! Visit /verification to purchase monthly (100 KAS) or yearly (1000 KAS) verification for enhanced credibility and priority features.' },
+              { q: 'What is Livepeer and why do you use it?', a: 'Livepeer is a decentralized video infrastructure that provides high-quality, low-latency streaming at 50x lower cost than traditional CDNs.' },
+            ].map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="group"
+              >
+                <AccordionItem 
+                  value={`item-${i}`}
+                  className="relative overflow-hidden rounded-xl border border-border/60 bg-gradient-to-r from-background via-background to-background hover:from-brand-cyan/5 hover:via-brand-iris/5 hover:to-brand-pink/5 transition-all duration-500 px-6 py-2"
+                >
+                  {/* Animated border gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-500 -z-10" />
+                  
+                  {/* Floating particles effect */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    {[...Array(3)].map((_, idx) => (
+                      <motion.div
+                        key={idx}
+                        className="absolute w-1 h-1 bg-gradient-to-r from-brand-cyan to-brand-iris rounded-full opacity-0 group-hover:opacity-60"
+                        initial={{ x: -10, y: 20 }}
+                        animate={{
+                          x: [0, 100, 200],
+                          y: [20, 10, 30],
+                          opacity: [0, 0.6, 0]
+                        }}
+                        transition={{
+                          duration: 3,
+                          delay: idx * 0.5,
+                          repeat: Infinity,
+                          repeatType: "loop"
+                        }}
+                        style={{
+                          left: `${20 + idx * 30}%`,
+                          top: `${30 + idx * 20}%`
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  <AccordionTrigger className="font-medium hover:no-underline group-hover:text-gradient transition-all duration-300 py-4">
+                    <motion.span
+                      className="flex items-center gap-3"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    >
+                      <motion.div
+                        className="w-2 h-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris"
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          opacity: [0.5, 1, 0.5]
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatType: "reverse"
+                        }}
+                      />
+                      {f.q}
+                    </motion.span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm text-muted-foreground pb-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="pl-5 relative"
+                    >
+                      {/* Answer highlight line */}
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-brand-cyan via-brand-iris to-brand-pink opacity-60" />
+                      {f.a}
+                    </motion.div>
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
+            ))}
+          </Accordion>
+        </motion.div>
       </section>
 
       {/* CTA */}

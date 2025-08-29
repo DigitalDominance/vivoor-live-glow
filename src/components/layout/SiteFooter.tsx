@@ -16,7 +16,14 @@ const SiteFooter = () => {
           <a className="story-link" href="/clips">Clips</a>
           <a className="story-link" href="/verification">Get Verified</a>
         </nav>
-        <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Vivoor. All rights reserved.</div>
+        <div className="flex items-center gap-4">
+          <img 
+            src="/lovable-uploads/b08dce0d-1833-4324-9760-6fc5aef6248d.png" 
+            alt="Powered by Kaspa" 
+            className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity"
+          />
+          <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Vivoor. All rights reserved.</div>
+        </div>
       </div>
     </footer>
   );
