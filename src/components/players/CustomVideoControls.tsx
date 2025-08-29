@@ -141,6 +141,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                    className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
                    title="Quality Settings"
                    onClick={(e) => e.stopPropagation()}
+                   onMouseDown={(e) => e.stopPropagation()}
                  >
                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
                    <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
@@ -149,9 +150,23 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                 <DropdownMenuContent 
                   side="top"
                   align="end" 
-                  className="w-32 bg-background/95 backdrop-blur-md border border-border z-[9999]"
+                  className="w-32 bg-background border border-border z-[9999] shadow-xl"
                   sideOffset={8}
                   onCloseAutoFocus={(e) => e.preventDefault()}
+                  onPointerDownOutside={(e) => {
+                    // Prevent closing when clicking on video container
+                    const target = e.target as Element;
+                    if (target.closest('.video-container') || target.closest('[data-video-controls]')) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onFocusOutside={(e) => {
+                    // Prevent closing when focus moves within video container
+                    const target = e.target as Element;
+                    if (target.closest('.video-container') || target.closest('[data-video-controls]')) {
+                      e.preventDefault();
+                    }
+                  }}
                 >
                  {qualityLevels.map((level) => (
                    <DropdownMenuItem
