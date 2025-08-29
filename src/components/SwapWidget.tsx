@@ -9,13 +9,13 @@ const SwapWidget: React.FC = () => {
     // Update iframe src when theme changes
     if (iframeRef.current) {
       const isDark = theme === 'dark';
-      const newSrc = `https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=false&amount=0.01&amountFiat=1500&backgroundColor=00000&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true&logo=false&primaryColor=00ffff&to=kas&toFiat=kas&toTheMoon=true`;
+      const newSrc = `https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=false&amount=0.01&amountFiat=1500&backgroundColor=00000&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true&logo=false&primaryColor=00ffff&to=kas&toFiat=eth&toTheMoon=false`;
       iframeRef.current.src = newSrc;
     }
   }, [theme]);
 
   const isDark = theme === 'dark';
-  const iframeSrc = `https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=false&amount=0.01&amountFiat=1500&backgroundColor=00000&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true&logo=false&primaryColor=00ffff&to=kas&toFiat=kas&toTheMoon=true`;
+  const iframeSrc = `https://changenow.io/embeds/exchange-widget/v2/widget.html?FAQ=false&amount=0.01&amountFiat=1500&backgroundColor=00000&darkMode=${isDark}&from=btc&fromFiat=eur&horizontal=true&isFiat=false&lang=en-US&link_id=26eb6983a7bef9&locales=true&logo=false&primaryColor=00ffff&to=kas&toFiat=eth&toTheMoon=false`;
 
   return (
     <div className="relative rounded-xl p-[2px] bg-gradient-to-r from-brand-purple via-brand-pink to-brand-cyan shadow-lg hover:shadow-xl transition-all duration-300">
