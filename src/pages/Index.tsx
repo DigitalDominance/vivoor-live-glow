@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"; 
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Zap,
@@ -28,10 +28,11 @@ import SwapWidget from "@/components/SwapWidget";
  * This page renders the Vivoor home screen. Several small improvements have
  * been made relative to the original version:
  *
- * - The swap widget heading now uses the same gradient as the FAQ heading and
- *   features larger text on medium/large screens.
- * - The FAQ accordion trigger no longer hides its text on hover.
- * - The FAQ list becomes a two-column layout on medium and larger devices.
+ * - The swap widget heading now uses the cyan→iris→pink gradient to match
+ *   other headings on the site.
+ * - The FAQ accordion trigger no longer hides its text on hover. We do
+ *   this by avoiding the gradient text class on hover and instead
+ *   maintaining the regular foreground colour.
  */
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
@@ -61,15 +62,7 @@ const PlayerMock = () => (
   </div>
 );
 
-const FeatureCard = ({
-  icon: Icon,
-  title,
-  desc,
-}: {
-  icon: any;
-  title: string;
-  desc: string;
-}) => (
+const FeatureCard = ({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) => (
   <motion.article
     className="group glass rounded-xl p-5 transition-transform will-change-transform hover:translate-y-[-2px]"
     whileInView={{ opacity: [0, 1], y: [8, 0] }}
@@ -84,13 +77,7 @@ const FeatureCard = ({
   </motion.article>
 );
 
-const ClipCard = ({
-  clip,
-  onClick,
-}: {
-  clip: any;
-  onClick: () => void;
-}) => (
+const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
   <motion.div
     className="snap-start shrink-0 w-80 group cursor-pointer mr-4"
     whileHover={{ y: -4 }}
@@ -450,14 +437,14 @@ const Index = () => {
                 '"Zero fees on tips is game changing" - Alberto',
                 '"Kaspa tips arrive instantly" - Cesar',
                 '"Finally a platform that doesn\'t steal from creators" - Jonathan',
-                '"Fastest go-live I’ve used" - Alex',
+                '"Fastest go‑live I’ve used" - Alex',
                 '"The clip feature is absolutely perfect" - David',
               ]
                 .concat([
                   '"Zero fees on tips is game changing" - Alberto',
                   '"Kaspa tips arrive instantly" - Cesar',
                   '"Finally a platform that doesn\'t steal from creators" - Jonathan',
-                  '"Fastest go-live I’ve used" - Alex',
+                  '"Fastest go‑live I’ve used" - Alex',
                   '"The clip feature is absolutely perfect" - David',
                 ])
                 .map((q, i) => (
@@ -478,39 +465,44 @@ const Index = () => {
               <Zap className="size-4 text-[hsl(var(--brand-pink))]" /> Near-instant
             </div>
             <div className="mt-2 text-lg font-bold">Tips settle in seconds</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Kaspa's blockDAG confirms fast: creators see KAS almost immediately.
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">Kaspa's blockDAG confirms fast: creators see KAS almost immediately.</p>
           </div>
           <div className="glass rounded-xl p-6">
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Circle className="size-4 text-[hsl(var(--brand-iris))]" /> 0% Platform Fee
             </div>
             <div className="mt-2 text-lg font-bold">100% goes to creators</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              We take 0% platform fees unlike major streaming platforms that take up to 50%.
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">We take 0% platform fees unlike major streaming platforms that take up to 50%.</p>
           </div>
           <div className="glass rounded-xl p-6">
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Repeat className="size-4 text-[hsl(var(--brand-cyan))]" /> Transparent
             </div>
             <div className="mt-2 text-lg font-bold">On-chain and simple</div>
-            <p className="text-sm text-muted-foreground mt-2">
-              No middlemen, no hidden cuts. Direct, on-chain tipping in KAS.
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">No middlemen, no hidden cuts. Direct, on-chain tipping in KAS.</p>
           </div>
         </div>
       </section>
       {/* Swap Widget */}
       <section className="container mx-auto px-4 mt-16">
         <div className="text-center mb-8">
-          {/* Larger heading with gradient matching FAQ */}
+          {/*
+            Use a larger font size on bigger screens and apply the same gradient
+            styling as other section headings. This helps unify visual
+            hierarchy across the page.
+          */}
           <h2 className="font-semibold text-2xl md:text-3xl mb-2 bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
             Swap Crypto Instantly
           </h2>
+          <p className="text-muted-foreground text-sm">
+            Exchange cryptocurrencies seamlessly before streaming
+          </p>
         </div>
-        {/* Wider on desktop to match site width */}
+        {/*
+          Extend the widget container width on desktop so it aligns with other
+          sections on the page. Using max-w-7xl ensures the widget matches
+          the overall page width rather than being constrained to 4xl.
+        */}
         <div className="max-w-7xl mx-auto">
           <SwapWidget />
         </div>
@@ -524,7 +516,7 @@ const Index = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-8"
         >
-          {/* Larger FAQ heading with matching gradient */}
+          {/* Increase heading size and apply gradient matching other sections */}
           <h2 className="font-semibold mb-2 text-2xl md:text-3xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
             Frequently Asked Questions
           </h2>
@@ -537,9 +529,14 @@ const Index = () => {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
+          /*
+            Increase the max width of the FAQ container so that the two-column
+            layout matches the width of other content sections on the page.
+            Using max-w-7xl keeps it consistent with the wider desktop layout.
+          */
           className="max-w-7xl mx-auto"
         >
-          {/* Use a grid to get two columns on medium and larger screens */}
+          {/* Display accordion items in two columns on medium+ screens */}
           <Accordion type="single" collapsible className="w-full grid gap-4 md:grid-cols-2">
             {[
               {
@@ -615,7 +612,7 @@ const Index = () => {
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     >
                       <motion.div
-                        className="w-2 h-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris shrink-0 relative top-[1px]"
+                        className="w-2 h-2 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris relative top-[1px]"
                         animate={{
                           scale: [1, 1.2, 1],
                           opacity: [0.5, 1, 0.5],
