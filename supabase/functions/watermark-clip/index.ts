@@ -158,20 +158,8 @@ serve(async (req) => {
     const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
     const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip';
 
-    const { data: savedClip, error: saveError } = await supabaseClient
-      .from('clips')
-      .insert({
-        title: clipTitle,
-        user_id: userId,
-        start_seconds: 0,
-        end_seconds: seconds,
-        download_url: assetReady.downloadUrl, // Store original URL in DB
-        thumbnail_url: assetReady.downloadUrl,
-        playback_id: playbackId,
-        livepeer_asset_id: asset.id
-      })
-      .select()
-      .single();
+    /* deferring DB insert until after watermark upload */
+const savedClip = null as any;
 
     if (saveError) {
       console.error('Error saving clip to database:', saveError);
@@ -221,6 +209,51 @@ serve(async (req) => {
 
     // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
     if (watermarkSuccess && watermarkedBody) {
+      // Upload watermarked bytes to Supabase Storage and SAVE to DB (only after success)
+      const storage = supabaseClient.storage.from('clips');
+      const filePath = `users/${userId}/clips/${asset.id}-${Date.now()}.mp4`;
+      const fileBlob = new Blob([buf], { type: 'video/mp4' });
+      const upRes = await storage.upload(filePath, fileBlob, { contentType: 'video/mp4', upsert: true });
+      if (upRes?.error) {
+        console.error('Storage upload failed:', upRes.error);
+        return new Response(JSON.stringify({ error: 'Failed to store watermarked clip' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const pub = storage.getPublicUrl(filePath);
+      const watermarkedUrl = pub?.data?.publicUrl || '';
+      if (!watermarkedUrl) {
+        return new Response(JSON.stringify({ error: 'Could not resolve public URL for stored clip' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+      const { data: savedClipRec, error: saveError } = await supabaseClient
+        .from('clips')
+        .insert({
+          title: clipTitle,
+          user_id: userId,
+          start_seconds: 0,
+          end_seconds: seconds,
+          download_url: watermarkedUrl,
+          thumbnail_url: watermarkedUrl,
+          playback_id: playbackId,
+          livepeer_asset_id: asset.id,
+          watermarked: true
+        })
+        .select()
+        .single();
+      if (saveError) {
+        console.error('Error saving watermarked clip to database:', saveError);
+        return new Response(JSON.stringify({ error: 'Failed to save watermarked clip to database' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       // Buffer the upstream stream to ensure a stable binary response for supabase-js
       const wmBlob = await new Response(watermarkedBody).blob();
       const buf = await wmBlob.arrayBuffer();
@@ -231,7 +264,7 @@ serve(async (req) => {
           'Content-Type': 'application/octet-stream',
           'Content-Length': String(buf.byteLength),
           'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
-          'X-Clip-Id': savedClip.id,
+          'X-Clip-Id': savedClipRec.id,
           'X-Watermarked': 'true',
           'Cache-Control': 'no-store',
           'Pragma': 'no-cache',
@@ -249,7 +282,7 @@ serve(async (req) => {
             ...corsHeaders,
             'Content-Type': ct,
             'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
-            'X-Clip-Id': savedClip.id,
+            'X-Clip-Id': savedClipRec.id,
             'X-Watermarked': 'false',
           },
         });
@@ -261,7 +294,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        clip: savedClip,
+        clip: null,
         downloadUrl: assetReady.downloadUrl,
         watermarked: false,
         error: 'Watermarking failed and fallback download failed',
