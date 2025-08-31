@@ -78,7 +78,34 @@ serve(async (req: Request) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
+        // Parse incoming body. We support both JSON and multipart/form-data.
+    const contentType = req.headers.get("content-type") || "";
+    let body: any = {};
+    let videoFile: File | null = null;
+    try {
+      if (contentType.includes("multipart/form-data")) {
+        const fd = await req.formData();
+        // Extract known fields
+        const v = fd.get("video");
+        if (v && v instanceof File) videoFile = v as File;
+        const urlVal = fd.get("videoUrl");
+        const posVal = fd.get("position");
+        const marginVal = fd.get("margin");
+        const wmWidthVal = fd.get("wmWidth");
+        const filenameVal = fd.get("filename");
+        body = {
+          videoUrl: typeof urlVal === "string" ? urlVal : undefined,
+          position: typeof posVal === "string" ? posVal : undefined,
+          margin: typeof marginVal === "string" ? Number(marginVal) : undefined,
+          wmWidth: typeof wmWidthVal === "string" ? Number(wmWidthVal) : undefined,
+          filename: typeof filenameVal === "string" ? filenameVal : undefined,
+        };
+      } else {
+        body = await req.json().catch(() => ({}));
+      }
+    } catch {
+      body = {};
+    }
     const {
       videoUrl,
       position = "br",
