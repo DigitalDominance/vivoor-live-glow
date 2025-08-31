@@ -1,218 +1,312 @@
-// supabase/functions/watermark-clip/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-authorization",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "Content-Disposition, X-Clip-Id, X-Watermarked",
+  // Allow all origins by default; if you need to restrict origins,
+  // adjust this header accordingly. We include the necessary CORS
+  // response headers so browsers can make requests from
+  // https://vivoor.xyz or local development domains.
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-authorization',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  // Expose custom headers so the client can read clip metadata
+  'Access-Control-Expose-Headers': 'Content-Disposition, X-Clip-Id, X-Watermarked',
 };
 
-const LIVEPEER_API_KEY = Deno.env.get("LIVEPEER_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const WATERMARK_URL = Deno.env.get("WATERMARK_URL") || "https://vivoor-e15c882142f5.herokuapp.com/watermark";
-
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("", { status: 200, headers: corsHeaders });
+const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY');
+/**
+ * Compute the URL of the watermark proxy at runtime.  When running inside the
+ * Supabase edge environment, environment variables like SUPABASE_URL are not
+ * guaranteed to be set.  Deriving the base URL from the incoming request
+ * ensures that we always call the correct origin (e.g. https://<project>.supabase.co).
+ */
+function getWatermarkProxyUrl(req: Request) {
+  try {
+    // Use the request URL to determine the origin of the current function call.
+    const url = new URL(req.url);
+    return `${url.origin}/functions/v1/watermark-proxy`;
+  } catch {
+    // Fallback to the SUPABASE_URL env var if parsing fails; if that isn't set
+    // then the caller will hit an invalid URL which will surface an error.
+    const envUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    return `${envUrl}/functions/v1/watermark-proxy`;
   }
+}
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Check for required environment variables
     if (!LIVEPEER_API_KEY) {
-      return new Response(JSON.stringify({ error: "LIVEPEER_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: "Supabase credentials not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error('LIVEPEER_API_KEY environment variable is not set');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: LIVEPEER_API_KEY not set' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    // body from UI
     const {
       playbackId,
       seconds,
       title,
       userId,
       streamTitle,
-      startTime,
-      endTime,
+      startTime: clientStartTime,
+      endTime: clientEndTime,
     } = await req.json();
 
     if (!playbackId || !seconds || !userId) {
-      return new Response(JSON.stringify({ error: "Missing required fields: playbackId, seconds, userId" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: playbackId, seconds, userId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // 1) Create Livepeer clip
-    const clipBody: any = {
+    console.log(`Creating and watermarking ${seconds}s clip for playbackId: ${playbackId}`);
+
+    // 1. Create the clip via Livepeer API
+    const BUFFER_SECONDS = 13;
+    const now = Date.now();
+    let computedEndTime = now - BUFFER_SECONDS * 1000;
+    let computedStartTime = computedEndTime - seconds * 1000;
+    
+    if (typeof clientEndTime === 'number' && typeof clientStartTime === 'number') {
+      computedEndTime = clientEndTime;
+      computedStartTime = clientStartTime;
+    }
+
+    console.log(
+      `Clipping from ${new Date(computedStartTime).toISOString()} to ${new Date(computedEndTime).toISOString()}`
+    );
+
+    const clipBody: Record<string, any> = {
       playbackId,
-      clipLength: Number(seconds),
-      startTime: startTime ? Number(startTime) : undefined,
-      endTime: endTime ? Number(endTime) : undefined,
+      startTime: computedStartTime,
+      endTime: computedEndTime,
       name: `Live Clip ${seconds}s - ${new Date().toISOString()}`,
     };
 
-    const clipResponse = await fetch("https://livepeer.studio/api/clip", {
-      method: "POST",
+    const clipResponse = await fetch('https://livepeer.studio/api/clip', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${LIVEPEER_API_KEY}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(clipBody),
     });
 
     if (!clipResponse.ok) {
-      const t = await clipResponse.text().catch(() => "");
-      console.error("Livepeer clip creation failed:", t);
-      return new Response(JSON.stringify({ error: "Failed to create clip via Livepeer API" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const errorText = await clipResponse.text();
+      console.error('Livepeer clip creation failed:', errorText);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create clip via Livepeer API' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { asset } = await clipResponse.json();
-    // 2) Poll asset ready
-    let assetReady: any = null;
-    for (let i = 0; i < 30; i++) {
-      const r = await fetch(`https://livepeer.studio/api/asset/${asset.id}`, {
-        headers: { Authorization: `Bearer ${LIVEPEER_API_KEY}` },
+    console.log('Livepeer clip asset created:', asset.id);
+
+    // 2. Wait for the asset to be ready
+    let attempts = 0;
+    const maxAttempts = 30;
+    let assetReady = null;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const statusResponse = await fetch(`https://livepeer.studio/api/asset/${asset.id}`, {
+        headers: {
+          'Authorization': `Bearer ${LIVEPEER_API_KEY}`,
+        },
       });
-      if (!r.ok) {
-        await new Promise((r) => setTimeout(r, 2000));
-        continue;
+
+      if (statusResponse.ok) {
+        const assetData = await statusResponse.json();
+        console.log(`Asset status check ${attempts + 1}: ${assetData.status?.phase}`);
+        
+        if (assetData.status?.phase === 'ready') {
+          assetReady = assetData;
+          break;
+        }
+        
+        if (assetData.status?.phase === 'failed') {
+          throw new Error('Asset processing failed');
+        }
       }
-      const j = await r.json();
-      const phase = j?.status?.phase;
-      if (phase === "ready") {
-        assetReady = j;
-        break;
-      }
-      if (phase === "failed") {
-        return new Response(JSON.stringify({ error: "Livepeer asset failed to process" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      
+      attempts++;
+    }
+
+    if (!assetReady) {
+      throw new Error('Asset processing timeout');
+    }
+
+    console.log('Asset ready, preparing database record and watermark request');
+
+    // 3. Save clip to database once. We store the original Livepeer download URL since
+    // the watermark service may fail; in that case we still want the clip recorded.
+    const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+    const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, '_') || 'clip';
+
+    /* deferring DB insert until after watermark upload */
+const savedClip = null as any;
+
+    if (saveError) {
+      console.error('Error saving clip to database:', saveError);
+      throw new Error('Failed to save clip to database');
+    }
+
+    console.log('Database clip saved:', savedClip.id);
+
+    // 4. Request watermarking directly from the external service. We avoid
+    // calling another edge function here because Supabase functions cannot
+    // reliably invoke each other (and may return 405 Method Not Allowed).
+    // Instead, we call the Heroku watermark service directly with a
+    // multipart/form-data payload.
+    const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
+
+    const form = new FormData();
+    form.set('videoUrl', assetReady.downloadUrl);
+    form.set('position', 'br');
+    form.set('margin', String(24));
+    form.set('wmWidth', String(180));
+    form.set('filename', `${sanitizedTitle}.mp4`);
+
+    let watermarkSuccess = false;
+    let watermarkedBody: ReadableStream<Uint8Array> | null = null;
+    let upstreamContentType = 'video/mp4';
+    try {
+      const upstreamRes = await fetch(upstreamUrl, {
+        method: 'POST',
+        body: form,
+      });
+      if (upstreamRes.ok && upstreamRes.body) {
+        watermarkSuccess = true;
+        watermarkedBody = upstreamRes.body;
+        upstreamContentType = upstreamRes.headers.get('content-type') || 'video/mp4';
+      } else {
+        const text = await upstreamRes.text().catch(() => '');
+        console.error('Watermark service failed:', {
+          status: upstreamRes.status,
+          statusText: upstreamRes.statusText,
+          headers: Object.fromEntries(upstreamRes.headers.entries()),
+          response: text,
         });
       }
-      await new Promise((r) => setTimeout(r, 2000));
+    } catch (wmErr) {
+      console.error('Watermark service error:', wmErr);
     }
-    if (!assetReady) {
-      return new Response(JSON.stringify({ error: "Asset processing timeout" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
+    if (watermarkSuccess && watermarkedBody) {
+      // Upload watermarked bytes to Supabase Storage and SAVE to DB (only after success)
+      const storage = supabaseClient.storage.from('clips');
+      const filePath = `users/${userId}/clips/${asset.id}-${Date.now()}.mp4`;
+      const fileBlob = new Blob([buf], { type: 'video/mp4' });
+      const upRes = await storage.upload(filePath, fileBlob, { contentType: 'video/mp4', upsert: true });
+      if (upRes?.error) {
+        console.error('Storage upload failed:', upRes.error);
+        return new Response(JSON.stringify({ error: 'Failed to store watermarked clip' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const pub = storage.getPublicUrl(filePath);
+      const watermarkedUrl = pub?.data?.publicUrl || '';
+      if (!watermarkedUrl) {
+        return new Response(JSON.stringify({ error: 'Could not resolve public URL for stored clip' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const clipTitle = title || `${streamTitle} - ${seconds}s Clip`;
+      const { data: savedClipRec, error: saveError } = await supabaseClient
+        .from('clips')
+        .insert({
+          title: clipTitle,
+          user_id: userId,
+          start_seconds: 0,
+          end_seconds: seconds,
+          download_url: watermarkedUrl,
+          thumbnail_url: watermarkedUrl,
+          playback_id: playbackId,
+          livepeer_asset_id: asset.id,
+          watermarked: true
+        })
+        .select()
+        .single();
+      if (saveError) {
+        console.error('Error saving watermarked clip to database:', saveError);
+        return new Response(JSON.stringify({ error: 'Failed to save watermarked clip to database' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Buffer the upstream stream to ensure a stable binary response for supabase-js
+      const wmBlob = await new Response(watermarkedBody).blob();
+      const buf = await wmBlob.arrayBuffer();
+      return new Response(buf, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(buf.byteLength),
+          'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+          'X-Clip-Id': savedClipRec.id,
+          'X-Watermarked': 'true',
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache',
+        },
       });
     }
 
-    const clipTitle = (title || `${streamTitle || "Clip"} - ${seconds}s Clip`).trim();
-    const sanitizedTitle = clipTitle.replace(/[^A-Za-z0-9._-]/g, "_") || "clip";
-
-    // 3) Watermark via Heroku
-    const form = new FormData();
-    form.set("videoUrl", assetReady.downloadUrl);
-    form.set("position", "br");
-    form.set("margin", String(24));
-    form.set("wmWidth", String(180));
-    form.set("filename", `${sanitizedTitle}.mp4`);
-
-    const wmRes = await fetch(WATERMARK_URL, { method: "POST", body: form });
-
-    if (!wmRes.ok || !wmRes.body) {
-      const txt = await wmRes.text().catch(() => "");
-      console.error("Watermark service failed:", wmRes.status, txt);
-      return new Response(JSON.stringify({ error: "Watermarking failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // 6. Watermarking failed. Attempt to fetch the original asset as fallback.
+    try {
+      const originalRes = await fetch(assetReady.downloadUrl);
+      if (originalRes.ok && originalRes.body) {
+        const ct = originalRes.headers.get('content-type') || 'video/mp4';
+        return new Response(originalRes.body, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': ct,
+            'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+            'X-Clip-Id': savedClipRec.id,
+            'X-Watermarked': 'false',
+          },
+        });
+      }
+    } catch (fetchErr) {
+      console.error('Failed to fetch original clip as fallback:', fetchErr);
     }
+    // If we cannot fetch the original clip, return a JSON error response.
+    return new Response(
+      JSON.stringify({
+        success: false,
+        clip: null,
+        downloadUrl: assetReady.downloadUrl,
+        watermarked: false,
+        error: 'Watermarking failed and fallback download failed',
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
 
-    // 4) Buffer watermarked bytes
-    const wmBlob = await wmRes.blob();
-    const wmBuf = await wmBlob.arrayBuffer();
-
-    // 5) Upload to Storage (same bucket & format as non-watermarked flow)
-    const storage = supabase.storage.from("clips");
-    const filePath = `users/${userId}/clips/${asset.id}-${Date.now()}.mp4`;
-    const uploadRes = await storage.upload(filePath, wmBlob, {
-      contentType: "video/mp4",
-      upsert: true,
-    });
-
-    if ((uploadRes as any)?.error) {
-      console.error("Storage upload failed:", (uploadRes as any).error);
-      return new Response(JSON.stringify({ error: "Failed to store watermarked clip" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const pub = storage.getPublicUrl(filePath);
-    const watermarkedUrl = pub?.data?.publicUrl || "";
-    if (!watermarkedUrl) {
-      return new Response(JSON.stringify({ error: "Could not resolve public URL for stored clip" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 6) Insert clip row EXACTLY like the non-watermarked flow, but with watermarked URL
-    const { data: savedClipRec, error: insertErr } = await supabase
-      .from("clips")
-      .insert({
-        title: clipTitle,
-        user_id: userId,
-        start_seconds: 0,
-        end_seconds: seconds,
-        download_url: watermarkedUrl,
-        thumbnail_url: watermarkedUrl,
-        playback_id: playbackId,
-        livepeer_asset_id: asset.id,
-      })
-      .select()
-      .single();
-
-    if (insertErr) {
-      console.error("Error saving watermarked clip to database:", insertErr);
-      return new Response(JSON.stringify({ error: "Failed to save watermarked clip to database" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 7) Return the bytes as a Blob (UI expects responseType:'blob')
-    return new Response(wmBuf, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/octet-stream",
-        "Content-Length": String(wmBuf.byteLength),
-        "Content-Disposition": `attachment; filename="${sanitizedTitle}.mp4"`,
-        "X-Clip-Id": String(savedClipRec.id),
-        "X-Watermarked": "true",
-        "Cache-Control": "no-store",
-        "Pragma": "no-cache",
-      },
-    });
-  } catch (err: any) {
-    console.error("Error in watermark-clip:", err);
-    return new Response(JSON.stringify({ error: err?.message || String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    console.error('Error in watermark-clip:', error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
