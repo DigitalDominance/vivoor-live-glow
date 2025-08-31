@@ -40,7 +40,6 @@ serve(async (req) => {
   }
 
   try {
-    // Check for required environment variables
     if (!LIVEPEER_API_KEY) {
       console.error('LIVEPEER_API_KEY environment variable is not set');
       return new Response(
@@ -73,32 +72,29 @@ serve(async (req) => {
 
     console.log(`Creating and watermarking ${seconds}s clip for playbackId: ${playbackId}`);
 
-    // 1. Create the clip via Livepeer API
+    // ------------------------------------------------------------------------
+    // 1. Create the clip via the Livepeer API
+    // ------------------------------------------------------------------------
     const BUFFER_SECONDS = 13;
     const now = Date.now();
     let computedEndTime = now - BUFFER_SECONDS * 1000;
     let computedStartTime = computedEndTime - seconds * 1000;
-    
     if (typeof clientEndTime === 'number' && typeof clientStartTime === 'number') {
       computedEndTime = clientEndTime;
       computedStartTime = clientStartTime;
     }
 
-    console.log(
-      `Clipping from ${new Date(computedStartTime).toISOString()} to ${new Date(computedEndTime).toISOString()}`
-    );
-
-    const clipBody: Record<string, any> = {
+    const clipBody = {
       playbackId,
       startTime: computedStartTime,
       endTime: computedEndTime,
-      name: `Live Clip ${seconds}s - ${new Date().toISOString()}`,
+      name: `Live Clip ${seconds}s - ${new Date().toISOString()}`
     };
 
     const clipResponse = await fetch('https://livepeer.studio/api/clip', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${LIVEPEER_API_KEY}`,
+        'Authorization': `Bearer ${LIVEPEER_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(clipBody),
@@ -180,11 +176,8 @@ serve(async (req) => {
 
     console.log('Database clip saved:', savedClip.id);
 
-    // 4. Request watermarking directly from the external service. We avoid
-    // calling another edge function here because Supabase functions cannot
-    // reliably invoke each other (and may return 405 Method Not Allowed).
-    // Instead, we call the Heroku watermark service directly with a
-    // multipart/form-data payload.
+    // 4. Request watermarking directly from the external service.
+    // NOTE: We call Heroku watermark service directly to avoid function→function calls.
     const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
 
     const form = new FormData();
@@ -221,8 +214,40 @@ serve(async (req) => {
 
     // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
     if (watermarkSuccess && watermarkedBody) {
+
       // Buffer the upstream stream to ensure a stable binary response for supabase-js
       const wmBlob = await new Response(watermarkedBody).blob();
+
+      // Upload the watermarked clip to Supabase Storage and update the DB row
+      try {
+        const filePath = `${userId}/clips/${savedClip.id}-${sanitizedTitle}.mp4`;
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+          .from('clips')
+          .upload(filePath, wmBlob, { contentType: upstreamContentType, upsert: true });
+
+        if (uploadError) {
+          console.error('Error uploading watermarked clip to storage:', uploadError);
+        } else {
+          const { data: pub } = supabaseClient.storage.from('clips').getPublicUrl(filePath);
+          const publicUrl = pub?.publicUrl || null;
+          if (publicUrl) {
+            const { error: updateErr } = await supabaseClient
+              .from('clips')
+              .update({ download_url: publicUrl })
+              .eq('id', savedClip.id);
+            if (updateErr) {
+              console.error('Error updating clip row with watermarked URL:', updateErr);
+            } else {
+              console.log('Updated clip to watermarked URL:', publicUrl);
+            }
+          } else {
+            console.warn('No public URL returned for uploaded watermarked clip at', filePath);
+          }
+        }
+      } catch (uploadErr) {
+        console.error('Failed uploading/updating watermarked clip:', uploadErr);
+      }
+
       const buf = await wmBlob.arrayBuffer();
       return new Response(buf, {
         status: 200,
