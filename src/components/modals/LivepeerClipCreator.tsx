@@ -76,6 +76,14 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       // will treat non-JSON responses as text and you will see
       // "Unexpected response from watermark service" errors.
       const { data: watermarkData, error: watermarkError } = await supabase.functions.invoke('watermark-clip', {
+        // Explicitly request a Blob response. Without specifying `responseType`
+        // supabase-js will attempt to parse the response as JSON or text based on
+        // the Content-Type header. Our watermark-clip function returns a
+        // binary MP4 stream with a `video/mp4` Content-Type, so we instruct
+        // the client to treat the response as a Blob. This prevents the
+        // library from trying to interpret the binary data as UTF-8 text and
+        // throwing an "Unexpected response from watermark service" error.
+        responseType: 'blob',
         body: {
           playbackId: livepeerPlaybackId,
           seconds: selectedDuration,
