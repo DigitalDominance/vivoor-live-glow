@@ -209,14 +209,15 @@ const savedClip = null as any;
 
     // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
     
-if (watermarkSuccess && watermarkedBody) {
-      // Read upstream stream fully first so we can both upload and return the same bytes
-      const wmBuf = await new Response(watermarkedBody).arrayBuffer();
+    if (watermarkSuccess && watermarkedBody) {
+      // Buffer upstream body once; reuse for upload + response
+      const wmBlob = await new Response(watermarkedBody).blob();
+      const wmBuf = await wmBlob.arrayBuffer();
 
-      // Upload watermarked bytes to Supabase Storage and SAVE to DB (only after success)
+      // Upload the watermarked MP4 to the same bucket style used elsewhere ('clips')
       const storage = supabaseClient.storage.from('clips');
       const filePath = `users/${userId}/clips/${asset.id}-${Date.now()}.mp4`;
-      const upRes = await storage.upload(filePath, wmBuf, { contentType: 'video/mp4', upsert: true });
+      const upRes = await storage.upload(filePath, wmBlob, { contentType: 'video/mp4', upsert: true });
       if (upRes?.error) {
         console.error('Storage upload failed:', upRes.error);
         return new Response(JSON.stringify({ error: 'Failed to store watermarked clip' }), {
@@ -261,7 +262,7 @@ if (watermarkSuccess && watermarkedBody) {
         status: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'video/mp4',
+          'Content-Type': 'application/octet-stream',
           'Content-Length': String(wmBuf.byteLength),
           'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
           'X-Clip-Id': savedClipRec.id,
@@ -271,7 +272,7 @@ if (watermarkSuccess && watermarkedBody) {
         },
       });
     }
-// 6. Watermarking failed. Attempt to fetch the original asset as fallback.
+    // 6. Watermarking failed. Attempt to fetch the original asset as fallback.
     try {
       const originalRes = await fetch(assetReady.downloadUrl);
       if (originalRes.ok && originalRes.body) {
