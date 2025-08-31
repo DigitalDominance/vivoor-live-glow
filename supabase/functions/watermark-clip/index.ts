@@ -180,38 +180,48 @@ serve(async (req) => {
 
     console.log('Database clip saved:', savedClip.id);
 
-    // 4. Request watermarking directly from the external service. We avoid
-    // calling another edge function here because Supabase functions cannot
-    // reliably invoke each other (and may return 405 Method Not Allowed).
-    // Instead, we call the Heroku watermark service directly with a
-    // multipart/form-data payload.
-    const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
-
-    const form = new FormData();
-    form.set('videoUrl', assetReady.downloadUrl);
-    form.set('position', 'br');
-    form.set('margin', String(24));
-    form.set('wmWidth', String(180));
-    form.set('filename', `${sanitizedTitle}.mp4`);
+    // 4. Request watermarking via the watermark-proxy function.
+    // This ensures proper CORS handling and routing through our domain.
+    const watermarkProxyUrl = getWatermarkProxyUrl(req);
+    
+    console.log('Calling watermark proxy with:', {
+      videoUrl: assetReady.downloadUrl,
+      filename: `${sanitizedTitle}.mp4`
+    });
 
     let watermarkSuccess = false;
     let watermarkedBody: ReadableStream<Uint8Array> | null = null;
     let upstreamContentType = 'video/mp4';
+    
     try {
-      const upstreamRes = await fetch(upstreamUrl, {
+      const watermarkPayload = {
+        videoUrl: assetReady.downloadUrl,
+        position: 'br',
+        margin: 24,
+        wmWidth: 180,
+        filename: `${sanitizedTitle}.mp4`
+      };
+
+      const watermarkRes = await fetch(watermarkProxyUrl, {
         method: 'POST',
-        body: form,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(watermarkPayload),
       });
-      if (upstreamRes.ok && upstreamRes.body) {
+
+      console.log('Watermark proxy response status:', watermarkRes.status);
+
+      if (watermarkRes.ok && watermarkRes.body) {
         watermarkSuccess = true;
-        watermarkedBody = upstreamRes.body;
-        upstreamContentType = upstreamRes.headers.get('content-type') || 'video/mp4';
+        watermarkedBody = watermarkRes.body;
+        upstreamContentType = watermarkRes.headers.get('content-type') || 'video/mp4';
+        console.log('Watermarking successful, streaming back watermarked video');
       } else {
-        const text = await upstreamRes.text().catch(() => '');
+        const text = await watermarkRes.text().catch(() => '');
         console.error('Watermark service failed:', {
-          status: upstreamRes.status,
-          statusText: upstreamRes.statusText,
-          headers: Object.fromEntries(upstreamRes.headers.entries()),
+          status: watermarkRes.status,
+          statusText: watermarkRes.statusText,
           response: text,
         });
       }
