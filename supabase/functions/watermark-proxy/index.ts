@@ -8,7 +8,6 @@ const ALLOWED_ORIGINS = new Set<string>([
   "http://localhost:5173",
   "http://localhost:3000",
 ]);
-
 function corsHeaders(req: Request) {
   const origin = req.headers.get("origin") ?? "";
   const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "*";
@@ -19,6 +18,7 @@ function corsHeaders(req: Request) {
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-authorization",
     "Access-Control-Max-Age": "86400",
+    // Expose filename header to the browser if needed
     "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
   };
   if (allowOrigin !== "*") headers["Access-Control-Allow-Credentials"] = "true";
@@ -26,43 +26,38 @@ function corsHeaders(req: Request) {
 }
 // --------------------------
 
-const WATERMARK_API_URL = "https://vivoor-e15c882142f5.herokuapp.com/watermark";
+const WATERMARK_URL = "https://vivoor-e15c882142f5.herokuapp.com/watermark";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchWithRetry(
   url: string,
-  init: RequestInit,
-  maxRetries = 3
+  init: RequestInit & { timeoutMs?: number } = {},
+  attempts = 2,
 ): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  const timeoutMs = init.timeoutMs ?? 25000;
+  for (let i = 1; i <= attempts; i++) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      console.log(`Attempt ${attempt}/${maxRetries} - Calling watermark API`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-      
-      const response = await fetch(url, {
+      const res = await fetch(url, {
         ...init,
         signal: controller.signal,
+        headers: { ...(init.headers || {}) },
       });
-      
-      clearTimeout(timeoutId);
-      return response;
-      
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`Attempt ${attempt} failed:`, error);
-      
-      if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+      clearTimeout(t);
+      // Accept only 2xx
+      if (!res.ok) {
+        if (i === attempts) return res;
+      } else {
+        return res;
       }
+    } catch (_err) {
+      clearTimeout(t);
+      if (i === attempts) throw _err;
     }
+    await sleep(Math.min(6000, 500 * 2 ** (i - 1)));
   }
-  
-  throw lastError || new Error("All retry attempts failed");
+  throw new Error("fetchWithRetry exhausted");
 }
 
 serve(async (req: Request) => {
@@ -108,64 +103,39 @@ serve(async (req: Request) => {
     form.set("wmWidth", String(wmWidth));
     form.set("filename", filename);
 
-    console.log("Calling watermark API with params:", { videoUrl, position, margin, wmWidth, filename });
-
     // Call upstream watermark service with retry
     const upstream = await fetchWithRetry(
-      WATERMARK_API_URL,
-      { 
-        method: "POST", 
-        body: form,
-        headers: {
-          // Let FormData set its own Content-Type with boundary
-        }
-      },
-      3
+      WATERMARK_URL,
+      { method: "POST", body: form, timeoutMs: 25000 },
+      2,
     );
 
-    console.log("Watermark API response status:", upstream.status);
-
-    if (!upstream.ok) {
+    if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => "");
-      console.error("Watermark API error:", text);
       return new Response(
         JSON.stringify({
           error: "Watermark service failed",
           status: upstream.status,
           details: text,
         }),
-        { 
-          status: upstream.status || 502, 
-          headers: { ...baseCors, "Content-Type": "application/json" } 
-        },
-      );
-    }
-
-    if (!upstream.body) {
-      return new Response(
-        JSON.stringify({ error: "No response body from watermark service" }),
-        { 
-          status: 502, 
-          headers: { ...baseCors, "Content-Type": "application/json" } 
-        }
+        { status: upstream.status || 502, headers: { ...baseCors, "Content-Type": "application/json" } },
       );
     }
 
     // Stream the mp4 straight back to the browser with proper CORS
-    const contentType = upstream.headers.get("Content-Type") || "video/mp4";
-    const contentDisposition = upstream.headers.get("Content-Disposition") || 
-      `attachment; filename="${filename.replace(/[^a-zA-Z0-9_.-]/g, "_")}"`;
-
-    console.log("Streaming watermarked video back to client");
+    const ct = upstream.headers.get("Content-Type") || "video/mp4";
+    const disp =
+      upstream.headers.get("Content-Disposition") ||
+      `inline; filename="${filename.replace(/[^a-zA-Z0-9_.-]/g, "_")}"`;
 
     return new Response(upstream.body, {
       status: 200,
       headers: {
         ...baseCors,
-        "Content-Type": contentType,
-        "Content-Disposition": contentDisposition,
-        "Cache-Control": "no-store, no-cache, must-revalidate",
-        "Pragma": "no-cache",
+        "Content-Type": ct,
+        "Content-Disposition": disp,
+        // Prevent caching of transient results
+        "Cache-Control": "no-store",
       },
     });
   } catch (err) {
