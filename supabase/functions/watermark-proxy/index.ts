@@ -5,8 +5,6 @@ const ALLOWED_ORIGINS = new Set<string>([
   "https://vivoor.xyz",
   "https://www.vivoor.xyz",
   "https://preview--vivoor-live-glow.lovable.app",
-  "https://2cc72808-4aad-461a-8802-2e544554fef5.sandbox.lovable.dev",
-  "https://qcowmxypihinteajhnjw.supabase.co",
   "http://localhost:5173",
   "http://localhost:3000",
 ]);
