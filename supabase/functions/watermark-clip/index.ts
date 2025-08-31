@@ -208,12 +208,15 @@ const savedClip = null as any;
     }
 
     // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
-    if (watermarkSuccess && watermarkedBody) {
+    
+if (watermarkSuccess && watermarkedBody) {
+      // Read upstream stream fully first so we can both upload and return the same bytes
+      const wmBuf = await new Response(watermarkedBody).arrayBuffer();
+
       // Upload watermarked bytes to Supabase Storage and SAVE to DB (only after success)
       const storage = supabaseClient.storage.from('clips');
       const filePath = `users/${userId}/clips/${asset.id}-${Date.now()}.mp4`;
-      const fileBlob = new Blob([buf], { type: 'video/mp4' });
-      const upRes = await storage.upload(filePath, fileBlob, { contentType: 'video/mp4', upsert: true });
+      const upRes = await storage.upload(filePath, wmBuf, { contentType: 'video/mp4', upsert: true });
       if (upRes?.error) {
         console.error('Storage upload failed:', upRes.error);
         return new Response(JSON.stringify({ error: 'Failed to store watermarked clip' }), {
@@ -241,8 +244,7 @@ const savedClip = null as any;
           download_url: watermarkedUrl,
           thumbnail_url: watermarkedUrl,
           playback_id: playbackId,
-          livepeer_asset_id: asset.id,
-          watermarked: true
+          livepeer_asset_id: asset.id
         })
         .select()
         .single();
@@ -254,15 +256,13 @@ const savedClip = null as any;
         });
       }
 
-      // Buffer the upstream stream to ensure a stable binary response for supabase-js
-      const wmBlob = await new Response(watermarkedBody).blob();
-      const buf = await wmBlob.arrayBuffer();
-      return new Response(buf, {
+      // Return the same bytes to the client as an MP4 file
+      return new Response(wmBuf, {
         status: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': String(buf.byteLength),
+          'Content-Type': 'video/mp4',
+          'Content-Length': String(wmBuf.byteLength),
           'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
           'X-Clip-Id': savedClipRec.id,
           'X-Watermarked': 'true',
@@ -271,8 +271,7 @@ const savedClip = null as any;
         },
       });
     }
-
-    // 6. Watermarking failed. Attempt to fetch the original asset as fallback.
+// 6. Watermarking failed. Attempt to fetch the original asset as fallback.
     try {
       const originalRes = await fetch(assetReady.downloadUrl);
       if (originalRes.ok && originalRes.body) {
