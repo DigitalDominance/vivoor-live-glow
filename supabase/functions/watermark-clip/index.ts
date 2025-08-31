@@ -184,49 +184,9 @@ serve(async (req) => {
     // calling another edge function here because Supabase functions cannot
     // reliably invoke each other (and may return 405 Method Not Allowed).
     // Instead, we call the Heroku watermark service directly with a
-    // multipart/form-data payload.  To improve reliability, we wrap
-    // network calls in a retry helper that handles transient errors.
+    // multipart/form-data payload.
     const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
 
-    // Helper functions for retrying network requests.  We centralise
-    // the retry logic so that both the watermark call and the fallback
-    // original-clip fetch can benefit from automatic retries.
-    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-    async function fetchWithRetry(url: string, init: RequestInit & { timeoutMs?: number } = {}, attempts = 3): Promise<Response> {
-      const timeoutMs = init.timeoutMs ?? 30000;
-      for (let i = 1; i <= attempts; i++) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, {
-            ...init,
-            signal: controller.signal,
-            headers: init.headers,
-          });
-          clearTimeout(timer);
-          // Retry on 5xx or network errors; accept only 2xx responses
-          if (!res.ok) {
-            if (res.status >= 500 || res.status === 429) {
-              // network/server issue; retry
-              if (i < attempts) {
-                await sleep(Math.min(8000, 500 * 2 ** (i - 1)));
-                continue;
-              }
-            }
-            return res;
-          }
-          return res;
-        } catch (err) {
-          clearTimeout(timer);
-          if (i === attempts) throw err;
-          await sleep(Math.min(8000, 500 * 2 ** (i - 1)));
-        }
-      }
-      throw new Error('fetchWithRetry exhausted');
-    }
-
-    // Build the form data for the upstream call
     const form = new FormData();
     form.set('videoUrl', assetReady.downloadUrl);
     form.set('position', 'br');
@@ -238,13 +198,10 @@ serve(async (req) => {
     let watermarkedBody: ReadableStream<Uint8Array> | null = null;
     let upstreamContentType = 'video/mp4';
     try {
-      const upstreamRes = await fetchWithRetry(upstreamUrl, {
+      const upstreamRes = await fetch(upstreamUrl, {
         method: 'POST',
         body: form,
-        // Set a generous timeout for the watermarking service; large files can
-        // take time to process.  We retry on 5xx and network errors.
-        timeoutMs: 45000,
-      }, 2);
+      });
       if (upstreamRes.ok && upstreamRes.body) {
         watermarkSuccess = true;
         watermarkedBody = upstreamRes.body;
@@ -277,7 +234,7 @@ serve(async (req) => {
 
     // 6. Watermarking failed. Attempt to fetch the original asset as fallback.
     try {
-      const originalRes = await fetchWithRetry(assetReady.downloadUrl, {}, 2);
+      const originalRes = await fetch(assetReady.downloadUrl);
       if (originalRes.ok && originalRes.body) {
         const ct = originalRes.headers.get('content-type') || 'video/mp4';
         return new Response(originalRes.body, {
