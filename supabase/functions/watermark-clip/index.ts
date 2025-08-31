@@ -221,13 +221,20 @@ serve(async (req) => {
 
     // 5. If watermarking succeeded, stream back the binary video and mark as watermarked.
     if (watermarkSuccess && watermarkedBody) {
-      return new Response(watermarkedBody, {
+      // Buffer the upstream stream to ensure a stable binary response for supabase-js
+      const wmBlob = await new Response(watermarkedBody).blob();
+      const buf = await wmBlob.arrayBuffer();
+      return new Response(buf, {
+        status: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': upstreamContentType,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(buf.byteLength),
           'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
           'X-Clip-Id': savedClip.id,
           'X-Watermarked': 'true',
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache',
         },
       });
     }
