@@ -243,7 +243,8 @@ serve(async (req) => {
     }
 
     // Fetch final result MP4
-    const finalUrl = lastStatus?.resultUrl || resultUrl;
+    const finalUrlRel = (lastStatus && (lastStatus as any).resultUrl) || resultUrl;
+    const finalUrl = finalUrlRel ? (String(finalUrlRel).startsWith('http') ? String(finalUrlRel) : `${base.origin}${finalUrlRel}`) : null;
     if (!finalUrl) {
       console.error('No resultUrl provided on completion:', lastStatus);
       return new Response(JSON.stringify({ error: 'No resultUrl on completed job' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
