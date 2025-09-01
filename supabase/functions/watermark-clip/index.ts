@@ -182,6 +182,10 @@ serve(async (req) => {
     // 4. Enqueue watermarking as a background job on the Heroku backend
     // Instead of waiting for the full watermarked file (which can exceed 30s),
     // we submit the job and return identifiers so the client can poll.
+    
+    // 4. Enqueue watermarking as a background job on the Heroku backend
+    
+    // 4. Enqueue watermark job and WAIT until it's finished, then return the MP4
     const upstreamUrl = Deno.env.get('WATERMARK_URL') || 'https://vivoor-e15c882142f5.herokuapp.com/watermark';
 
     const form = new FormData();
@@ -195,44 +199,102 @@ serve(async (req) => {
     if (!enqueueRes.ok) {
       const text = await enqueueRes.text().catch(() => '');
       console.error('Failed to enqueue watermark job:', enqueueRes.status, text);
-      return new Response(
-        JSON.stringify({ error: 'Failed to enqueue watermark job', status: enqueueRes.status, details: text }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Failed to enqueue watermark job' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const enqueueJson = await enqueueRes.json().catch(() => ({}));
-    const jobId = enqueueJson.jobId ?? enqueueJson.id ?? null;
-    const statusUrl = enqueueJson.statusUrl ?? null;
-    const resultUrl = enqueueJson.resultUrl ?? null;
+    const enqueueJson = await enqueueRes.json().catch(() => ({} as any));
+    const jobId = (enqueueJson as any).jobId ?? (enqueueJson as any).id ?? null;
+    const statusUrlRel = (enqueueJson as any).statusUrl ?? null;
+    const resultUrlRel = (enqueueJson as any).resultUrl ?? null;
 
-    // Persist job tracking info on the clip row for the app to poll/display
-    if (jobId) {
-      const { error: trackErr } = await supabaseClient
+    // Build absolute URLs from potential relative paths
+    const base = new URL(upstreamUrl);
+    const statusUrl = statusUrlRel ? (statusUrlRel.startsWith('http') ? statusUrlRel : `${base.origin}${statusUrlRel}`) : null;
+    const resultUrl = resultUrlRel ? (resultUrlRel.startsWith('http') ? resultUrlRel : `${base.origin}${resultUrlRel}`) : null;
+
+    if (!jobId || !statusUrl) {
+      console.error('Watermark enqueue did not return jobId/statusUrl');
+      return new Response(JSON.stringify({ error: 'Watermark enqueue missing job info' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Poll status until completed or timeout
+    const MAX_WAIT_MS = Number(Deno.env.get('WATERMARK_MAX_WAIT_MS') || 115000);
+    const POLL_MS = 2000;
+    const deadline = Date.now() + MAX_WAIT_MS;
+    let completed = false;
+    let failed = false;
+    let lastStatus: any = null;
+
+    while (Date.now() < deadline) {
+      const sRes = await fetch(statusUrl);
+      if (sRes.ok) {
+        lastStatus = await sRes.json().catch(() => null);
+        const st = lastStatus?.status || lastStatus?.state || null;
+        if (st === 'completed') { completed = true; break; }
+        if (st === 'failed') { failed = true; break; }
+      } else {
+        console.warn('status poll non-200:', sRes.status);
+      }
+      await new Promise(r => setTimeout(r, POLL_MS));
+    }
+
+    if (!completed || failed) {
+      console.error('Watermark job did not complete in time or failed:', { completed, failed, lastStatus });
+      return new Response(JSON.stringify({ error: 'Watermark still processing', jobId, statusUrl }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Fetch final result MP4
+    const finalUrl = lastStatus?.resultUrl || resultUrl;
+    if (!finalUrl) {
+      console.error('No resultUrl provided on completion:', lastStatus);
+      return new Response(JSON.stringify({ error: 'No resultUrl on completed job' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const rRes = await fetch(finalUrl);
+    if (!rRes.ok || !rRes.body) {
+      const txt = await rRes.text().catch(() => '');
+      console.error('Failed to download watermarked MP4:', rRes.status, txt);
+      return new Response(JSON.stringify({ error: 'Failed to download watermarked MP4' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Upload the watermarked clip to Supabase Storage and update DB row
+    const wmBlob = await (new Response(rRes.body)).blob();
+    try {
+      const filePath = `${userId}/clips/${savedClip.id}-${sanitizedTitle}.mp4`;
+      const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('clips')
-        .update({
-          watermark_job_id: jobId,
-          watermark_status: 'queued',
-          watermark_status_url: statusUrl,
-          watermark_result_url: resultUrl
-        })
-        .eq('id', savedClip.id);
-      if (trackErr) console.error('Failed to save watermark job tracking on clip:', trackErr);
+        .upload(filePath, wmBlob, { contentType: 'video/mp4', upsert: true });
+
+      if (uploadError) {
+        console.error('Error uploading watermarked clip to storage:', uploadError);
+      } else {
+        const { data: pub } = supabaseClient.storage.from('clips').getPublicUrl(filePath);
+        const publicUrl = pub?.publicUrl || null;
+        if (publicUrl) {
+          const { error: updateErr } = await supabaseClient
+            .from('clips')
+            .update({ download_url: publicUrl })
+            .eq('id', savedClip.id);
+          if (updateErr) console.error('Error updating clip row with watermarked URL:', updateErr);
+        }
+      }
+    } catch (uploadErr) {
+      console.error('Failed uploading/updating watermarked clip:', uploadErr);
     }
 
-    // Respond with job info; keep headers consistent and include the clip id
-    return new Response(
-      JSON.stringify({
-        success: true,
-        clipId: savedClip.id,
-        watermarked: false,
-        watermark_enqueued: true,
-        jobId,
-        statusUrl,
-        resultUrl,
-        originalDownloadUrl: assetReady.downloadUrl
-      }),
-      { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Clip-Id': String(savedClip.id), 'X-Watermarked': 'false' } }
-    );
+    // Return the watermarked MP4 to the caller (no streaming until finished)
+    const buf = await wmBlob.arrayBuffer();
+    return new Response(buf, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': String(buf.byteLength),
+        'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+        'X-Clip-Id': String(savedClip.id),
+        'X-Watermarked': 'true',
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+      },
+    });
   } catch (error) {
     console.error('Error in watermark-clip:', error);
     return new Response(
