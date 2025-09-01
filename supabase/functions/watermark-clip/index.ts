@@ -14,6 +14,16 @@ const corsHeaders: Record<string, string> = {
 };
 
 const LIVEPEER_API_KEY = Deno.env.get('LIVEPEER_API_KEY');
+
+function absolutizeUrl(maybeUrl: string | null | undefined, base: string): string | null {
+  if (!maybeUrl) return null;
+  try {
+    // Handles absolute and relative cases
+    return new URL(String(maybeUrl), base).toString();
+  } catch {
+    return null;
+  }
+}
 /**
  * Compute the URL of the watermark proxy at runtime.  When running inside the
  * Supabase edge environment, environment variables like SUPABASE_URL are not
@@ -202,9 +212,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Failed to enqueue watermark job' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const enqueueJson = await enqueueRes.json().catch(() => ({} as any));
-    const jobId = (enqueueJson as any).jobId ?? (enqueueJson as any).id ?? null;
-    const statusUrlRel = (enqueueJson as any).statusUrl ?? null;
-    const resultUrlRel = (enqueueJson as any).resultUrl ?? null;
+const jobId = (enqueueJson as any).jobId ?? (enqueueJson as any).id ?? null;
+const statusUrlRel = (enqueueJson as any).statusUrl ?? null;
+const resultUrlRel = (enqueueJson as any).resultUrl ?? null;
 
     // Build absolute URLs from potential relative paths
     const base = new URL(upstreamUrl);
@@ -244,8 +254,8 @@ serve(async (req) => {
 
     // Fetch final result MP4
     const finalUrlRel = (lastStatus && (lastStatus as any).resultUrl) || resultUrl;
-    const finalUrl = finalUrlRel ? (String(finalUrlRel).startsWith('http') ? String(finalUrlRel) : `${base.origin}${finalUrlRel}`) : null;
-    if (!finalUrl) {
+const finalUrl = absolutizeUrl(finalUrlRel, upstreamUrl);
+if (!finalUrl) {
       console.error('No resultUrl provided on completion:', lastStatus);
       return new Response(JSON.stringify({ error: 'No resultUrl on completed job' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
