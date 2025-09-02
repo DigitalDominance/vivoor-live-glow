@@ -71,13 +71,10 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clientStartTime = clientEndTime - (selectedDuration * 1000);
 
       // Create clip and watermark it using our edge function
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/watermark-clip`, {
+      const response = await fetch(`https://qcowmxypihinteajhnjw.supabase.co/functions/v1/watermark-clip`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjb3dteHlwaWhpbnRlYWpobmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDI4MTMsImV4cCI6MjA3MDYxODgxM30.KrSQYsOzPPhErffzdLzMS_4pC2reuONNc134tdtVPbA`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
