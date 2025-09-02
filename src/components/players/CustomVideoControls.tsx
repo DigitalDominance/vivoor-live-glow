@@ -1,13 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Maximize, Users, Scissors, Volume2, VolumeX, Settings } from "lucide-react";
+import { Play, Pause, Maximize, Users, Scissors, Volume2, VolumeX, Settings, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface CustomVideoControlsProps {
   isPlaying: boolean;
@@ -44,6 +43,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
   currentQuality,
   onQualityChange
 }) => {
+  const [qualityPopoverOpen, setQualityPopoverOpen] = useState(false);
   const formatTime = (seconds: number) => {
     return new Date(seconds * 1000).toISOString().substring(11, 19);
   };
@@ -131,65 +131,66 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
             </Button>
           )}
 
-           {/* Quality selector */}
-           {qualityLevels && qualityLevels.length > 1 && (
-             <DropdownMenu modal={false}>
-               <DropdownMenuTrigger asChild>
-                 <Button
-                   variant="ghost"
-                   size="icon"
-                   className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
-                   title="Quality Settings"
-                   onClick={(e) => e.stopPropagation()}
-                   onMouseDown={(e) => e.stopPropagation()}
-                 >
-                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-                   <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
-                 </Button>
-               </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  side="top"
-                  align="end" 
-                  className="w-32 bg-background border border-border z-[9999] shadow-xl"
-                  sideOffset={8}
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  onPointerDownOutside={(e) => {
-                    // Prevent closing when clicking on video container
-                    const target = e.target as Element;
-                    if (target.closest('.video-container') || target.closest('[data-video-controls]')) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onFocusOutside={(e) => {
-                    // Prevent closing when focus moves within video container
-                    const target = e.target as Element;
-                    if (target.closest('.video-container') || target.closest('[data-video-controls]')) {
-                      e.preventDefault();
-                    }
-                  }}
+          {/* Quality selector */}
+          {qualityLevels && qualityLevels.length > 1 && (
+            <Popover open={qualityPopoverOpen} onOpenChange={setQualityPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
+                  title="Quality Settings"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
-                 {qualityLevels.map((level) => (
-                   <DropdownMenuItem
-                     key={level.value}
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       onQualityChange?.(level.value);
-                     }}
-                     className={`text-foreground hover:bg-accent focus:bg-accent cursor-pointer ${
-                       currentQuality === level.value ? 'bg-accent' : ''
-                     }`}
-                   >
-                     <div className="flex items-center justify-between w-full">
-                       <span>{level.label}</span>
-                       {currentQuality === level.value && (
-                         <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris ml-2" />
-                       )}
-                     </div>
-                   </DropdownMenuItem>
-                 ))}
-               </DropdownMenuContent>
-             </DropdownMenu>
-           )}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                  <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent 
+                side="top"
+                align="end" 
+                className="w-36 bg-background border border-border z-[9999] shadow-xl p-0"
+                sideOffset={8}
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                <div className="flex items-center justify-between p-2 border-b border-border">
+                  <span className="text-sm font-medium">Quality</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-4 w-4 hover:bg-accent"
+                    onClick={() => setQualityPopoverOpen(false)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="py-1">
+                  {qualityLevels.map((level) => (
+                    <div
+                      key={level.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onQualityChange?.(level.value);
+                        setQualityPopoverOpen(false);
+                      }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
+                        currentQuality === level.value ? 'bg-accent' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>{level.label}</span>
+                        {currentQuality === level.value && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-brand-cyan to-brand-iris ml-2" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
 
           {/* Fullscreen button */}
           <Button
