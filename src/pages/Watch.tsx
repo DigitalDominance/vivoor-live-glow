@@ -618,7 +618,16 @@ const Watch = () => {
     };
 
     const handleMouseMove = () => resetTimeout();
-    const handleMouseLeave = () => {
+    const handleMouseLeave = (e: MouseEvent) => {
+      // Check if mouse is moving to a popover/dropdown
+      const relatedTarget = e.relatedTarget as Element;
+      if (relatedTarget && (
+        relatedTarget.closest('[data-radix-popper-content-wrapper]') ||
+        relatedTarget.closest('[data-radix-popover-content]') ||
+        relatedTarget.closest('[role="dialog"]')
+      )) {
+        return; // Don't hide controls if moving to a popover
+      }
       clearTimeout(timeout);
       setShowControls(false);
     };
