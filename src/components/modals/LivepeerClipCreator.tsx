@@ -70,21 +70,17 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
       const clientEndTime = clientNow - bufferMs;
       const clientStartTime = clientEndTime - (selectedDuration * 1000);
 
-      // Create clip and watermark it using our edge function.  Specify
-      // responseType: 'blob' so supabase-js returns the binary payload
-      // instead of attempting to parse JSON. Without this, the library
-      // will treat non-JSON responses as text and you will see
-      // "Unexpected response from watermark service" errors.
-      const { data: watermarkData, error: watermarkError } = await supabase.functions.invoke('watermark-clip', {
-        // Explicitly request a Blob response. Without specifying `responseType`
-        // supabase-js will attempt to parse the response as JSON or text based on
-        // the Content-Type header. Our watermark-clip function returns a
-        // binary MP4 stream with a `video/mp4` Content-Type, so we instruct
-        // the client to treat the response as a Blob. This prevents the
-        // library from trying to interpret the binary data as UTF-8 text and
-        // throwing an "Unexpected response from watermark service" error.
-        responseType: 'blob',
-        body: {
+      // Create clip and watermark it using our edge function
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/watermark-clip`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           playbackId: livepeerPlaybackId,
           seconds: selectedDuration,
           title: clipTitle,
@@ -92,50 +88,42 @@ const LivepeerClipCreator: React.FC<LivepeerClipCreatorProps> = ({
           streamTitle,
           startTime: clientStartTime,
           endTime: clientEndTime
-        }
+        })
       });
 
-      if (watermarkError) {
-        throw new Error(watermarkError.message || 'Failed to create and watermark clip');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create clip');
       }
 
-      // The watermark-clip function returns the watermarked video as a Blob
-      let finalUrl: string;
-      let watermarked = true;
-
-      if (watermarkData instanceof Blob) {
-        // Successful watermarking
-        finalUrl = URL.createObjectURL(watermarkData);
-        console.log('Watermarked clip created successfully');
-      } else if (watermarkData && typeof watermarkData === 'object') {
-        // If the response is an object, it's likely a JSON error from the edge function.
-        // Provide a more descriptive error message to the user.
-        const message = (watermarkData as any).error || 'Unexpected response from watermark service';
-        throw new Error(message);
-      } else {
-        // Unexpected response type; throw a generic error
-        throw new Error('Unexpected response from watermark service');
+      // Extract clip ID from response headers
+      const clipId = response.headers.get('X-Clip-Id');
+      const isWatermarked = response.headers.get('X-Watermarked') === 'true';
+      
+      if (!clipId) {
+        throw new Error('No clip ID returned from server');
       }
 
-      // Notify the user that the clip is ready.  If watermarking failed we
-      // include a note that the original clip is used instead.
+      // Get the watermarked video blob
+      const watermarkData = await response.blob();
+
+      // Create blob URL for preview/download
+      const finalUrl = URL.createObjectURL(watermarkData);
+      console.log('Watermarked clip created successfully with ID:', clipId);
+
+      // Notify the user that the clip is ready
       toast({
         title: "Clip Ready!",
-        description: watermarked
-          ? `Your ${selectedDuration}-second clip is ready to download!`
-          : `Your clip is ready, but watermarking failed. Original clip provided.`,
+        description: `Your ${selectedDuration}-second clip is ready to download!`,
       });
-
-      // Generate a temporary clip ID for preview
-      const clipId = `temp-${Date.now()}`;
       
-      // Show preview modal with the final URL (watermarked)
+      // Show preview modal with the real clip ID and watermarked video
       setClipPreview({
         clipId: clipId,
         downloadUrl: finalUrl,
         playbackUrl: finalUrl,
         title: clipTitle,
-        isWatermarked: watermarked
+        isWatermarked: isWatermarked
       });
       setShowPreview(true);
       
