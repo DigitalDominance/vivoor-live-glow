@@ -133,14 +133,26 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
 
           {/* Quality selector */}
           {qualityLevels && qualityLevels.length > 1 && (
-            <Popover open={qualityPopoverOpen} onOpenChange={setQualityPopoverOpen}>
+            <Popover 
+              open={qualityPopoverOpen} 
+              onOpenChange={(open) => {
+                // Only allow manual closing
+                if (!open && qualityPopoverOpen) {
+                  setQualityPopoverOpen(false);
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
                   title="Quality Settings"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setQualityPopoverOpen(!qualityPopoverOpen);
+                  }}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
@@ -150,31 +162,58 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
               <PopoverContent 
                 side="top"
                 align="end" 
-                className="w-36 bg-background border border-border z-[9999] shadow-xl p-0"
+                className="w-36 bg-background border border-border z-[99999] shadow-xl p-0"
                 sideOffset={8}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onCloseAutoFocus={(e) => e.preventDefault()}
+                onPointerDownOutside={(e) => {
+                  // Prevent closing when clicking outside if wallet UI might interfere
+                  e.preventDefault();
+                }}
+                onEscapeKeyDown={() => setQualityPopoverOpen(false)}
+                onInteractOutside={(e) => {
+                  // Only close on explicit interaction outside, not on mouse movement
+                  const target = e.target as Element;
+                  if (!target.closest('[data-radix-popper-content-wrapper]')) {
+                    setQualityPopoverOpen(false);
+                  }
+                }}
               >
-                <div className="flex items-center justify-between p-2 border-b border-border">
+                <div 
+                  className="flex items-center justify-between p-2 border-b border-border"
+                  onMouseMove={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => e.stopPropagation()}
+                  onMouseLeave={(e) => e.stopPropagation()}
+                >
                   <span className="text-sm font-medium">Quality</span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-4 w-4 hover:bg-accent"
-                    onClick={() => setQualityPopoverOpen(false)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setQualityPopoverOpen(false);
+                    }}
                   >
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
-                <div className="py-1">
+                <div 
+                  className="py-1"
+                  onMouseMove={(e) => e.stopPropagation()}
+                  onMouseEnter={(e) => e.stopPropagation()}
+                  onMouseLeave={(e) => e.stopPropagation()}
+                >
                   {qualityLevels.map((level) => (
                     <div
                       key={level.value}
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         onQualityChange?.(level.value);
                         setQualityPopoverOpen(false);
                       }}
+                      onMouseMove={(e) => e.stopPropagation()}
                       className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
                         currentQuality === level.value ? 'bg-accent' : ''
                       }`}
