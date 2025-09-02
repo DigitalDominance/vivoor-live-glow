@@ -135,11 +135,8 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
           {qualityLevels && qualityLevels.length > 1 && (
             <Popover 
               open={qualityPopoverOpen} 
-              onOpenChange={(open) => {
-                // Only allow manual closing
-                if (!open && qualityPopoverOpen) {
-                  setQualityPopoverOpen(false);
-                }
+              onOpenChange={() => {
+                // Completely disable auto-close - only manual close allowed
               }}
             >
               <PopoverTrigger asChild>
@@ -162,21 +159,17 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
               <PopoverContent 
                 side="top"
                 align="end" 
-                className="w-36 bg-background border border-border z-[99999] shadow-xl p-0"
+                className="w-36 bg-background border border-border shadow-xl p-0 pointer-events-auto"
+                style={{ zIndex: 999999 }}
                 sideOffset={8}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                onPointerDownOutside={(e) => {
-                  // Prevent closing when clicking outside if wallet UI might interfere
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onFocusOutside={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => {
                   e.preventDefault();
-                }}
-                onEscapeKeyDown={() => setQualityPopoverOpen(false)}
-                onInteractOutside={(e) => {
-                  // Only close on explicit interaction outside, not on mouse movement
-                  const target = e.target as Element;
-                  if (!target.closest('[data-radix-popper-content-wrapper]')) {
-                    setQualityPopoverOpen(false);
-                  }
+                  setQualityPopoverOpen(false);
                 }}
               >
                 <div 
@@ -184,6 +177,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                   onMouseMove={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => e.stopPropagation()}
                   onMouseLeave={(e) => e.stopPropagation()}
+                  onPointerMove={(e) => e.stopPropagation()}
                 >
                   <span className="text-sm font-medium">Quality</span>
                   <Button
@@ -192,6 +186,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                     className="h-4 w-4 hover:bg-accent"
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       setQualityPopoverOpen(false);
                     }}
                   >
@@ -203,6 +198,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                   onMouseMove={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => e.stopPropagation()}
                   onMouseLeave={(e) => e.stopPropagation()}
+                  onPointerMove={(e) => e.stopPropagation()}
                 >
                   {qualityLevels.map((level) => (
                     <div
@@ -214,6 +210,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                         setQualityPopoverOpen(false);
                       }}
                       onMouseMove={(e) => e.stopPropagation()}
+                      onPointerMove={(e) => e.stopPropagation()}
                       className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
                         currentQuality === level.value ? 'bg-accent' : ''
                       }`}
