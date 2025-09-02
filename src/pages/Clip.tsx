@@ -151,7 +151,7 @@ const ClipPage: React.FC = () => {
     }
   };
 
-  if (!clip || (!vod && !stream)) return (
+  if (!clip) return (
     <main className="container mx-auto px-4 py-6">
       <div className="text-sm text-muted-foreground">Clip not found.</div>
     </main>
