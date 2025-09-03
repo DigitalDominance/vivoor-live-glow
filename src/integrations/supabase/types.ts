@@ -647,6 +647,18 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_profile_data: {
+        Args: { user_id: string }
+        Returns: {
+          avatar_url: string
+          banner_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
       get_public_profile_display: {
         Args: { user_id: string }
         Returns: {
@@ -737,6 +749,10 @@ export type Database = {
         }[]
       }
       get_tip_address: {
+        Args: { stream_id: string }
+        Returns: string
+      }
+      get_tip_address_secure: {
         Args: { stream_id: string }
         Returns: string
       }
