@@ -49,14 +49,13 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
 
         // If we don't have stored sender info, try to resolve from wallet address
         if (!tipData?.sender_name && tipData?.sender_address) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('display_name, handle, avatar_url')
-            .eq('kaspa_address', tipData.sender_address)
-            .single();
+          // Use RPC function to safely check profile without exposing sensitive data
+          const { data: profiles, error: profileError } = await supabase
+            .rpc('get_public_profile_secure', { _id: tipData.sender_address });
 
-          console.log('Profile lookup result:', { profile, profileError, senderAddress: tipData.sender_address });
+          console.log('Profile lookup result:', { profiles, profileError, senderAddress: tipData.sender_address });
           
+          const profile = profiles && profiles.length > 0 ? profiles[0] : null;
           if (profile) {
             finalSenderName = profile.display_name || profile.handle || 'Anonymous';
             finalSenderAvatar = profile.avatar_url;

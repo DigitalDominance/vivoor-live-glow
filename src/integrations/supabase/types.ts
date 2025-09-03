@@ -96,6 +96,8 @@ export type Database = {
           user_id: string
           views: number
           vod_id: string | null
+          watermark_job_id: string | null
+          watermark_status: string | null
         }
         Insert: {
           created_at?: string
@@ -110,6 +112,8 @@ export type Database = {
           user_id: string
           views?: number
           vod_id?: string | null
+          watermark_job_id?: string | null
+          watermark_status?: string | null
         }
         Update: {
           created_at?: string
@@ -124,6 +128,8 @@ export type Database = {
           user_id?: string
           views?: number
           vod_id?: string | null
+          watermark_job_id?: string | null
+          watermark_status?: string | null
         }
         Relationships: []
       }
@@ -604,6 +610,18 @@ export type Database = {
         Args: { _id: string }
         Returns: {
           avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
+      get_public_profile_secure: {
+        Args: { _id: string }
+        Returns: {
+          avatar_url: string
+          banner_url: string
           bio: string
           created_at: string
           display_name: string

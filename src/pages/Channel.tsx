@@ -31,25 +31,35 @@ const Channel: React.FC = () => {
     queryFn: async () => {
       if (!username) return null;
       
-      // First get the basic profile
-      const { data: profileData } = await supabase
+      // First find the user ID by handle, then get secure profile data
+      const { data: profileLookup } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id')
         .eq('handle', username)
         .maybeSingle();
+        
+      if (!profileLookup) return null;
       
-      if (!profileData) return null;
+      // Get secure profile data using the ID
+      const { data: profileData } = await supabase
+        .rpc('get_public_profile_secure', { _id: profileLookup.id });
+        
+      if (!profileData || profileData.length === 0) return null;
+      
+      const profile = profileData[0];
+      
+      if (!profile) return null;
       
       // Get follower counts, stream likes, and clip likes
       const [followerResult, followingResult, streamLikesResult, clipLikesResult] = await Promise.all([
         supabase
           .from('follows')
           .select('id', { count: 'exact', head: true })
-          .eq('following_id', profileData.id),
+          .eq('following_id', profile.id),
         supabase
           .from('follows')
           .select('id', { count: 'exact', head: true })
-          .eq('follower_id', profileData.id),
+          .eq('follower_id', profile.id),
         // Get likes for user's streams
         supabase
           .from('likes')
@@ -58,7 +68,7 @@ const Channel: React.FC = () => {
             await supabase
               .from('streams')
               .select('id')
-              .eq('user_id', profileData.id)
+              .eq('user_id', profile.id)
               .then(({ data }) => data?.map(s => s.id) || [])
           ),
         // Get likes for user's clips
@@ -69,7 +79,7 @@ const Channel: React.FC = () => {
             await supabase
               .from('clips')
               .select('id')
-              .eq('user_id', profileData.id)
+              .eq('user_id', profile.id)
               .then(({ data }) => data?.map(c => c.id) || [])
           )
       ]);
@@ -77,7 +87,7 @@ const Channel: React.FC = () => {
       const totalLikes = (streamLikesResult.count || 0) + (clipLikesResult.count || 0);
       
       return {
-        ...profileData,
+        ...profile,
         follower_count: followerResult.count || 0,
         following_count: followingResult.count || 0,
         total_likes: totalLikes

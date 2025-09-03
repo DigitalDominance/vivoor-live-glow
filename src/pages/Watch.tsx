@@ -142,18 +142,16 @@ const Watch = () => {
   }, [streamerProfile?.follower_count]);
 
   // Get streamer's Kaspa address directly from their profile
+  // Get tip address securely using existing RPC function
   const { data: streamerKaspaAddress } = useQuery({
-    queryKey: ['streamer-kaspa-address', streamerProfile?.id],
+    queryKey: ['streamer-kaspa-address', streamData?.id],
     queryFn: async () => {
-      if (!streamerProfile?.id) return null;
+      if (!streamData?.id) return null;
       const { data } = await supabase
-        .from('profiles')
-        .select('kaspa_address')
-        .eq('id', streamerProfile.id)
-        .maybeSingle();
-      return data?.kaspa_address || null;
+        .rpc('get_tip_address', { stream_id: streamData.id });
+      return data;
     },
-    enabled: !!streamerProfile?.id
+    enabled: !!streamData?.id
   });
 
   // Fetch suggested streams
