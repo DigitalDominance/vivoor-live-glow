@@ -610,6 +610,18 @@ export type Database = {
           stream_id: string
         }[]
       }
+      get_profile_by_handle: {
+        Args: { _handle: string }
+        Returns: {
+          avatar_url: string
+          banner_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+        }[]
+      }
       get_profile_with_stats: {
         Args: { _user_id: string }
         Returns: {
