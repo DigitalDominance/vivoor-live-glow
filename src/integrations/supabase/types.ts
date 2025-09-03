@@ -51,6 +51,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clip_likes: {
@@ -482,7 +489,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          handle: string | null
+          id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       authenticate_wallet_user: {
