@@ -142,13 +142,13 @@ const Watch = () => {
   }, [streamerProfile?.follower_count]);
 
   // Get streamer's Kaspa address directly from their profile
-  // Get tip address securely using existing RPC function
+  // Get tip address securely using new function for live streams
   const { data: streamerKaspaAddress } = useQuery({
     queryKey: ['streamer-kaspa-address', streamData?.id],
     queryFn: async () => {
       if (!streamData?.id) return null;
       const { data } = await supabase
-        .rpc('get_tip_address', { stream_id: streamData.id });
+        .rpc('get_live_stream_tip_address', { stream_id: streamData.id });
       return data;
     },
     enabled: !!streamData?.id

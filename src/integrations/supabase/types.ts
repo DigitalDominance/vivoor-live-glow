@@ -560,6 +560,10 @@ export type Database = {
         Args: { _id: string } | { _id: string }
         Returns: string
       }
+      get_live_stream_tip_address: {
+        Args: { stream_id: string }
+        Returns: string
+      }
       get_live_stream_tips_safe: {
         Args: { _stream_id: string }
         Returns: {
