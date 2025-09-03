@@ -9,7 +9,7 @@ import { useWallet } from "@/context/WalletContext";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
-import { Upload, Image as ImageIcon } from "lucide-react";
+import { Upload, Image as ImageIcon, Monitor, Camera } from "lucide-react";
 
 const GoLive = () => {
   const navigate = useNavigate();
@@ -21,14 +21,19 @@ const GoLive = () => {
   const [thumbnailFile, setThumbnailFile] = React.useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = React.useState<string | null>(null);
   
+  // Streaming mode: 'rtmp' or 'browser'
+  const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
+  
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
   const [livepeerStreamId, setLivepeerStreamId] = React.useState<string | null>(null);
+  const [livepeerPlaybackId, setLivepeerPlaybackId] = React.useState<string | null>(null);
   
   const [previewReady, setPreviewReady] = React.useState(false);
   const [playerKey, setPlayerKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
+
 
   // Get current user profile for display using secure function
   const { data: profile } = useQuery({
@@ -164,6 +169,7 @@ const GoLive = () => {
       setStreamKey(lp.streamKey || null);
       setPlaybackUrl(lp.playbackUrl || null);
       setLivepeerStreamId(lp.streamId || null);
+      setLivepeerPlaybackId(lp.playbackId || null);
       
       console.log('Stream details set:', {
         streamId: lp.streamId,
@@ -213,6 +219,10 @@ const GoLive = () => {
       toast.error('Please enter a stream title');
       return;
     }
+    if (streamingMode === 'rtmp' && !previewReady) {
+      toast.error('Please wait for stream preview to be ready');
+      return;
+    }
     
     try {
       console.log('Starting stream creation process...');
@@ -239,6 +249,7 @@ const GoLive = () => {
       let currentStreamKey = streamKey;
       let currentPlaybackUrl = playbackUrl;
       let currentLivepeerStreamId = livepeerStreamId;
+      let currentLivepeerPlaybackId = livepeerPlaybackId;
 
       if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
         console.log('Generating stream details...');
@@ -249,6 +260,10 @@ const GoLive = () => {
         currentStreamKey = streamDetails.streamKey;
         currentPlaybackUrl = streamDetails.playbackUrl;
         currentLivepeerStreamId = streamDetails.streamId; // This is the actual Livepeer stream ID
+        // Extract playback ID from response
+        if (streamDetails && 'playbackId' in streamDetails) {
+          currentLivepeerPlaybackId = (streamDetails as any).playbackId;
+        }
         
         if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
           throw new Error('Failed to generate valid stream details');
@@ -329,8 +344,10 @@ const GoLive = () => {
             thumbnail_url: thumbnailUrl,
             treasury_txid: treasuryTxid,
             treasury_block_time: Date.now(), // Approximate block time
-            livepeer_stream_id: livepeerStreamId || null, // Save the Livepeer stream ID from API response
-            is_live: true
+            livepeer_stream_id: currentLivepeerStreamId || null, // Save the Livepeer stream ID from API response
+            livepeer_playback_id: currentLivepeerPlaybackId || null, // Save the playback ID
+            streaming_mode: streamingMode, // Save the streaming mode
+            is_live: streamingMode === 'browser' ? true : false // For browser streams, set live immediately
           })
           .select()
           .single();
@@ -349,12 +366,21 @@ const GoLive = () => {
         localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
         localStorage.setItem('streamStartTime', new Date().toISOString());
         localStorage.setItem('currentStreamId', streamId);
+        localStorage.setItem('currentStreamingMode', streamingMode);
+        localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
         
-        toast.success('Stream started! Use the RTMP details below in OBS.');
-        console.log('Stream ready, RTMP details:', {
+        if (streamingMode === 'browser') {
+          toast.success('Stream created! Start broadcasting with your camera and microphone.');
+        } else {
+          toast.success('Stream started! Use the RTMP details below in OBS.');
+        }
+        
+        console.log('Stream ready, details:', {
+          mode: streamingMode,
           ingestUrl: currentIngestUrl,
           streamKey: currentStreamKey ? '***HIDDEN***' : null,
-          playbackUrl: currentPlaybackUrl
+          playbackUrl: currentPlaybackUrl,
+          playbackId: currentLivepeerPlaybackId
         });
         
         // Navigate to stream control page
@@ -385,7 +411,7 @@ const GoLive = () => {
     <main className="container mx-auto px-4 py-6">
       <Helmet>
         <title>Go Live — Vivoor</title>
-        <meta name="description" content="Set up RTMP ingest and OBS streaming with live preview on Vivoor." />
+        <meta name="description" content="Set up RTMP ingest and browser streaming with live preview on Vivoor." />
         <link rel="canonical" href="/go-live" />
       </Helmet>
 
@@ -393,6 +419,38 @@ const GoLive = () => {
 
       <section className="max-w-3xl mx-auto glass rounded-xl p-5">
         <div className="text-lg font-semibold">Stream setup</div>
+        
+        {/* Streaming Mode Toggle */}
+        <div className="mt-4 p-3 rounded-lg border border-border bg-card/40">
+          <Label className="text-sm font-medium">Streaming Method</Label>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant={streamingMode === 'rtmp' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStreamingMode('rtmp')}
+              className="flex items-center gap-2"
+            >
+              <Monitor className="size-4" />
+              RTMP (OBS/External)
+            </Button>
+            <Button
+              variant={streamingMode === 'browser' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStreamingMode('browser')}
+              className="flex items-center gap-2"
+            >
+              <Camera className="size-4" />
+              Browser Streaming
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {streamingMode === 'rtmp' 
+              ? 'Use OBS, Streamlabs, or other broadcasting software for professional streaming'
+              : 'Stream directly from your browser using your camera and microphone'
+            }
+          </p>
+        </div>
+        
         <div className="grid gap-3 mt-4">
           <label className="text-sm">Title</label>
           <input 
@@ -459,23 +517,46 @@ const GoLive = () => {
             </div>
           </div>
           <div className="flex items-center justify-between mt-4 gap-2">
-            <Button 
-              variant="secondary" 
-              onClick={generateStreamDetails} 
-              disabled={!title || !kaspaAddress}
-            >
-              {!kaspaAddress ? 'Connect Wallet First' : 'Regenerate RTMP'}
-            </Button>
+            {streamingMode === 'rtmp' && (
+              <Button 
+                variant="secondary" 
+                onClick={generateStreamDetails} 
+                disabled={!title || !kaspaAddress}
+              >
+                {!kaspaAddress ? 'Connect Wallet First' : 'Regenerate RTMP'}
+              </Button>
+            )}
             <Button 
               variant="hero" 
               onClick={handleStart} 
-              disabled={!kaspaAddress || !title.trim() || !previewReady}
+              disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !previewReady)}
+              className={streamingMode === 'rtmp' ? '' : 'w-full'}
             >
-              {!kaspaAddress ? 'Connect Wallet First' : !title.trim() ? 'Enter Title First' : !previewReady ? 'Wait for Preview to be Live' : 'Start Stream & Pay Fee'}
+              {!kaspaAddress ? 'Connect Wallet First' : 
+               !title.trim() ? 'Enter Title First' : 
+               streamingMode === 'rtmp' && !previewReady ? 'Wait for Preview to be Live' : 
+               `Start ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee`}
             </Button>
           </div>
 
-          {(ingestUrl || streamKey || playbackUrl) && (
+          {/* Browser Streaming Setup */}
+          {streamingMode === 'browser' && (ingestUrl || streamKey) && (
+            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
+              <div className="font-medium mb-3">Browser Streaming Setup</div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Browser streaming will be available once you start the stream. Use your camera and microphone to broadcast live.
+              </p>
+              <div className="p-4 border border-dashed border-border rounded-lg text-center">
+                <Camera className="size-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Camera and microphone access will be requested when you navigate to the stream page
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* RTMP Streaming Setup */}
+          {streamingMode === 'rtmp' && (ingestUrl || streamKey || playbackUrl) && (
             <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-muted-foreground font-medium">Ingest URL:</span>

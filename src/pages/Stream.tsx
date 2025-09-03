@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import BrowserStreaming from "@/components/streaming/BrowserStreaming";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
 import TipDisplay from "@/components/TipDisplay";
@@ -81,6 +82,8 @@ const Stream = () => {
     ingestUrl: localStorage.getItem('currentIngestUrl'),
     streamKey: localStorage.getItem('currentStreamKey'),
     playbackUrl: localStorage.getItem('currentPlaybackUrl'),
+    streamingMode: localStorage.getItem('currentStreamingMode') as 'rtmp' | 'browser' | null,
+    livepeerPlaybackId: localStorage.getItem('currentLivepeerPlaybackId'),
     startTime: localStorage.getItem('streamStartTime') ? new Date(localStorage.getItem('streamStartTime')!) : new Date()
   }), []);
 
@@ -88,8 +91,13 @@ const Stream = () => {
     title: "Live Stream",
     category: "IRL",
     playback_url: localStreamData.playbackUrl,
+    streaming_mode: localStreamData.streamingMode,
+    livepeer_playback_id: localStreamData.livepeerPlaybackId,
     started_at: localStreamData.startTime.toISOString()
   };
+
+  // Get streaming mode with proper fallback
+  const streamingMode = (streamData as any)?.streaming_mode || localStreamData.streamingMode || 'rtmp';
 
   const isOwnStream = streamData?.user_id === identity?.id;
 
@@ -239,6 +247,8 @@ const Stream = () => {
       localStorage.removeItem('currentPlaybackUrl');
       localStorage.removeItem('streamStartTime');
       localStorage.removeItem('currentStreamId');
+      localStorage.removeItem('currentStreamingMode');
+      localStorage.removeItem('currentLivepeerPlaybackId');
       
       toast.success('Stream ended successfully');
       navigate('/app');
@@ -279,11 +289,24 @@ const Stream = () => {
       
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
-          {playbackUrl ? (
+          {/* Stream content based on streaming mode */}
+          {streamingMode === 'browser' && isOwnStream ? (
+            <BrowserStreaming
+              streamKey={localStreamData.streamKey || ''}
+              ingestUrl={localStreamData.ingestUrl || ''}
+              onStreamStart={() => {
+                toast.success('Browser stream started!');
+              }}
+              onStreamEnd={() => {
+                toast.info('Browser stream ended');
+              }}
+            />
+          ) : playbackUrl ? (
             <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
           ) : (
             <PlayerPlaceholder />
           )}
+          
           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <span className="px-2 py-0.5 rounded-full bg-red-500 text-white">LIVE</span>
             <span>Elapsed: {formatTime(elapsed)}</span>
@@ -294,14 +317,16 @@ const Stream = () => {
               </span>
             )}
             {isOwnStream && (
-              <Button variant="destructive" size="sm" >
-                Stream Live
+              <Button variant="destructive" size="sm" onClick={handleEndStream}>
+                End Stream
               </Button>
             )}
           </div>
           
-          {isOwnStream && (
+          {/* Show RTMP details only for RTMP streams */}
+          {isOwnStream && streamingMode === 'rtmp' && (
             <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
+              <div className="font-medium mb-3">RTMP Streaming Details</div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-muted-foreground font-medium">Ingest URL:</span>
                 <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">
@@ -359,6 +384,17 @@ const Stream = () => {
                   </a>
                 )}
               </div>
+            </div>
+          )}
+          
+          {/* Show streaming mode info for browser streams */}
+          {isOwnStream && streamingMode === 'browser' && (
+            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
+              <div className="font-medium mb-2">Browser Streaming Active</div>
+              <p className="text-xs text-muted-foreground">
+                You're streaming directly from your browser using your camera and microphone. 
+                Use the controls above to manage your stream.
+              </p>
             </div>
           )}
         </div>
