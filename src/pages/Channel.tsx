@@ -471,26 +471,21 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
     queryKey: ['user-clips', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('clips')
-        .select(`
-          id,
-          title,
-          start_seconds,
-          end_seconds,
-          thumbnail_url,
-          download_url,
-          created_at,
-          views
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .rpc('get_clips_with_profiles_and_stats', { 
+          _limit: 100, 
+          _offset: 0, 
+          _search: null, 
+          _order_by: 'created_at' 
+        });
       
       if (error) {
         console.error('Error fetching clips:', error);
         return [];
       }
       
-      return data || [];
+      // Filter by user ID
+      const userClips = data?.filter(clip => clip.user_id === userId) || [];
+      return userClips;
     },
     enabled: !!userId
   });
@@ -652,7 +647,7 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
                     </div>
                     <div className="flex items-center gap-1">
                       <Heart className="size-2.5" />
-                      0
+                      {clip.like_count || 0}
                     </div>
                   </div>
 

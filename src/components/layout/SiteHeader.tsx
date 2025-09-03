@@ -1,4 +1,4 @@
-import { Menu, Video, Clapperboard, User, LogOut, ChevronDown, Home, Grid3X3, Zap, X } from "lucide-react";
+import { Menu, Video, Clapperboard, User, LogOut, ChevronDown, Home, Grid3X3, Zap, X, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -113,6 +113,7 @@ const SiteHeader = () => {
                   My Channel
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/following")} className="cursor-pointer hover:bg-accent/50">
+                  <Users className="h-4 w-4 mr-2" />
                   My Following
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />

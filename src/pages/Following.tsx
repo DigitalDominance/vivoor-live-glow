@@ -143,13 +143,6 @@ const Following: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/profile/${profile.id}`)}
-                  >
-                    View Profile
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => navigate(`/channel/${profile.handle || profile.id}`)}
                   >
                     View Channel
