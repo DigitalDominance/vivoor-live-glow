@@ -523,18 +523,18 @@ const GoLive = () => {
                 onClick={generateStreamDetails} 
                 disabled={!title || !kaspaAddress}
               >
-                {!kaspaAddress ? 'Connect Wallet First' : 'Regenerate RTMP'}
+                {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Details'}
               </Button>
             )}
             <Button 
               variant="hero" 
               onClick={handleStart} 
-              disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !previewReady)}
+              disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !ingestUrl)}
               className={streamingMode === 'rtmp' ? '' : 'w-full'}
             >
               {!kaspaAddress ? 'Connect Wallet First' : 
                !title.trim() ? 'Enter Title First' : 
-               streamingMode === 'rtmp' && !previewReady ? 'Wait for Preview to be Live' : 
+               streamingMode === 'rtmp' && !ingestUrl ? 'Generate RTMP Details First' :
                `Start ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee`}
             </Button>
           </div>

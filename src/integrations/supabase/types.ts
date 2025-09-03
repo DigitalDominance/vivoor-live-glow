@@ -294,9 +294,11 @@ export type Database = {
           id: string
           is_live: boolean
           last_heartbeat: string | null
+          livepeer_playback_id: string | null
           livepeer_stream_id: string | null
           playback_url: string | null
           started_at: string
+          streaming_mode: string | null
           thumbnail_url: string | null
           title: string
           treasury_block_time: number | null
@@ -312,9 +314,11 @@ export type Database = {
           id?: string
           is_live?: boolean
           last_heartbeat?: string | null
+          livepeer_playback_id?: string | null
           livepeer_stream_id?: string | null
           playback_url?: string | null
           started_at?: string
+          streaming_mode?: string | null
           thumbnail_url?: string | null
           title: string
           treasury_block_time?: number | null
@@ -330,9 +334,11 @@ export type Database = {
           id?: string
           is_live?: boolean
           last_heartbeat?: string | null
+          livepeer_playback_id?: string | null
           livepeer_stream_id?: string | null
           playback_url?: string | null
           started_at?: string
+          streaming_mode?: string | null
           thumbnail_url?: string | null
           title?: string
           treasury_block_time?: number | null
