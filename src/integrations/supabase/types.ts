@@ -650,6 +650,7 @@ export type Database = {
         Args: { _id: string }
         Returns: {
           avatar_url: string
+          banner_url: string
           bio: string
           created_at: string
           display_name: string
