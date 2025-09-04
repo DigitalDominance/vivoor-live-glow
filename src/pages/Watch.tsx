@@ -64,7 +64,7 @@ const Watch = () => {
       if (!streamId) return null;
       const { data } = await supabase
         .from('streams')
-        .select('*')
+        .select('*, stream_type')
         .eq('id', streamId)
         .maybeSingle();
       return data;
@@ -691,18 +691,32 @@ const Watch = () => {
             className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 p-1"
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
-              {streamData.playback_url && livepeerIsLive ? (
-                <>
-                  <HlsPlayer 
-                    src={streamData.playback_url} 
-                    autoPlay 
-                    isLiveStream={livepeerIsLive}
-                    key={streamData.id}
-                    className="w-full h-full"
-                    videoRef={videoRef}
-                    onQualityLevelsUpdate={setQualityLevels}
-                    onQualityChange={qualityChangeRef}
-                  />
+              {streamData.is_live ? (
+                streamData.stream_type === 'browser' ? (
+                  // For browser streams, show a live indicator
+                  <div className="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="size-16 bg-red-600 rounded-full mx-auto flex items-center justify-center">
+                        <div className="size-3 bg-white rounded-full animate-pulse"></div>
+                      </div>
+                      <div>
+                        <h3 className="text-white text-lg font-semibold">Live Browser Stream</h3>
+                        <p className="text-gray-400 text-sm">Stream is live from {streamData.title}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : streamData.playback_url && livepeerIsLive ? (
+                  <>
+                    <HlsPlayer 
+                      src={streamData.playback_url} 
+                      autoPlay 
+                      isLiveStream={livepeerIsLive}
+                      key={streamData.id}
+                      className="w-full h-full"
+                      videoRef={videoRef}
+                      onQualityLevelsUpdate={setQualityLevels}
+                      onQualityChange={qualityChangeRef}
+                    />
                   {showControls && (
                     <CustomVideoControls
                       isPlaying={isPlaying}
@@ -721,8 +735,20 @@ const Watch = () => {
                       currentQuality={currentQuality}
                       onQualityChange={handleQualityChange}
                     />
-                  )}
-                </>
+                   )}
+                 </>
+                ) : (
+                  <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                        Stream Offline
+                      </div>
+                      <div className="text-gray-400">
+                        This stream is not currently available
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                   <div className="text-center space-y-4">

@@ -25,13 +25,35 @@ serve(async (req: Request) => {
       try {
         const { data: liveStreams } = await supabase
           .from('streams')
-          .select('id, livepeer_stream_id, playback_url')
+          .select('id, livepeer_stream_id, playback_url, stream_type, last_heartbeat')
           .eq('is_live', true);
 
         console.log(`Checking ${liveStreams?.length || 0} live streams against Livepeer API`);
 
-        // Check each live stream against Livepeer API
+        // Check each live stream
         for (const stream of liveStreams || []) {
+          // Handle browser streams differently
+          if (stream.stream_type === 'browser') {
+            // For browser streams, check heartbeat timing
+            const timeSinceHeartbeat = stream.last_heartbeat ? 
+              Date.now() - new Date(stream.last_heartbeat).getTime() : 
+              Infinity;
+            
+            // If no heartbeat for more than 30 seconds, mark as ended
+            if (timeSinceHeartbeat > 30000) {
+              console.log(`Browser stream ${stream.id} heartbeat too old (${timeSinceHeartbeat}ms), ending...`);
+              await supabase
+                .from('streams')
+                .update({ is_live: false, ended_at: new Date().toISOString() })
+                .eq('id', stream.id);
+              cleanedCount++;
+            } else {
+              console.log(`Browser stream ${stream.id} heartbeat recent (${timeSinceHeartbeat}ms), keeping live`);
+            }
+            continue;
+          }
+          
+          // Handle Livepeer streams
           if (stream.livepeer_stream_id) {
             // Use the actual Livepeer stream ID for accurate status checking
             try {

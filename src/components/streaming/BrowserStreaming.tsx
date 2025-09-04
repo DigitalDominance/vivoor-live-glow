@@ -46,7 +46,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -510,14 +510,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
   }, [isPreviewMuted]);
 
-  // Start streaming
+  // Start streaming with WebRTC WHIP
   const startStream = useCallback(async () => {
     if (!mediaStreamRef.current) {
       toast.error('No media stream available. Please start preview first.');
       return;
     }
 
-    debug('Starting stream...');
+    debug('Starting WebRTC stream...');
 
     if (isPreviewMode && streamKey === 'preview') {
       // Preview mode - just simulate streaming
@@ -547,126 +547,118 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           return;
         }
         debug('Stream marked as live in database');
-        
-        // Start heartbeat to keep stream alive
-        // Browser stream heartbeat is handled by browser streaming context
       }
 
-      debug(`Starting browser stream`);
-      
-      // Create a canvas to capture the video stream
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      canvas.width = 1280;
-      canvas.height = 720;
+      debug(`Starting WebRTC stream to: ${ingestUrl}`);
 
-      // Get video element for capture
-      const videoElement = videoRef.current;
-      if (!videoElement) {
-        throw new Error('Video element not available');
-      }
-
-      // Create a new stream from canvas for streaming
-      const canvasStream = canvas.captureStream(30); // 30 FPS
+      // Get the WebRTC redirect URL first
+      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
+        method: 'HEAD'
+      });
       
-      // Add audio tracks from original stream
-      const audioTracks = mediaStreamRef.current.getAudioTracks();
-      audioTracks.forEach(track => {
-        canvasStream.addTrack(track);
+      const redirectUrl = redirectResponse.headers.get('location') || `https://livepeer.studio/webrtc/${streamKey}`;
+      const host = new URL(redirectUrl).host;
+      
+      debug(`WebRTC redirect URL: ${redirectUrl}`);
+
+      // Set up ICE servers
+      const iceServers: RTCIceServer[] = [
+        { urls: `stun:${host}` },
+        {
+          urls: `turn:${host}`,
+          username: "livepeer",
+          credential: "livepeer",
+        }
+      ];
+
+      // Create peer connection
+      const peerConnection = new RTCPeerConnection({ iceServers });
+      peerConnectionRef.current = peerConnection;
+
+      // Add media tracks to peer connection
+      mediaStreamRef.current.getTracks().forEach(track => {
+        peerConnection.addTrack(track, mediaStreamRef.current!);
       });
 
-      // Render video to canvas continuously
-      const renderFrame = () => {
-        if (!isStreaming) return;
+      // Handle ICE connection state changes
+      peerConnection.oniceconnectionstatechange = () => {
+        debug(`ICE connection state: ${peerConnection.iceConnectionState}`);
         
-        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        requestAnimationFrame(renderFrame);
-      };
-
-      // Set up MediaRecorder for streaming
-      const options: MediaRecorderOptions = {
-        mimeType: 'video/webm;codecs=vp9,opus',
-        videoBitsPerSecond: 2500000, // 2.5 Mbps
-        audioBitsPerSecond: 128000   // 128 kbps
-      };
-
-      // Try different formats if vp9 not supported
-      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
-        const formats = [
-          'video/webm;codecs=vp8,opus',
-          'video/webm;codecs=h264,opus',
-          'video/webm',
-          'video/mp4'
-        ];
-        
-        for (const format of formats) {
-          if (MediaRecorder.isTypeSupported(format)) {
-            options.mimeType = format;
-            debug(`Using format: ${format}`);
-            break;
-          }
+        if (peerConnection.iceConnectionState === 'connected' || 
+            peerConnection.iceConnectionState === 'completed') {
+          setIsStreaming(true);
+          startHeartbeat();
+          toast.success('Live stream connected!');
+          onStreamStart?.();
+          localStorage.setItem('browserStreamingActive', 'true');
+        } else if (peerConnection.iceConnectionState === 'failed' || 
+                   peerConnection.iceConnectionState === 'disconnected') {
+          setIsStreaming(false);
+          stopHeartbeat();
+          toast.error('Stream connection lost');
         }
+      };
+
+      // Create and set local description
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      // Wait for ICE gathering to complete
+      await new Promise<void>((resolve) => {
+        if (peerConnection.iceGatheringState === 'complete') {
+          resolve();
+        } else {
+          peerConnection.addEventListener('icegatheringstatechange', () => {
+            if (peerConnection.iceGatheringState === 'complete') {
+              resolve();
+            }
+          });
+        }
+      });
+
+      // Send offer to Livepeer via WHIP
+      const response = await fetch(redirectUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/sdp',
+        },
+        body: peerConnection.localDescription!.sdp,
+      });
+
+      if (!response.ok) {
+        throw new Error(`WHIP request failed: ${response.status} ${response.statusText}`);
       }
 
-      const mediaRecorder = new MediaRecorder(canvasStream, options);
-      mediaRecorderRef.current = mediaRecorder;
+      const answerSdp = await response.text();
+      
+      // Set remote description
+      await peerConnection.setRemoteDescription({
+        type: 'answer',
+        sdp: answerSdp,
+      });
 
-      let chunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = async (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-          debug(`Stream chunk: ${event.data.size} bytes`);
-        }
-      };
-
-      mediaRecorder.onstart = () => {
-        setIsStreaming(true);
-        startHeartbeat();
-        renderFrame(); // Start canvas rendering
-        toast.success('Live stream started!');
-        onStreamStart?.();
-        debug('Browser stream started');
-        
-        // Save that we're actively streaming
-        localStorage.setItem('browserStreamingActive', 'true');
-      };
-
-      mediaRecorder.onstop = () => {
-        setIsStreaming(false);
-        stopHeartbeat();
-        toast.info('Stream stopped');
-        onStreamEnd?.();
-        debug('Browser stream stopped');
-        chunks = []; // Clear chunks
-        
-        // Clear streaming state
-        localStorage.setItem('browserStreamingActive', 'false');
-      };
-
-      mediaRecorder.onerror = (error) => {
-        console.error('MediaRecorder error:', error);
-        toast.error('Streaming error occurred');
-        setIsStreaming(false);
-      };
-
-      // Start recording in small chunks for streaming
-      mediaRecorder.start(1000); // 1 second chunks
+      debug('WebRTC stream initiated successfully');
 
     } catch (err) {
-      console.error('Failed to start streaming:', err);
+      console.error('Failed to start WebRTC streaming:', err);
       toast.error('Failed to start streaming');
-      debug(`Stream start failed: ${err}`);
+      debug(`WebRTC stream start failed: ${err}`);
+      setIsStreaming(false);
     }
   }, [isPreviewMode, streamKey, ingestUrl, onStreamStart, onStreamEnd, isStreaming]);
 
   // Stop streaming
   const stopStream = useCallback(async () => {
-    debug('Stopping stream...');
+    debug('Stopping WebRTC stream...');
     
-    if (mediaRecorderRef.current && isStreaming) {
-      mediaRecorderRef.current.stop();
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
+    
+    setIsStreaming(false);
+    stopHeartbeat();
     
     // Mark stream as not live in database
     if (!isPreviewMode) {
@@ -688,15 +680,18 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
     
     if (isPreviewMode) {
-      setIsStreaming(false);
       toast.info('Preview stopped');
+      onStreamEnd?.();
+    } else {
+      toast.info('Stream stopped');
       onStreamEnd?.();
     }
     
-    stopHeartbeat();
+    // Clear streaming state
+    localStorage.setItem('browserStreamingActive', 'false');
   }, [isStreaming, isPreviewMode, onStreamEnd]);
 
-  // Heartbeat for live streams
+  // Heartbeat for live streams - more frequent to prevent being marked as offline
   const startHeartbeat = useCallback(() => {
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
@@ -706,26 +701,29 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       heartbeatIntervalRef.current = setInterval(async () => {
         try {
           const streamId = localStorage.getItem('currentStreamId');
-          if (streamId && isStreaming) {
-            debug('Sending stream heartbeat');
+          if (streamId && isStreaming && peerConnectionRef.current?.iceConnectionState === 'connected') {
+            debug('Sending browser stream heartbeat');
             
             // Update stream as live in database
             const { error } = await supabase
               .from('streams')
               .update({ 
                 is_live: true, 
-                last_heartbeat: new Date().toISOString() 
+                last_heartbeat: new Date().toISOString(),
+                stream_type: 'browser' // Mark as browser stream
               })
               .eq('id', streamId);
               
             if (error) {
               console.error('Heartbeat update failed:', error);
+            } else {
+              debug('Browser stream heartbeat sent successfully');
             }
           }
         } catch (err) {
           debug(`Heartbeat failed: ${err}`);
         }
-      }, 15000); // Every 15 seconds
+      }, 5000); // Every 5 seconds for browser streams to prevent being marked offline
     }
   }, [isPreviewMode, isStreaming]);
 
