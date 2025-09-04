@@ -62,6 +62,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Ensure video starts playing
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(console.warn);
+        };
       }
 
       // Check which devices are available
@@ -141,6 +145,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = combinedStream;
+        // Ensure video starts playing
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(console.warn);
+        };
       }
 
       setHasCamera(true); // Screen sharing counts as "camera"
@@ -440,6 +448,12 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                 muted
                 playsInline
                 className="w-full h-full object-cover"
+                onLoadedMetadata={() => {
+                  // Force the video to start playing
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(console.warn);
+                  }
+                }}
               />
             ) : (
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
