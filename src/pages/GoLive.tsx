@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
+import BrowserStreaming from "@/components/streaming/BrowserStreaming";
 import { useWallet } from "@/context/WalletContext";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet-async";
@@ -417,219 +418,287 @@ const GoLive = () => {
 
       <h1 className="sr-only">Go Live</h1>
 
-      <section className="max-w-3xl mx-auto glass rounded-xl p-5">
-        <div className="text-lg font-semibold">Stream setup</div>
-        
-        {/* Streaming Mode Toggle */}
-        <div className="mt-4 p-3 rounded-lg border border-border bg-card/40">
-          <Label className="text-sm font-medium">Streaming Method</Label>
-          <div className="flex gap-2 mt-2">
-            <Button
-              variant={streamingMode === 'rtmp' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStreamingMode('rtmp')}
-              className="flex items-center gap-2"
-            >
-              <Monitor className="size-4" />
-              RTMP (OBS/External)
-            </Button>
-            <Button
-              variant={streamingMode === 'browser' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setStreamingMode('browser')}
-              className="flex items-center gap-2"
-            >
-              <Camera className="size-4" />
-              Browser Streaming
-            </Button>
+      <section className="max-w-4xl mx-auto">
+        {/* Hero Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 border border-cyan-500/20 mb-4">
+            <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Go Live on Vivoor
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            {streamingMode === 'rtmp' 
-              ? 'Use OBS, Streamlabs, or other broadcasting software for professional streaming'
-              : 'Stream directly from your browser using your camera and microphone'
-            }
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+            Start Your Stream
+          </h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Choose your streaming method, customize your stream, and go live to the Kaspa community
           </p>
         </div>
-        
-        <div className="grid gap-3 mt-4">
-          <label className="text-sm">Title</label>
-          <input 
-            className="rounded-md bg-background px-3 py-2 text-sm border border-border" 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)} 
-          />
-          <label className="text-sm mt-2">Category</label>
-          <select 
-            className="rounded-md bg-background border border-border px-3 py-2" 
-            value={category} 
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            {['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'].map(c => 
-              <option key={c} value={c}>{c}</option>
-            )}
-          </select>
-          <div>
-            <Label htmlFor="thumbnail">Stream Thumbnail</Label>
-            <div className="mt-2">
-              <input
-                type="file"
-                id="thumbnail"
-                accept="image/*"
-                onChange={handleThumbnailUpload}
-                className="hidden"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <label
-                  htmlFor="thumbnail"
-                  className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+
+        {/* Main Card with Black Glass Effect */}
+        <div className="relative">
+          {/* Gradient Background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl blur-xl"></div>
+          
+          {/* Black Glass Card */}
+          <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+            
+            {/* Streaming Mode Selection */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-white mb-4">Choose Your Streaming Method</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setStreamingMode('rtmp')}
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                    streamingMode === 'rtmp' 
+                      ? 'border-purple-400 bg-purple-500/20' 
+                      : 'border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-purple-500/10'
+                  }`}
                 >
-                  {thumbnailPreview ? (
-                    <img
-                      src={thumbnailPreview}
-                      alt="Thumbnail preview"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Upload className="size-6" />
-                      <span className="text-sm">Upload custom</span>
+                  <div className="flex items-center gap-3 mb-3">
+                    <Monitor className="size-6 text-purple-400" />
+                    <span className="font-semibold text-white">RTMP Streaming</span>
+                  </div>
+                  <p className="text-sm text-gray-300 text-left">
+                    Professional streaming with OBS, Streamlabs, or other broadcasting software
+                  </p>
+                  {streamingMode === 'rtmp' && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                     </div>
                   )}
-                </label>
-                <div className="flex flex-col items-center justify-center h-32 border border-border rounded-lg">
-                  {category ? (
-                    <img
-                      src={getCategoryThumbnail(category)}
-                      alt={`${category} category thumbnail`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <ImageIcon className="size-6" />
-                      <span className="text-sm">Category default</span>
+                </button>
+                
+                <button
+                  onClick={() => setStreamingMode('browser')}
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                    streamingMode === 'browser' 
+                      ? 'border-cyan-400 bg-cyan-500/20' 
+                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <Camera className="size-6 text-cyan-400" />
+                    <span className="font-semibold text-white">Browser Streaming</span>
+                  </div>
+                  <p className="text-sm text-gray-300 text-left">
+                    Stream directly from your browser using your camera, microphone, or screen
+                  </p>
+                  {streamingMode === 'browser' && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
                     </div>
                   )}
+                </button>
+              </div>
+            </div>
+        
+            {/* Stream Details Form */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">Stream Title</label>
+                  <input 
+                    className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none transition-colors" 
+                    placeholder="Enter your stream title..."
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)} 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">Category</label>
+                  <select 
+                    className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white focus:border-purple-400 focus:outline-none transition-colors"
+                    value={category} 
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'].map(c => 
+                      <option key={c} value={c} className="bg-gray-900 text-white">{c}</option>
+                    )}
+                  </select>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Upload a custom thumbnail or use the default for your category
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-4 gap-2">
-            {streamingMode === 'rtmp' && (
-              <Button 
-                variant="secondary" 
-                onClick={generateStreamDetails} 
-                disabled={!title || !kaspaAddress}
-              >
-                {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Details'}
-              </Button>
-            )}
-            <Button 
-              variant="hero" 
-              onClick={handleStart} 
-              disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !ingestUrl)}
-              className={streamingMode === 'rtmp' ? '' : 'w-full'}
-            >
-              {!kaspaAddress ? 'Connect Wallet First' : 
-               !title.trim() ? 'Enter Title First' : 
-               streamingMode === 'rtmp' && !ingestUrl ? 'Generate RTMP Details First' :
-               `Start ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee`}
-            </Button>
-          </div>
-
-          {/* Browser Streaming Setup */}
-          {streamingMode === 'browser' && (ingestUrl || streamKey) && (
-            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md">
-              <div className="font-medium mb-3">Browser Streaming Setup</div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Browser streaming will be available once you start the stream. Use your camera and microphone to broadcast live.
-              </p>
-              <div className="p-4 border border-dashed border-border rounded-lg text-center">
-                <Camera className="size-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Camera and microphone access will be requested when you navigate to the stream page
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">Stream Thumbnail</label>
+                <input
+                  type="file"
+                  id="thumbnail"
+                  accept="image/*"
+                  onChange={handleThumbnailUpload}
+                  className="hidden"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <label
+                    htmlFor="thumbnail"
+                    className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-white/30 rounded-lg cursor-pointer hover:border-purple-400/50 transition-colors bg-white/5"
+                  >
+                    {thumbnailPreview ? (
+                      <img
+                        src={thumbnailPreview}
+                        alt="Thumbnail preview"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-gray-400">
+                        <Upload className="size-5" />
+                        <span className="text-xs">Upload custom</span>
+                      </div>
+                    )}
+                  </label>
+                  <div className="flex flex-col items-center justify-center h-24 border border-white/20 rounded-lg bg-white/5">
+                    {category ? (
+                      <img
+                        src={getCategoryThumbnail(category)}
+                        alt={`${category} category thumbnail`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-gray-400">
+                        <ImageIcon className="size-5" />
+                        <span className="text-xs">Category default</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Upload a custom thumbnail or use the default for your category
                 </p>
               </div>
             </div>
-          )}
 
-          {/* RTMP Streaming Setup */}
-          {streamingMode === 'rtmp' && (ingestUrl || streamKey || playbackUrl) && (
-            <div className="mt-4 p-3 rounded-xl border border-border bg-card/60 backdrop-blur-md text-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-muted-foreground font-medium">Ingest URL:</span>
-                <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">
-                  {ingestUrl ?? '—'}
-                </code>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => ingestUrl && navigator.clipboard.writeText(ingestUrl).then(() => toast.success('Copied ingest URL'))}
-                >
-                  Copy
-                </Button>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mt-2">
-                <span className="text-muted-foreground font-medium">Stream Key:</span>
-                <code className="px-2 py-1 rounded bg-muted/40 border border-border max-w-full truncate">
-                  {streamKey ? '••••••••••' : '—'}
-                </code>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(() => toast.success('Copied stream key'))}
-                >
-                  Copy
-                </Button>
-              </div>
-
-              {/* Debug info */}
-              {debugInfo && (
-                <div className="mt-2 p-2 rounded bg-muted/20 border border-border text-xs text-muted-foreground">
-                  <strong>Debug:</strong> {debugInfo}
-                </div>
-              )}
-
-              <div className="text-xs text-muted-foreground mt-2">
-                Use these in OBS or Streamlabs. Preview appears once you start streaming in OBS.
-              </div>
-
-              <div className="mt-4 grid gap-2">
-                <div className="font-medium">OBS setup</div>
-                <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
-                  <li>Settings → Stream → Service: Custom...</li>
-                  <li>Server: paste the Ingest URL above</li>
-                  <li>Stream Key: paste the Stream Key above</li>
-                  <li>Output → Encoder: x264 or NVENC H.264</li>
-                  <li>Bitrate: 3500–6000 Kbps (1080p60), 8000–12000 Kbps (1440p60), 15000–25000 Kbps (2160p60)</li>
-                  <li>Keyframe Interval: 2 seconds</li>
-                  <li>Video → Base/Output: 3840x2160, 2560x1440, 1920x1080, or 1280x720</li>
-                  <li>FPS: 30 or 60 (60fps recommended for smooth playback)</li>
-                </ul>
-              </div>
-
-              {playbackUrl && (
-                <div className="mt-4">
-                  <div className="font-medium mb-2">Live Preview</div>
-                  <HlsPlayer 
-                    key={playerKey}
-                    src={playbackUrl} 
-                    autoPlay 
+            {/* Browser Streaming Preview Section - BEFORE payment */}
+            {streamingMode === 'browser' && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-white mb-4">Preview Your Stream</h3>
+                <div className="bg-white/5 border border-white/20 rounded-xl p-6">
+                  <BrowserStreaming
+                    streamKey={'preview'} // Placeholder for preview
+                    ingestUrl={'preview'} // Placeholder for preview
                   />
-                  {!previewReady && (
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {debugInfo || "Waiting for stream signal... Start streaming in OBS with the exact settings above. Preview appears in 10–60 seconds."}
-                    </div>
-                  )}
-                  {previewReady && (
-                    <div className="text-xs text-green-600 mt-2">✓ Stream is live and ready!</div>
-                  )}
                 </div>
+              </div>
+            )}
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {streamingMode === 'rtmp' && (
+                <Button 
+                  variant="outline" 
+                  onClick={generateStreamDetails} 
+                  disabled={!title || !kaspaAddress}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
+                >
+                  {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Details'}
+                </Button>
               )}
+              
+              <Button 
+                onClick={handleStart} 
+                disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !ingestUrl)}
+                className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                {!kaspaAddress ? 'Connect Wallet First' : 
+                 !title.trim() ? 'Enter Title First' : 
+                 streamingMode === 'rtmp' && !ingestUrl ? 'Generate RTMP Details First' :
+                 `Start ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee (1.2 KAS)`}
+              </Button>
             </div>
-          )}
+
+            
+            {/* RTMP Details Section */}
+            {streamingMode === 'rtmp' && (ingestUrl || streamKey || playbackUrl) && (
+              <div className="mt-8 p-6 rounded-xl bg-white/5 border border-white/20">
+                <h3 className="text-lg font-semibold text-white mb-4">RTMP Stream Details</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-300 w-24">Ingest URL:</span>
+                    <code className="flex-1 px-3 py-2 rounded bg-black/30 border border-white/10 text-cyan-400 text-sm">
+                      {ingestUrl ?? '—'}
+                    </code>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => ingestUrl && navigator.clipboard.writeText(ingestUrl).then(() => toast.success('Copied ingest URL'))}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-300 w-24">Stream Key:</span>
+                    <code className="flex-1 px-3 py-2 rounded bg-black/30 border border-white/10 text-pink-400 text-sm">
+                      {streamKey ? '••••••••••••••••••••' : '—'}
+                    </code>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(() => toast.success('Copied stream key'))}
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+
+                
+                {/* Debug info */}
+                {debugInfo && (
+                  <div className="mt-4 p-3 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs">
+                    <strong>Debug:</strong> {debugInfo}
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-400 mt-4">
+                  Use these details in OBS or Streamlabs. Preview appears once you start streaming.
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  <div className="font-medium text-white">OBS Setup Guide</div>
+                  <div className="grid md:grid-cols-2 gap-4 text-xs text-gray-300">
+                    <div className="space-y-1">
+                      <div className="font-medium text-cyan-400">Stream Settings:</div>
+                      <div>• Settings → Stream → Service: Custom</div>
+                      <div>• Server: Paste the Ingest URL above</div>
+                      <div>• Stream Key: Paste the Stream Key above</div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="font-medium text-purple-400">Output Settings:</div>
+                      <div>• Encoder: x264 or NVENC H.264</div>
+                      <div>• Bitrate: 3500-6000 Kbps (1080p60)</div>
+                      <div>• Keyframe Interval: 2 seconds</div>
+                    </div>
+                  </div>
+                </div>
+
+                {playbackUrl && (
+                  <div className="mt-6">
+                    <div className="font-medium text-white mb-3">Live Preview</div>
+                    <div className="rounded-lg overflow-hidden bg-black/50 border border-white/20">
+                      <HlsPlayer 
+                        key={playerKey}
+                        src={playbackUrl} 
+                        autoPlay 
+                      />
+                    </div>
+                    {!previewReady && (
+                      <div className="text-xs text-gray-400 mt-2">
+                        {debugInfo || "Waiting for stream signal... Start streaming in OBS with the settings above. Preview appears in 10-60 seconds."}
+                      </div>
+                    )}
+                    {previewReady && (
+                      <div className="text-xs text-green-400 mt-2 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        Stream is live and ready!
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </main>
