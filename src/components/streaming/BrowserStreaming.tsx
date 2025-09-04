@@ -105,37 +105,58 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       
       debug(`Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
 
-      // Set up video element
+      // Set up video element with comprehensive logging
       if (videoRef.current && stream) {
         debug('Setting up video element...');
+        console.log('VIDEO SETUP - Stream object:', stream);
+        console.log('VIDEO SETUP - Stream tracks:', stream.getTracks().map(t => ({kind: t.kind, label: t.label, enabled: t.enabled, readyState: t.readyState})));
         
         const video = videoRef.current;
+        console.log('VIDEO SETUP - Video element:', video);
+        console.log('VIDEO SETUP - Video element parent:', video.parentElement);
         
-        // Clear any existing source first
+        // Add event listeners for debugging
+        video.addEventListener('loadstart', () => console.log('VIDEO EVENT - loadstart'));
+        video.addEventListener('loadedmetadata', () => console.log('VIDEO EVENT - loadedmetadata', {width: video.videoWidth, height: video.videoHeight}));
+        video.addEventListener('loadeddata', () => console.log('VIDEO EVENT - loadeddata'));
+        video.addEventListener('canplay', () => console.log('VIDEO EVENT - canplay'));
+        video.addEventListener('canplaythrough', () => console.log('VIDEO EVENT - canplaythrough'));
+        video.addEventListener('playing', () => console.log('VIDEO EVENT - playing'));
+        video.addEventListener('error', (e) => console.error('VIDEO EVENT - error', e));
+        
+        // Clear any existing source
         video.srcObject = null;
-        video.load(); // Force reset
+        video.load();
         
-        // Small delay to ensure clean state
-        setTimeout(async () => {
-          try {
-            // Set properties
-            video.muted = true;
-            video.playsInline = true;
-            video.autoplay = true;
-            
-            // Set the stream
-            video.srcObject = stream;
-            debug('Camera srcObject assigned');
-            
-            // Force play
-            await video.play();
-            debug('Camera video playing successfully');
-          } catch (error) {
-            debug(`Camera video setup error: ${error}`);
-            console.error('Camera video setup failed:', error);
+        // Set properties
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        
+        // Set the stream immediately
+        video.srcObject = stream;
+        console.log('VIDEO SETUP - srcObject assigned to video element');
+        
+        // Force play attempt
+        try {
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log('VIDEO SETUP - Video play promise resolved successfully');
+                debug('Camera video playing successfully');
+              })
+              .catch(error => {
+                console.error('VIDEO SETUP - Video play promise rejected:', error);
+                debug(`Camera video play error: ${error}`);
+              });
           }
-        }, 100);
+        } catch (error) {
+          console.error('VIDEO SETUP - Immediate play error:', error);
+          debug(`Camera video immediate play error: ${error}`);
+        }
       } else {
+        console.error('VIDEO SETUP - Missing video ref or stream', {videoRef: !!videoRef.current, stream: !!stream});
         debug('Video ref or stream missing');
       }
 
@@ -256,37 +277,58 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       debug(`Final - Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
 
-      // Set up video element
+      // Set up video element for screen share with comprehensive logging
       if (videoRef.current && combinedStream) {
         debug('Setting up video element for screen share...');
+        console.log('SCREEN SETUP - Combined stream object:', combinedStream);
+        console.log('SCREEN SETUP - Combined stream tracks:', combinedStream.getTracks().map(t => ({kind: t.kind, label: t.label, enabled: t.enabled, readyState: t.readyState})));
         
         const video = videoRef.current;
+        console.log('SCREEN SETUP - Video element:', video);
+        console.log('SCREEN SETUP - Video element parent:', video.parentElement);
         
-        // Clear any existing source first
+        // Add event listeners for debugging
+        video.addEventListener('loadstart', () => console.log('SCREEN EVENT - loadstart'));
+        video.addEventListener('loadedmetadata', () => console.log('SCREEN EVENT - loadedmetadata', {width: video.videoWidth, height: video.videoHeight}));
+        video.addEventListener('loadeddata', () => console.log('SCREEN EVENT - loadeddata'));
+        video.addEventListener('canplay', () => console.log('SCREEN EVENT - canplay'));
+        video.addEventListener('canplaythrough', () => console.log('SCREEN EVENT - canplaythrough'));
+        video.addEventListener('playing', () => console.log('SCREEN EVENT - playing'));
+        video.addEventListener('error', (e) => console.error('SCREEN EVENT - error', e));
+        
+        // Clear any existing source
         video.srcObject = null;
-        video.load(); // Force reset
+        video.load();
         
-        // Small delay to ensure clean state
-        setTimeout(async () => {
-          try {
-            // Set properties
-            video.muted = true;
-            video.playsInline = true;
-            video.autoplay = true;
-            
-            // Set the stream
-            video.srcObject = combinedStream;
-            debug('Screen share srcObject assigned');
-            
-            // Force play
-            await video.play();
-            debug('Screen share video playing successfully');
-          } catch (error) {
-            debug(`Screen share video setup error: ${error}`);
-            console.error('Screen share video setup failed:', error);
+        // Set properties
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        
+        // Set the stream immediately
+        video.srcObject = combinedStream;
+        console.log('SCREEN SETUP - srcObject assigned to video element');
+        
+        // Force play attempt
+        try {
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log('SCREEN SETUP - Video play promise resolved successfully');
+                debug('Screen share video playing successfully');
+              })
+              .catch(error => {
+                console.error('SCREEN SETUP - Video play promise rejected:', error);
+                debug(`Screen share video play error: ${error}`);
+              });
           }
-        }, 100);
+        } catch (error) {
+          console.error('SCREEN SETUP - Immediate play error:', error);
+          debug(`Screen share video immediate play error: ${error}`);
+        }
       } else {
+        console.error('SCREEN SETUP - Missing video ref or combined stream', {videoRef: !!videoRef.current, combinedStream: !!combinedStream});
         debug('Video ref or combined stream missing');
       }
 
@@ -703,13 +745,30 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover bg-black"
                 style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
+                onLoadedMetadata={(e) => {
+                  console.log('VIDEO RENDER - onLoadedMetadata fired', {
+                    videoWidth: e.currentTarget.videoWidth,
+                    videoHeight: e.currentTarget.videoHeight,
+                    srcObject: !!e.currentTarget.srcObject
+                  });
+                }}
+                onCanPlay={(e) => {
+                  console.log('VIDEO RENDER - onCanPlay fired', {
+                    readyState: e.currentTarget.readyState,
+                    currentTime: e.currentTarget.currentTime
+                  });
+                }}
+                onPlay={() => console.log('VIDEO RENDER - onPlay fired')}
+                onPlaying={() => console.log('VIDEO RENDER - onPlaying fired')}
+                onError={(e) => console.error('VIDEO RENDER - onError fired', e)}
               />
             ) : (
               <div className="flex flex-col items-center gap-4 text-gray-400">
                 <Camera className="size-12" />
-                <p>No video available</p>
+                <p>No video available - hasVideo: {String(hasVideo)}</p>
+                <p className="text-xs">Debug: {debugInfo}</p>
               </div>
             )}
           </div>
