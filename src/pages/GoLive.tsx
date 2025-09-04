@@ -391,8 +391,14 @@ const GoLive = () => {
            // Update stream to be live immediately for browser streams
            await supabase
              .from('streams')
-             .update({ is_live: true })
+             .update({ 
+               is_live: true,
+               last_heartbeat: new Date().toISOString()
+             })
              .eq('id', streamId);
+           
+           // Mark that user has browser streaming active
+           localStorage.setItem('browserStreamingActive', 'false'); // They need to click "Go Live" to start
          }
          
          // Preserve browser stream state if user is currently streaming
