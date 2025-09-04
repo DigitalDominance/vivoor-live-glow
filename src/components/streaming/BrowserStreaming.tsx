@@ -109,54 +109,34 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       if (videoRef.current && stream) {
         debug('Setting up video element...');
         
+        const video = videoRef.current;
+        
         // Clear any existing source first
-        videoRef.current.srcObject = null;
+        video.srcObject = null;
         
-        // Wait a bit then set the new source
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        videoRef.current.srcObject = stream;
-        videoRef.current.muted = true; // Always mute to prevent feedback
-        videoRef.current.playsInline = true;
-        videoRef.current.autoplay = true;
+        // Set the new source immediately
+        video.srcObject = stream;
+        video.muted = true; // Always mute to prevent feedback
+        video.playsInline = true;
+        video.autoplay = true;
 
-        // Set up event handlers
-        const handleLoadedMetadata = async () => {
-          debug(`Video metadata loaded - dimensions: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-          try {
-            if (videoRef.current) {
-              await videoRef.current.play();
-              debug('Video element playing successfully');
+        // Force video to load and play
+        try {
+          await video.load();
+          await video.play();
+          debug('Video element playing successfully');
+        } catch (playError) {
+          debug(`Initial video play error: ${playError}`);
+          // Try again after a short delay
+          setTimeout(async () => {
+            try {
+              await video.play();
+              debug('Video playing after retry');
+            } catch (retryError) {
+              debug(`Video retry failed: ${retryError}`);
             }
-          } catch (playError) {
-            debug(`Video play error: ${playError}`);
-            console.error('Video play failed:', playError);
-          }
-        };
-
-        const handleCanPlay = () => {
-          debug('Video can play - attempting to start playback');
-          if (videoRef.current) {
-            videoRef.current.play().catch(console.error);
-          }
-        };
-
-        const handlePlaying = () => {
-          debug('Video is now playing');
-        };
-
-        const handleError = (e: any) => {
-          debug(`Video error: ${e.target?.error?.message || 'Unknown error'}`);
-          console.error('Video element error:', e);
-        };
-
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoRef.current.addEventListener('canplay', handleCanPlay);
-        videoRef.current.addEventListener('playing', handlePlaying);
-        videoRef.current.addEventListener('error', handleError);
-        
-        // Also try to load and play immediately
-        videoRef.current.load();
+          }, 500);
+        }
       }
 
       setupAudioMonitoring(stream);
@@ -280,43 +260,34 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       if (videoRef.current && combinedStream) {
         debug('Setting up video element for screen share...');
         
+        const video = videoRef.current;
+        
         // Clear any existing source first
-        videoRef.current.srcObject = null;
+        video.srcObject = null;
         
-        // Wait a bit then set the new source
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Set the new source immediately
+        video.srcObject = combinedStream;
+        video.muted = true; // Always mute to prevent feedback
+        video.playsInline = true;
+        video.autoplay = true;
         
-        videoRef.current.srcObject = combinedStream;
-        videoRef.current.muted = true; // Always mute to prevent feedback
-        videoRef.current.playsInline = true;
-        videoRef.current.autoplay = true;
-        
-        // Set up event handlers
-        const handleLoadedMetadata = async () => {
-          debug(`Video metadata loaded - dimensions: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
-          try {
-            if (videoRef.current) {
-              await videoRef.current.play();
-              debug('Screen share video playing successfully');
+        // Force video to load and play
+        try {
+          await video.load();
+          await video.play();
+          debug('Screen share video playing successfully');
+        } catch (playError) {
+          debug(`Screen share video play error: ${playError}`);
+          // Try again after a short delay
+          setTimeout(async () => {
+            try {
+              await video.play();
+              debug('Screen share video playing after retry');
+            } catch (retryError) {
+              debug(`Screen share video retry failed: ${retryError}`);
             }
-          } catch (playError) {
-            debug(`Screen share video play error: ${playError}`);
-            console.error('Screen share video play failed:', playError);
-          }
-        };
-
-        const handleCanPlay = () => {
-          debug('Video can play - attempting to start playback');
-          if (videoRef.current) {
-            videoRef.current.play().catch(console.error);
-          }
-        };
-
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoRef.current.addEventListener('canplay', handleCanPlay);
-        
-        // Also try to load and play immediately
-        videoRef.current.load();
+          }, 500);
+        }
       }
 
       // Handle screen share ending
