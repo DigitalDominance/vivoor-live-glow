@@ -547,6 +547,9 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           return;
         }
         debug('Stream marked as live in database');
+        
+        // Start heartbeat to keep stream alive
+        // Browser stream heartbeat is handled by browser streaming context
       }
 
       debug(`Starting browser stream`);

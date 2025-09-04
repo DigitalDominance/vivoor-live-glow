@@ -70,7 +70,7 @@ const Watch = () => {
       return data;
     },
     enabled: !!streamId,
-    refetchInterval: 30000 // Refetch every 30 seconds to check if stream is still live
+    refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
   // Fetch streamer profile using secure function
