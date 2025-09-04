@@ -26,6 +26,7 @@ import Verification from "@/pages/Verification";
 import DocsPage from "@/pages/Docs";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
+import { BrowserStreamingProvider } from "@/context/BrowserStreamingContext";
 
 const queryClient = new QueryClient();
 
@@ -33,13 +34,14 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <WalletProvider>
-        <HelmetProvider>
-          <TooltipProvider>
-            <BackgroundV2 />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <SiteHeader />
+        <BrowserStreamingProvider>
+          <HelmetProvider>
+            <TooltipProvider>
+              <BackgroundV2 />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <SiteHeader />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/app" element={<AppDirectory />} />
@@ -63,9 +65,10 @@ const App = () => (
             </BrowserRouter>
           </TooltipProvider>
         </HelmetProvider>
-      </WalletProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </BrowserStreamingProvider>
+    </WalletProvider>
+  </ThemeProvider>
+</QueryClientProvider>
 );
 
 export default App;

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
 import { useWallet } from "@/context/WalletContext";
+import { useBrowserStreaming } from "@/context/BrowserStreamingContext";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
@@ -15,6 +16,7 @@ import { Upload, Image as ImageIcon, Monitor, Camera } from "lucide-react";
 const GoLive = () => {
   const navigate = useNavigate();
   const { identity, profile: walletProfile } = useWallet();
+  const { preserveStream, isPreviewing } = useBrowserStreaming();
   const kaspaAddress = identity?.id; // The kaspa address from wallet identity
   
   const [title, setTitle] = React.useState('');
@@ -382,7 +384,13 @@ const GoLive = () => {
           streamKey: currentStreamKey ? '***HIDDEN***' : null,
           playbackUrl: currentPlaybackUrl,
           playbackId: currentLivepeerPlaybackId
-        });
+         });
+         
+         // Preserve browser stream state if user is currently streaming
+         if (streamingMode === 'browser' && isPreviewing) {
+           console.log('Preserving browser stream state for navigation');
+           preserveStream();
+         }
         
         // Navigate to stream control page
         navigate(`/stream/${streamId}`);

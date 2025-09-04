@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
+import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 
 interface BrowserStreamingProps {
   streamKey: string;
@@ -11,8 +12,6 @@ interface BrowserStreamingProps {
   isPreviewMode?: boolean;
 }
 
-type StreamingMode = 'camera' | 'screen';
-
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
   ingestUrl,
@@ -20,28 +19,53 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   onStreamEnd,
   isPreviewMode = false
 }) => {
+  // Use browser streaming context
+  const {
+    mediaStreamRef,
+    isStreaming,
+    isPreviewing,
+    streamingMode,
+    videoEnabled,
+    audioEnabled,
+    audioLevel,
+    hasVideo,
+    hasAudio,
+    isPreviewMuted,
+    setIsStreaming,
+    setIsPreviewing,
+    setStreamingMode,
+    setVideoEnabled,
+    setAudioEnabled,
+    setAudioLevel,
+    setHasVideo,
+    setHasAudio,
+    setIsPreviewMuted,
+    isStreamPreserved,
+  } = useBrowserStreaming();
+
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // State
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const [streamingMode, setStreamingMode] = useState<StreamingMode>('camera');
+  // Local state
   const [isInitializing, setIsInitializing] = useState(false);
-  const [videoEnabled, setVideoEnabled] = useState(true);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [hasVideo, setHasVideo] = useState(false);
-  const [hasAudio, setHasAudio] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [isPreviewMuted, setIsPreviewMuted] = useState(true);
+
+  // Check if we should restore preserved stream state on mount
+  useEffect(() => {
+    if (isStreamPreserved && mediaStreamRef.current && videoRef.current) {
+      console.log('[BrowserStreaming] Restoring preserved stream');
+      setupVideoElement(videoRef.current, mediaStreamRef.current, streamingMode);
+      if (mediaStreamRef.current.getAudioTracks().length > 0) {
+        setupAudioMonitoring(mediaStreamRef.current);
+      }
+    }
+  }, [isStreamPreserved, streamingMode]);
 
   // Setup video element helper function
   const setupVideoElement = (video: HTMLVideoElement, stream: MediaStream, mode: string) => {
