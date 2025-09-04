@@ -289,8 +289,20 @@ const Stream = () => {
       
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
-          {/* Stream content - Only show browser streaming for browser streams on watch page */}
-          {playbackUrl ? (
+          {/* Stream content - Show browser streaming interface for browser mode */}
+          {streamingMode === 'browser' ? (
+            <BrowserStreaming
+              streamKey={localStreamData.streamKey || ''}
+              ingestUrl={localStreamData.ingestUrl || ''}
+              onStreamStart={() => {
+                console.log('Browser stream started');
+              }}
+              onStreamEnd={() => {
+                console.log('Browser stream ended');
+                handleEndStream();
+              }}
+            />
+          ) : playbackUrl ? (
             <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
           ) : (
             <PlayerPlaceholder />

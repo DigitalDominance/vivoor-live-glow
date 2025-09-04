@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw, AlertCircle } from 'lucide-react';
+import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw, AlertCircle, Volume2, VolumeX } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BrowserStreamingProps {
@@ -41,6 +41,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [isPreviewMuted, setIsPreviewMuted] = useState(true);
 
   // Setup video element helper function
   const setupVideoElement = (video: HTMLVideoElement, stream: MediaStream, mode: string) => {
@@ -58,7 +59,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     video.load();
     
     // Set properties
-    video.muted = true;
+    video.muted = isPreviewMuted;
     video.playsInline = true;
     video.autoplay = true;
     
@@ -473,6 +474,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     debug(`Audio ${!audioEnabled ? 'enabled' : 'disabled'}`);
   }, [audioEnabled]);
 
+  // Toggle preview mute
+  const togglePreviewMute = useCallback(() => {
+    if (videoRef.current) {
+      const newMutedState = !isPreviewMuted;
+      videoRef.current.muted = newMutedState;
+      setIsPreviewMuted(newMutedState);
+      debug(`Preview ${newMutedState ? 'muted' : 'unmuted'}`);
+      toast.info(newMutedState ? 'Preview muted' : 'Preview unmuted');
+    }
+  }, [isPreviewMuted]);
+
   // Start streaming
   const startStream = useCallback(async () => {
     if (!mediaStreamRef.current) {
@@ -691,7 +703,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               <video
                 ref={videoRef}
                 autoPlay
-                muted
+                muted={isPreviewMuted}
                 playsInline
                 className="w-full h-full object-cover bg-black"
                 style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
@@ -790,6 +802,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               {audioEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+            </Button>
+            
+            {/* Preview Mute Toggle */}
+            <Button
+              onClick={togglePreviewMute}
+              variant={isPreviewMuted ? "outline" : "secondary"}
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              title={isPreviewMuted ? "Unmute preview" : "Mute preview"}
+            >
+              {isPreviewMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
             </Button>
             
             {/* Reset */}
