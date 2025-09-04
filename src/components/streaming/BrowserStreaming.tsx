@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw } from 'lucide-react';
+import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BrowserStreamingProps {
@@ -38,63 +38,134 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
+
+  // Debug logging
+  const debug = (message: string) => {
+    console.log(`[BrowserStreaming] ${message}`);
+    setDebugInfo(message);
+  };
 
   // Initialize camera stream
   const initializeCamera = useCallback(async () => {
     try {
       setIsInitializing(true);
       setError(null);
+      debug('Requesting camera permissions...');
 
-      // Stop any existing stream
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia is not supported in this browser');
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Stop any existing stream first
+      if (mediaStreamRef.current) {
+        debug('Stopping existing stream');
+        mediaStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          debug(`Stopped track: ${track.kind} - ${track.label}`);
+        });
+        mediaStreamRef.current = null;
+      }
+
+      debug('Requesting camera and microphone access...');
+      const constraints = {
         video: {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, min: 15 }
+          width: { ideal: 1280, min: 640, max: 1920 },
+          height: { ideal: 720, min: 480, max: 1080 },
+          frameRate: { ideal: 30, min: 15, max: 60 }
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 44100
+          sampleRate: { ideal: 44100 }
         }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      debug(`Got media stream with ${stream.getTracks().length} tracks`);
+
+      // Log track details
+      stream.getTracks().forEach(track => {
+        debug(`Track: ${track.kind} - ${track.label} - enabled: ${track.enabled} - ready: ${track.readyState}`);
       });
 
       mediaStreamRef.current = stream;
       setStreamingMode('camera');
       
-      // Set video source and ensure it plays
-      if (videoRef.current) {
+      // Check what we actually got
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      setHasVideo(videoTracks.length > 0);
+      setHasAudio(audioTracks.length > 0);
+      
+      debug(`Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
+
+      // Set up video element
+      if (videoRef.current && stream) {
+        debug('Setting up video element...');
         videoRef.current.srcObject = stream;
-        videoRef.current.muted = true; // Prevent feedback
-        
-        // Force play when metadata is loaded
-        const handleLoadedMetadata = () => {
+        videoRef.current.muted = true; // Always mute to prevent feedback
+        videoRef.current.playsInline = true;
+        videoRef.current.autoplay = true;
+
+        // Force play after a short delay
+        setTimeout(async () => {
+          try {
+            if (videoRef.current) {
+              await videoRef.current.play();
+              debug('Video element playing successfully');
+            }
+          } catch (playError) {
+            debug(`Video play error: ${playError}`);
+            console.error('Video play failed:', playError);
+          }
+        }, 100);
+
+        // Add event listeners for debugging
+        videoRef.current.onloadedmetadata = () => {
+          debug('Video metadata loaded');
           if (videoRef.current) {
-            videoRef.current.play().catch(console.error);
+            debug(`Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
           }
         };
-        
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-        
-        // Clean up event listener
-        return () => {
-          videoRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+
+        videoRef.current.oncanplay = () => {
+          debug('Video can play');
+        };
+
+        videoRef.current.onplaying = () => {
+          debug('Video is playing');
+        };
+
+        videoRef.current.onerror = (e) => {
+          debug(`Video error: ${e}`);
+          console.error('Video element error:', e);
         };
       }
 
       setupAudioMonitoring(stream);
       setIsPreviewing(true);
       toast.success('Camera ready!');
+      debug('Camera initialization complete');
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Camera initialization failed:', err);
-      setError('Failed to access camera. Please check permissions.');
-      toast.error('Failed to access camera. Please check permissions.');
+      const errorMessage = err.name === 'NotAllowedError' 
+        ? 'Camera permission denied. Please allow camera access and try again.'
+        : err.name === 'NotFoundError'
+        ? 'No camera found. Please connect a camera and try again.'
+        : err.name === 'NotReadableError'
+        ? 'Camera is already in use by another application.'
+        : `Camera error: ${err.message}`;
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+      debug(`Camera error: ${err.name} - ${err.message}`);
     } finally {
       setIsInitializing(false);
     }
@@ -105,35 +176,56 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     try {
       setIsInitializing(true);
       setError(null);
+      debug('Requesting screen share permissions...');
 
-      // Stop any existing stream
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      // Check if getDisplayMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen sharing is not supported in this browser');
       }
 
+      // Stop any existing stream first
+      if (mediaStreamRef.current) {
+        debug('Stopping existing stream');
+        mediaStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          debug(`Stopped track: ${track.kind} - ${track.label}`);
+        });
+        mediaStreamRef.current = null;
+      }
+
+      debug('Requesting display media access...');
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 15 }
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
       });
 
-      let audioStream: MediaStream | null = null;
+      debug(`Got display stream with ${displayStream.getTracks().length} tracks`);
+
+      let micStream: MediaStream | null = null;
       
-      // Try to get microphone audio
+      // Try to get microphone for commentary
       try {
-        audioStream = await navigator.mediaDevices.getUserMedia({
+        debug('Requesting microphone for commentary...');
+        micStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
-            sampleRate: 44100
+            sampleRate: { ideal: 44100 }
           }
         });
-      } catch (audioErr) {
-        console.warn('Could not access microphone:', audioErr);
+        debug(`Got microphone stream with ${micStream.getTracks().length} tracks`);
+      } catch (micError: any) {
+        debug(`Microphone access failed: ${micError.message}`);
+        console.warn('Could not access microphone:', micError);
       }
 
       // Combine streams
@@ -142,42 +234,64 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // Add video track from screen
       displayStream.getVideoTracks().forEach(track => {
         combinedStream.addTrack(track);
+        debug(`Added display video track: ${track.label}`);
       });
 
       // Add system audio if available
       displayStream.getAudioTracks().forEach(track => {
         combinedStream.addTrack(track);
+        debug(`Added system audio track: ${track.label}`);
       });
 
       // Add microphone audio if available
-      if (audioStream) {
-        audioStream.getAudioTracks().forEach(track => {
+      if (micStream) {
+        micStream.getAudioTracks().forEach(track => {
           combinedStream.addTrack(track);
+          debug(`Added microphone track: ${track.label}`);
         });
       }
+
+      debug(`Combined stream has ${combinedStream.getTracks().length} total tracks`);
 
       mediaStreamRef.current = combinedStream;
       setStreamingMode('screen');
 
-      // Set video source and ensure it plays
-      if (videoRef.current) {
+      // Check what we have
+      const videoTracks = combinedStream.getVideoTracks();
+      const audioTracks = combinedStream.getAudioTracks();
+      
+      setHasVideo(videoTracks.length > 0);
+      setHasAudio(audioTracks.length > 0);
+
+      debug(`Final - Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
+
+      // Set up video element
+      if (videoRef.current && combinedStream) {
+        debug('Setting up video element for screen share...');
         videoRef.current.srcObject = combinedStream;
-        videoRef.current.muted = true; // Prevent feedback
-        
-        // Force play when metadata is loaded
-        const handleLoadedMetadata = () => {
-          if (videoRef.current) {
-            videoRef.current.play().catch(console.error);
+        videoRef.current.muted = true; // Always mute to prevent feedback
+        videoRef.current.playsInline = true;
+        videoRef.current.autoplay = true;
+
+        // Force play after a short delay
+        setTimeout(async () => {
+          try {
+            if (videoRef.current) {
+              await videoRef.current.play();
+              debug('Screen share video playing successfully');
+            }
+          } catch (playError) {
+            debug(`Screen share video play error: ${playError}`);
+            console.error('Screen share video play failed:', playError);
           }
-        };
-        
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        }, 100);
       }
 
       // Handle screen share ending
       const videoTrack = displayStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.addEventListener('ended', () => {
+          debug('Screen share ended by user');
           stopPreview();
           toast.info('Screen sharing ended');
         });
@@ -186,11 +300,19 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       setupAudioMonitoring(combinedStream);
       setIsPreviewing(true);
       toast.success('Screen sharing ready!');
+      debug('Screen share initialization complete');
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Screen sharing failed:', err);
-      setError('Failed to start screen sharing. Please check permissions.');
-      toast.error('Failed to start screen sharing. Please check permissions.');
+      const errorMessage = err.name === 'NotAllowedError' 
+        ? 'Screen sharing permission denied. Please allow screen sharing and try again.'
+        : err.name === 'NotSupportedError'
+        ? 'Screen sharing is not supported in this browser.'
+        : `Screen sharing error: ${err.message}`;
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+      debug(`Screen share error: ${err.name} - ${err.message}`);
     } finally {
       setIsInitializing(false);
     }
@@ -199,10 +321,15 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   // Setup audio level monitoring
   const setupAudioMonitoring = useCallback((stream: MediaStream) => {
     const audioTracks = stream.getAudioTracks();
-    if (audioTracks.length === 0) return;
+    if (audioTracks.length === 0) {
+      debug('No audio tracks for monitoring');
+      return;
+    }
 
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      debug('Setting up audio monitoring...');
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       
@@ -222,22 +349,29 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         analyserRef.current.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setAudioLevel(Math.min(average / 128, 1)); // Normalize to 0-1
+        setAudioLevel(Math.min(average / 128, 1));
         
         animationRef.current = requestAnimationFrame(updateAudioLevel);
       };
       
       updateAudioLevel();
+      debug('Audio monitoring setup complete');
     } catch (err) {
+      debug(`Audio monitoring setup failed: ${err}`);
       console.warn('Audio monitoring setup failed:', err);
     }
   }, [isPreviewing, isStreaming]);
 
   // Stop preview
   const stopPreview = useCallback(() => {
+    debug('Stopping preview...');
+    
     // Stop media stream
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        debug(`Stopped track: ${track.kind}`);
+      });
       mediaStreamRef.current = null;
     }
 
@@ -258,8 +392,12 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
 
     setIsPreviewing(false);
+    setHasVideo(false);
+    setHasAudio(false);
     setAudioLevel(0);
     setError(null);
+    setDebugInfo('');
+    debug('Preview stopped');
   }, []);
 
   // Toggle video
@@ -271,6 +409,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       track.enabled = !videoEnabled;
     });
     setVideoEnabled(!videoEnabled);
+    debug(`Video ${!videoEnabled ? 'enabled' : 'disabled'}`);
   }, [videoEnabled]);
 
   // Toggle audio
@@ -282,6 +421,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       track.enabled = !audioEnabled;
     });
     setAudioEnabled(!audioEnabled);
+    debug(`Audio ${!audioEnabled ? 'enabled' : 'disabled'}`);
   }, [audioEnabled]);
 
   // Start streaming
@@ -291,27 +431,36 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       return;
     }
 
+    debug('Starting stream...');
+
     if (isPreviewMode && streamKey === 'preview') {
       // Preview mode - just simulate streaming
       setIsStreaming(true);
       toast.success('Preview streaming started!');
       onStreamStart?.();
+      debug('Preview stream started');
       return;
     }
 
     try {
       // For live streaming, set up MediaRecorder
-      const options: MediaRecorderOptions = {
-        mimeType: 'video/webm;codecs=vp9,opus'
-      };
+      const options: MediaRecorderOptions = {};
 
-      // Fallback for browsers that don't support vp9
-      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
-        options.mimeType = 'video/webm;codecs=vp8,opus';
-      }
+      // Try different formats in order of preference
+      const formats = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=h264,opus',
+        'video/webm',
+        'video/mp4'
+      ];
 
-      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
-        options.mimeType = 'video/webm';
+      for (const format of formats) {
+        if (MediaRecorder.isTypeSupported(format)) {
+          options.mimeType = format;
+          debug(`Using format: ${format}`);
+          break;
+        }
       }
 
       const mediaRecorder = new MediaRecorder(mediaStreamRef.current, options);
@@ -319,8 +468,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          debug(`Stream data chunk: ${event.data.size} bytes`);
           // In a real implementation, send this data to RTMP endpoint
-          console.log('Stream data chunk:', event.data.size, 'bytes');
         }
       };
 
@@ -329,6 +478,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         startHeartbeat();
         toast.success('Live stream started!');
         onStreamStart?.();
+        debug('Live stream started');
       };
 
       mediaRecorder.onstop = () => {
@@ -336,6 +486,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         stopHeartbeat();
         toast.info('Stream stopped');
         onStreamEnd?.();
+        debug('Live stream stopped');
       };
 
       mediaRecorder.start(1000); // 1 second chunks
@@ -343,11 +494,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     } catch (err) {
       console.error('Failed to start streaming:', err);
       toast.error('Failed to start streaming');
+      debug(`Stream start failed: ${err}`);
     }
   }, [isPreviewMode, streamKey, onStreamStart, onStreamEnd]);
 
   // Stop streaming
   const stopStream = useCallback(() => {
+    debug('Stopping stream...');
+    
     if (mediaRecorderRef.current && isStreaming) {
       mediaRecorderRef.current.stop();
     }
@@ -372,11 +526,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         try {
           const streamId = localStorage.getItem('currentStreamId');
           if (streamId) {
-            // Send heartbeat to server
-            console.log('Sending stream heartbeat');
+            debug('Sending stream heartbeat');
           }
         } catch (err) {
-          console.warn('Heartbeat failed:', err);
+          debug(`Heartbeat failed: ${err}`);
         }
       }, 30000);
     }
@@ -398,7 +551,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     const handleVisibilityChange = () => {
       if (document.hidden) {
         gracePeriodTimer = setTimeout(() => {
-          console.log('Grace period expired, ending stream');
+          debug('Grace period expired, ending stream');
           stopStream();
         }, 60000); // 1 minute
         toast.info('Stream will end in 1 minute if you don\'t return');
@@ -431,9 +584,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Debug Info */}
+      {debugInfo && (
+        <div className="p-2 bg-gray-800 border border-gray-600 rounded text-xs text-gray-300">
+          Debug: {debugInfo}
+        </div>
+      )}
+
       {/* Error Display */}
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+          <AlertCircle className="size-4 text-red-400" />
           <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
@@ -477,14 +638,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       {isPreviewing && (
         <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black">
           <div className="aspect-video bg-black flex items-center justify-center">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
-            />
+            {hasVideo ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+                style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-gray-400">
+                <Camera className="size-12" />
+                <p>No video available</p>
+              </div>
+            )}
           </div>
           
           {/* Status Overlay */}
@@ -505,8 +673,15 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             </span>
           </div>
           
+          {/* Stream Info */}
+          <div className="absolute bottom-3 right-3">
+            <div className="px-2 py-1 bg-black/50 text-white text-xs rounded">
+              Video: {hasVideo ? '✓' : '✗'} Audio: {hasAudio ? '✓' : '✗'}
+            </div>
+          </div>
+          
           {/* Audio Level */}
-          {audioEnabled && (
+          {hasAudio && audioEnabled && (
             <div className="absolute bottom-3 left-3">
               <div className="flex items-center gap-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
                 <Mic className="size-3" />
@@ -531,6 +706,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               onClick={toggleVideo}
               variant={videoEnabled ? "outline" : "destructive"}
               size="sm"
+              disabled={!hasVideo}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               {videoEnabled ? 
@@ -544,6 +720,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               onClick={toggleAudio}
               variant={audioEnabled ? "outline" : "destructive"}
               size="sm"
+              disabled={!hasAudio}
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               {audioEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
@@ -565,6 +742,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             {!isStreaming ? (
               <Button
                 onClick={startStream}
+                disabled={!hasVideo && !hasAudio}
                 className="bg-red-500 hover:bg-red-600 text-white"
               >
                 <Play className="size-4 mr-2" />
