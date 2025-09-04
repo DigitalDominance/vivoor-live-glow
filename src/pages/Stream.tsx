@@ -290,18 +290,30 @@ const Stream = () => {
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           {/* Stream content - Show browser streaming interface for browser mode */}
-          {streamingMode === 'browser' ? (
-            <BrowserStreaming
-              streamKey={localStreamData.streamKey || ''}
-              ingestUrl={localStreamData.ingestUrl || ''}
-              onStreamStart={() => {
-                console.log('Browser stream started');
-              }}
-              onStreamEnd={() => {
-                console.log('Browser stream ended');
-                handleEndStream();
-              }}
-            />
+          {streamingMode === 'browser' && isOwnStream ? (
+            <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black">
+              <div className="aspect-video bg-black flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                    Browser Stream Active
+                  </div>
+                  <div className="text-gray-400">
+                    Your browser stream is running. Manage your stream using the browser controls below.
+                  </div>
+                  <BrowserStreaming
+                    streamKey={localStreamData.streamKey || ''}
+                    ingestUrl={localStreamData.ingestUrl || ''}
+                    onStreamStart={() => {
+                      console.log('Browser stream started');
+                    }}
+                    onStreamEnd={() => {
+                      console.log('Browser stream ended');
+                      handleEndStream();
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           ) : playbackUrl ? (
             <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
           ) : (

@@ -373,7 +373,7 @@ const GoLive = () => {
         localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
         
         if (streamingMode === 'browser') {
-          toast.success('Stream created! Start broadcasting with your camera and microphone.');
+          toast.success('Browser stream created! You can now start broadcasting with your camera or screen.');
         } else {
           toast.success('Stream started! Use the RTMP details below in OBS.');
         }
@@ -384,7 +384,16 @@ const GoLive = () => {
           streamKey: currentStreamKey ? '***HIDDEN***' : null,
           playbackUrl: currentPlaybackUrl,
           playbackId: currentLivepeerPlaybackId
-         });
+        });
+         
+         // For browser streams, start the stream immediately since user will use in-browser controls
+         if (streamingMode === 'browser') {
+           // Update stream to be live immediately for browser streams
+           await supabase
+             .from('streams')
+             .update({ is_live: true })
+             .eq('id', streamId);
+         }
          
          // Preserve browser stream state if user is currently streaming
          if (streamingMode === 'browser' && isPreviewing) {

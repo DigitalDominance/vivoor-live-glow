@@ -417,19 +417,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       updateAudioLevel();
       debug('Audio monitoring setup complete - starting level detection');
       
-      // Test audio by playing a brief tone (silent)
-      setTimeout(() => {
-        const testOscillator = audioContext.createOscillator();
-        const testGain = audioContext.createGain();
-        testOscillator.connect(testGain);
-        testGain.connect(audioContext.destination);
-        testGain.gain.setValueAtTime(0, audioContext.currentTime); // Silent
-        testOscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-        testOscillator.start();
-        testOscillator.stop(audioContext.currentTime + 0.01);
-        debug('Audio context test completed');
-      }, 100);
-      
     } catch (err) {
       debug(`Audio monitoring setup failed: ${err}`);
       console.error('Audio monitoring setup failed:', err);
@@ -775,11 +762,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             </span>
           </div>
           
-          {/* Stream Info */}
-          <div className="absolute bottom-3 right-3">
-            <div className="px-2 py-1 bg-black/50 text-white text-xs rounded">
-              Video: {hasVideo ? '✓' : '✗'} Audio: {hasAudio ? '✓' : '✗'}
-            </div>
+          {/* Mute Toggle for preview - positioned in bottom right */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+            <Button
+              onClick={togglePreviewMute}
+              variant={isPreviewMuted ? "outline" : "secondary"}
+              size="sm"
+              className="bg-black/50 border-white/20 text-white hover:bg-black/70 px-2 py-1"
+              title={isPreviewMuted ? "Unmute preview" : "Mute preview"}
+            >
+              {isPreviewMuted ? <VolumeX className="size-3" /> : <Volume2 className="size-3" />}
+            </Button>
           </div>
           
           {/* Audio Level */}
@@ -826,17 +819,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
               {audioEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
-            </Button>
-            
-            {/* Preview Mute Toggle */}
-            <Button
-              onClick={togglePreviewMute}
-              variant={isPreviewMuted ? "outline" : "secondary"}
-              size="sm"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              title={isPreviewMuted ? "Unmute preview" : "Mute preview"}
-            >
-              {isPreviewMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
             </Button>
             
             {/* Reset */}
