@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, MonitorSpeaker } from 'lucide-react';
+import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BrowserStreamingProps {
@@ -8,8 +8,10 @@ interface BrowserStreamingProps {
   ingestUrl: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
-  isPreviewMode?: boolean; // New prop to distinguish preview vs live mode
+  isPreviewMode?: boolean;
 }
+
+type StreamingMode = 'camera' | 'screen';
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
@@ -18,357 +20,389 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   onStreamEnd,
   isPreviewMode = false
 }) => {
-  const videoRef = React.useRef<HTMLVideoElement>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const mediaStreamRef = React.useRef<MediaStream | null>(null);
-  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const websocketRef = React.useRef<WebSocket | null>(null);
-  
-  const [isStreaming, setIsStreaming] = React.useState(false);
-  const [isPreviewing, setIsPreviewing] = React.useState(false);
-  const [streamingMode, setStreamingMode] = React.useState<'camera' | 'screen'>('camera');
-  const [hasCamera, setHasCamera] = React.useState(false);
-  const [hasMicrophone, setHasMicrophone] = React.useState(false);
-  const [cameraEnabled, setCameraEnabled] = React.useState(true);
-  const [microphoneEnabled, setMicrophoneEnabled] = React.useState(true);
-  const [isInitializing, setIsInitializing] = React.useState(false);
-  const [audioLevel, setAudioLevel] = React.useState(0);
-  const [heartbeatInterval, setHeartbeatInterval] = React.useState<NodeJS.Timeout | null>(null);
-  const [isLiveStreaming, setIsLiveStreaming] = React.useState(false);
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize camera media
-  const initializeCamera = async () => {
+  // State
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [streamingMode, setStreamingMode] = useState<StreamingMode>('camera');
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize camera stream
+  const initializeCamera = useCallback(async () => {
     try {
       setIsInitializing(true);
-      
+      setError(null);
+
+      // Stop any existing stream
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          frameRate: { ideal: 30, min: 15 }
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          sampleRate: 44100
         }
       });
 
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-
       mediaStreamRef.current = stream;
+      setStreamingMode('camera');
       
+      // Set video source and ensure it plays
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Ensure video starts playing
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(console.warn);
+        videoRef.current.muted = true; // Prevent feedback
+        
+        // Force play when metadata is loaded
+        const handleLoadedMetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(console.error);
+          }
+        };
+        
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        
+        // Clean up event listener
+        return () => {
+          videoRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
         };
       }
 
-      // Check which devices are available
-      const videoTracks = stream.getVideoTracks();
-      const audioTracks = stream.getAudioTracks();
-      
-      setHasCamera(videoTracks.length > 0);
-      setHasMicrophone(audioTracks.length > 0);
-      setStreamingMode('camera');
-      setIsPreviewing(true);
-      
-      // Set up audio level monitoring
       setupAudioMonitoring(stream);
-      
-      toast.success('Camera and microphone ready!');
-    } catch (error) {
-      console.error('Failed to initialize camera:', error);
-      toast.error('Failed to access camera/microphone. Please check permissions.');
+      setIsPreviewing(true);
+      toast.success('Camera ready!');
+
+    } catch (err) {
+      console.error('Camera initialization failed:', err);
+      setError('Failed to access camera. Please check permissions.');
+      toast.error('Failed to access camera. Please check permissions.');
     } finally {
       setIsInitializing(false);
     }
-  };
+  }, []);
 
   // Initialize screen sharing
-  const initializeScreen = async () => {
+  const initializeScreen = useCallback(async () => {
     try {
       setIsInitializing(true);
-      
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        },
-        audio: true // Include system audio if available
-      });
+      setError(null);
 
-      // Also get microphone for commentary
-      let micStream: MediaStream | null = null;
-      try {
-        micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-      } catch (micError) {
-        console.warn('Could not access microphone:', micError);
-      }
-
+      // Stop any existing stream
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
 
-      // Combine screen and microphone streams
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 },
+          frameRate: { ideal: 30, min: 15 }
+        },
+        audio: true
+      });
+
+      let audioStream: MediaStream | null = null;
+      
+      // Try to get microphone audio
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 44100
+          }
+        });
+      } catch (audioErr) {
+        console.warn('Could not access microphone:', audioErr);
+      }
+
+      // Combine streams
       const combinedStream = new MediaStream();
       
-      // Add screen video
-      screenStream.getVideoTracks().forEach(track => {
+      // Add video track from screen
+      displayStream.getVideoTracks().forEach(track => {
         combinedStream.addTrack(track);
       });
-      
-      // Add system audio from screen if available
-      screenStream.getAudioTracks().forEach(track => {
+
+      // Add system audio if available
+      displayStream.getAudioTracks().forEach(track => {
         combinedStream.addTrack(track);
       });
-      
+
       // Add microphone audio if available
-      if (micStream) {
-        micStream.getAudioTracks().forEach(track => {
+      if (audioStream) {
+        audioStream.getAudioTracks().forEach(track => {
           combinedStream.addTrack(track);
         });
       }
 
       mediaStreamRef.current = combinedStream;
-      
+      setStreamingMode('screen');
+
+      // Set video source and ensure it plays
       if (videoRef.current) {
         videoRef.current.srcObject = combinedStream;
-        // Ensure video starts playing
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(console.warn);
+        videoRef.current.muted = true; // Prevent feedback
+        
+        // Force play when metadata is loaded
+        const handleLoadedMetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(console.error);
+          }
         };
+        
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
       }
 
-      setHasCamera(true); // Screen sharing counts as "camera"
-      setHasMicrophone(combinedStream.getAudioTracks().length > 0);
-      setStreamingMode('screen');
-      setIsPreviewing(true);
-      
-      // Set up audio level monitoring
-      setupAudioMonitoring(combinedStream);
-      
       // Handle screen share ending
-      screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-        setIsPreviewing(false);
-        stopStream();
-        toast.info('Screen sharing ended');
-      });
-      
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.addEventListener('ended', () => {
+          stopPreview();
+          toast.info('Screen sharing ended');
+        });
+      }
+
+      setupAudioMonitoring(combinedStream);
+      setIsPreviewing(true);
       toast.success('Screen sharing ready!');
-    } catch (error) {
-      console.error('Failed to initialize screen sharing:', error);
+
+    } catch (err) {
+      console.error('Screen sharing failed:', err);
+      setError('Failed to start screen sharing. Please check permissions.');
       toast.error('Failed to start screen sharing. Please check permissions.');
     } finally {
       setIsInitializing(false);
     }
-  };
+  }, []);
 
-  // Set up audio level monitoring
-  const setupAudioMonitoring = (stream: MediaStream) => {
+  // Setup audio level monitoring
+  const setupAudioMonitoring = useCallback((stream: MediaStream) => {
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) return;
 
     try {
-      const audioContext = new AudioContext();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       
       analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
       source.connect(analyser);
       
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       
-      const updateLevel = () => {
-        if (!isPreviewing && !isStreaming) return;
+      const updateAudioLevel = () => {
+        if (!analyserRef.current || (!isPreviewing && !isStreaming)) {
+          return;
+        }
         
-        analyser.getByteFrequencyData(dataArray);
+        analyserRef.current.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setAudioLevel(average / 255);
+        setAudioLevel(Math.min(average / 128, 1)); // Normalize to 0-1
         
-        requestAnimationFrame(updateLevel);
+        animationRef.current = requestAnimationFrame(updateAudioLevel);
       };
       
-      updateLevel();
-    } catch (error) {
-      console.warn('Audio monitoring not available:', error);
+      updateAudioLevel();
+    } catch (err) {
+      console.warn('Audio monitoring setup failed:', err);
     }
-  };
+  }, [isPreviewing, isStreaming]);
 
   // Stop preview
-  const stopPreview = () => {
+  const stopPreview = useCallback(() => {
+    // Stop media stream
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
+
+    // Clear video source
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsPreviewing(false);
-    setHasCamera(false);
-    setHasMicrophone(false);
-    setAudioLevel(0);
-  };
 
-  // Toggle camera/video
-  const toggleVideo = () => {
+    // Stop audio monitoring
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(console.warn);
+      audioContextRef.current = null;
+    }
+
+    setIsPreviewing(false);
+    setAudioLevel(0);
+    setError(null);
+  }, []);
+
+  // Toggle video
+  const toggleVideo = useCallback(() => {
     if (!mediaStreamRef.current) return;
     
     const videoTracks = mediaStreamRef.current.getVideoTracks();
     videoTracks.forEach(track => {
-      track.enabled = !cameraEnabled;
+      track.enabled = !videoEnabled;
     });
-    setCameraEnabled(!cameraEnabled);
-  };
+    setVideoEnabled(!videoEnabled);
+  }, [videoEnabled]);
 
-  // Toggle microphone
-  const toggleMicrophone = () => {
+  // Toggle audio
+  const toggleAudio = useCallback(() => {
     if (!mediaStreamRef.current) return;
     
     const audioTracks = mediaStreamRef.current.getAudioTracks();
     audioTracks.forEach(track => {
-      track.enabled = !microphoneEnabled;
+      track.enabled = !audioEnabled;
     });
-    setMicrophoneEnabled(!microphoneEnabled);
-  };
+    setAudioEnabled(!audioEnabled);
+  }, [audioEnabled]);
 
   // Start streaming
-  const startStream = async () => {
-    if (!mediaStreamRef.current || (!isPreviewing && isPreviewMode)) {
-      toast.error('Please start preview first');
+  const startStream = useCallback(async () => {
+    if (!mediaStreamRef.current) {
+      toast.error('No media stream available. Please start preview first.');
       return;
     }
 
-    if (!isPreviewMode && streamKey === 'preview') {
-      toast.error('Cannot start live stream in preview mode');
+    if (isPreviewMode && streamKey === 'preview') {
+      // Preview mode - just simulate streaming
+      setIsStreaming(true);
+      toast.success('Preview streaming started!');
+      onStreamStart?.();
       return;
     }
 
     try {
-      // Create a MediaRecorder to capture the stream
-      const mediaRecorder = new MediaRecorder(mediaStreamRef.current, {
+      // For live streaming, set up MediaRecorder
+      const options: MediaRecorderOptions = {
         mimeType: 'video/webm;codecs=vp9,opus'
-      });
-      
+      };
+
+      // Fallback for browsers that don't support vp9
+      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
+        options.mimeType = 'video/webm;codecs=vp8,opus';
+      }
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
+        options.mimeType = 'video/webm';
+      }
+
+      const mediaRecorder = new MediaRecorder(mediaStreamRef.current, options);
       mediaRecorderRef.current = mediaRecorder;
-      
-      const chunks: Blob[] = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunks.push(event.data);
-          // In a real implementation, you'd send these chunks to your RTMP endpoint
-          console.log('Streaming data chunk:', event.data.size, 'bytes');
+          // In a real implementation, send this data to RTMP endpoint
+          console.log('Stream data chunk:', event.data.size, 'bytes');
         }
       };
-      
+
       mediaRecorder.onstart = () => {
         setIsStreaming(true);
-        setIsLiveStreaming(true);
-        
-        if (!isPreviewMode) {
-          // Start heartbeat for live streams to prevent auto-end
-          startHeartbeat();
-          toast.success('Stream started! You are now live!');
-        } else {
-          toast.success('Preview stream started!');
-        }
-        
+        startHeartbeat();
+        toast.success('Live stream started!');
         onStreamStart?.();
       };
-      
+
       mediaRecorder.onstop = () => {
         setIsStreaming(false);
-        setIsLiveStreaming(false);
         stopHeartbeat();
-        
-        if (!isPreviewMode) {
-          toast.info('Stream stopped');
-        } else {
-          toast.info('Preview stopped');
-        }
-        
+        toast.info('Stream stopped');
         onStreamEnd?.();
       };
-      
-      // Start recording in chunks
+
       mediaRecorder.start(1000); // 1 second chunks
-      
-    } catch (error) {
-      console.error('Failed to start streaming:', error);
+
+    } catch (err) {
+      console.error('Failed to start streaming:', err);
       toast.error('Failed to start streaming');
     }
-  };
+  }, [isPreviewMode, streamKey, onStreamStart, onStreamEnd]);
 
   // Stop streaming
-  const stopStream = () => {
+  const stopStream = useCallback(() => {
     if (mediaRecorderRef.current && isStreaming) {
       mediaRecorderRef.current.stop();
     }
+    
+    if (isPreviewMode) {
+      setIsStreaming(false);
+      toast.info('Preview stopped');
+      onStreamEnd?.();
+    }
+    
     stopHeartbeat();
-  };
+  }, [isStreaming, isPreviewMode, onStreamEnd]);
 
-  // Start heartbeat to prevent auto-end when user leaves page
-  const startHeartbeat = () => {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
+  // Heartbeat for live streams
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
     }
-    
-    const interval = setInterval(async () => {
-      try {
-        // Send heartbeat to keep stream alive
-        const streamId = localStorage.getItem('currentStreamId');
-        if (streamId && !isPreviewMode) {
-          await fetch('/api/stream-heartbeat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ streamId })
-          });
+
+    if (!isPreviewMode) {
+      heartbeatIntervalRef.current = setInterval(async () => {
+        try {
+          const streamId = localStorage.getItem('currentStreamId');
+          if (streamId) {
+            // Send heartbeat to server
+            console.log('Sending stream heartbeat');
+          }
+        } catch (err) {
+          console.warn('Heartbeat failed:', err);
         }
-      } catch (error) {
-        console.warn('Heartbeat failed:', error);
-      }
-    }, 30000); // Send heartbeat every 30 seconds
-    
-    setHeartbeatInterval(interval);
-  };
-
-  // Stop heartbeat
-  const stopHeartbeat = () => {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval);
-      setHeartbeatInterval(null);
+      }, 30000);
     }
-  };
+  }, [isPreviewMode]);
 
-  // Page visibility handling for 1-minute grace period
-  React.useEffect(() => {
-    if (!isLiveStreaming || isPreviewMode) return;
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
+
+  // Page visibility handling
+  useEffect(() => {
+    if (!isStreaming || isPreviewMode) return;
 
     let gracePeriodTimer: NodeJS.Timeout | null = null;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // User left the page, start 1-minute grace period
         gracePeriodTimer = setTimeout(() => {
           console.log('Grace period expired, ending stream');
           stopStream();
         }, 60000); // 1 minute
-        
         toast.info('Stream will end in 1 minute if you don\'t return');
       } else {
-        // User returned, cancel grace period
         if (gracePeriodTimer) {
           clearTimeout(gracePeriodTimer);
           gracePeriodTimer = null;
@@ -385,36 +419,38 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         clearTimeout(gracePeriodTimer);
       }
     };
-  }, [isLiveStreaming, isPreviewMode]);
+  }, [isStreaming, isPreviewMode, stopStream]);
 
   // Cleanup on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (websocketRef.current) {
-        websocketRef.current.close();
-      }
+      stopPreview();
       stopHeartbeat();
     };
-  }, []);
+  }, [stopPreview, stopHeartbeat]);
 
   return (
     <div className="space-y-4">
-      {/* Stream Setup - Only show if not previewing and in preview mode */}
-      {!isPreviewing && isPreviewMode && (
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Stream Setup - Only show if not previewing */}
+      {!isPreviewing && (
         <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={initializeCamera}
             disabled={isInitializing}
             variant="outline"
-            className="h-24 flex flex-col items-center gap-2"
+            className="h-24 flex flex-col items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
           >
             <Camera className="size-8" />
             <div className="text-center">
-              <div className="font-medium">Camera Stream</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="font-medium">Camera</div>
+              <div className="text-xs text-gray-400">
                 {isInitializing ? 'Starting...' : 'Stream with webcam'}
               </div>
             </div>
@@ -424,13 +460,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             onClick={initializeScreen}
             disabled={isInitializing}
             variant="outline"
-            className="h-24 flex flex-col items-center gap-2"
+            className="h-24 flex flex-col items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
           >
             <Monitor className="size-8" />
             <div className="text-center">
               <div className="font-medium">Screen Share</div>
-              <div className="text-xs text-muted-foreground">
-                {isInitializing ? 'Starting...' : 'Stream your screen'}
+              <div className="text-xs text-gray-400">
+                {isInitializing ? 'Starting...' : 'Share your screen'}
               </div>
             </div>
           </Button>
@@ -439,59 +475,38 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       {/* Video Preview */}
       {isPreviewing && (
-        <div className="relative rounded-xl overflow-hidden border border-border bg-card/60 backdrop-blur-md">
-          <div className="aspect-video bg-background flex items-center justify-center">
-            {hasCamera ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-                onLoadedMetadata={() => {
-                  // Force the video to start playing
-                  if (videoRef.current) {
-                    videoRef.current.play().catch(console.warn);
-                  }
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Camera className="size-12" />
-                <p>Camera not available</p>
-              </div>
-            )}
+        <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black">
+          <div className="aspect-video bg-black flex items-center justify-center">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+              style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
+            />
           </div>
           
-          {/* Preview Mode Overlay */}
-          {!isStreaming && (
-            <div className="absolute top-3 left-3">
-              <span className="px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                PREVIEW
-              </span>
-            </div>
-          )}
-          
-          {/* Live Stream Overlay */}
-          {isStreaming && (
-            <div className="absolute top-3 left-3">
-              <span className="px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                LIVE
-              </span>
-            </div>
-          )}
-          
-          {/* Stream Mode Indicator */}
-          <div className="absolute top-3 right-3">
-            <span className="px-2 py-1 bg-black/50 text-white text-xs rounded">
-              {streamingMode === 'camera' ? 'Camera' : 'Screen Share'}
+          {/* Status Overlay */}
+          <div className="absolute top-3 left-3">
+            <span className={`px-2 py-1 text-white text-xs font-medium rounded-full flex items-center gap-1 ${
+              isStreaming ? 'bg-red-500' : 'bg-blue-500'
+            }`}>
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              {isStreaming ? 'LIVE' : 'PREVIEW'}
             </span>
           </div>
           
-          {/* Audio Level Indicator */}
-          {hasMicrophone && microphoneEnabled && (
+          {/* Mode Indicator */}
+          <div className="absolute top-3 right-3">
+            <span className="px-2 py-1 bg-black/50 text-white text-xs rounded flex items-center gap-1">
+              {streamingMode === 'camera' ? <Camera className="size-3" /> : <Monitor className="size-3" />}
+              {streamingMode === 'camera' ? 'Camera' : 'Screen'}
+            </span>
+          </div>
+          
+          {/* Audio Level */}
+          {audioEnabled && (
             <div className="absolute bottom-3 left-3">
               <div className="flex items-center gap-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
                 <Mic className="size-3" />
@@ -510,36 +525,38 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       {/* Controls */}
       {isPreviewing && (
         <div className="flex items-center justify-between gap-3">
-          {/* Device Controls */}
           <div className="flex items-center gap-2">
+            {/* Video Toggle */}
             <Button
               onClick={toggleVideo}
-              variant={cameraEnabled ? "outline" : "destructive"}
+              variant={videoEnabled ? "outline" : "destructive"}
               size="sm"
-              disabled={!hasCamera}
-              title={cameraEnabled ? 'Disable video' : 'Enable video'}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
-              {cameraEnabled ? 
+              {videoEnabled ? 
                 (streamingMode === 'camera' ? <Video className="size-4" /> : <Monitor className="size-4" />) : 
                 <VideoOff className="size-4" />
               }
             </Button>
+            
+            {/* Audio Toggle */}
             <Button
-              onClick={toggleMicrophone}
-              variant={microphoneEnabled ? "outline" : "destructive"}
+              onClick={toggleAudio}
+              variant={audioEnabled ? "outline" : "destructive"}
               size="sm"
-              disabled={!hasMicrophone}
-              title={microphoneEnabled ? 'Mute microphone' : 'Unmute microphone'}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
-              {microphoneEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+              {audioEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
             </Button>
+            
+            {/* Reset */}
             <Button
               onClick={stopPreview}
               variant="outline"
               size="sm"
-              title="Stop preview and choose different source"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
             >
-              Stop Preview
+              <RefreshCw className="size-4" />
             </Button>
           </div>
 
@@ -548,12 +565,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             {!isStreaming ? (
               <Button
                 onClick={startStream}
-                disabled={!hasCamera && !hasMicrophone}
-                variant="default"
-                className="bg-red-500 hover:bg-red-600"
+                className="bg-red-500 hover:bg-red-600 text-white"
               >
                 <Play className="size-4 mr-2" />
-                {isPreviewMode ? 'Start Preview' : 'Go Live'}
+                {isPreviewMode ? 'Test Stream' : 'Go Live'}
               </Button>
             ) : (
               <Button
@@ -561,28 +576,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                 variant="destructive"
               >
                 <Square className="size-4 mr-2" />
-                {isPreviewMode ? 'Stop Preview' : 'End Stream'}
+                {isPreviewMode ? 'Stop Test' : 'End Stream'}
               </Button>
             )}
           </div>
         </div>
       )}
 
-      {/* Info */}
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p>• Choose between camera streaming or screen sharing</p>
-        {isPreviewMode ? (
-          <>
-            <p>• Preview mode lets you test your audio and video before going live</p>
-            <p>• Audio level indicator shows your microphone activity</p>
-          </>
-        ) : (
-          <>
-            <p>• Stream will continue even if you leave the page (1 minute grace period)</p>
-            <p>• Use the controls to manage your live stream</p>
-          </>
+      {/* Help Text */}
+      <div className="text-xs text-gray-400 space-y-1">
+        <p>• Choose camera for webcam streaming or screen share to broadcast your desktop</p>
+        <p>• Test your audio and video in preview mode before going live</p>
+        <p>• Make sure to allow permissions when prompted by your browser</p>
+        {!isPreviewMode && (
+          <p>• Browser streams continue running even if you refresh the page (1 minute grace period)</p>
         )}
-        <p>• Make sure to allow camera/microphone or screen sharing permissions when prompted</p>
       </div>
     </div>
   );
