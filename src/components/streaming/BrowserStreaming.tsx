@@ -111,46 +111,32 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         const video = videoRef.current;
         
-        // Set up event listeners first
-        const handleCanPlay = () => {
-          debug('Video can play - starting playback');
-          video.play().catch(err => debug(`Play error in canplay handler: ${err}`));
-        };
-        
-        const handleLoadedMetadata = () => {
-          debug(`Video metadata loaded - dimensions: ${video.videoWidth}x${video.videoHeight}`);
-        };
-        
-        video.addEventListener('canplay', handleCanPlay, { once: true });
-        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-        
-        // Set properties before assigning stream
-        video.muted = true; // Always mute to prevent feedback
-        video.playsInline = true;
-        video.autoplay = true;
-        
         // Clear any existing source first
         video.srcObject = null;
+        video.load(); // Force reset
         
         // Small delay to ensure clean state
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Set the new source
-        video.srcObject = stream;
-        
-        debug('Video srcObject set, waiting for canplay event');
-        
-        // Fallback play attempt after timeout
         setTimeout(async () => {
-          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-            try {
-              await video.play();
-              debug('Fallback video play successful');
-            } catch (playError) {
-              debug(`Fallback video play error: ${playError}`);
-            }
+          try {
+            // Set properties
+            video.muted = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            
+            // Set the stream
+            video.srcObject = stream;
+            debug('Camera srcObject assigned');
+            
+            // Force play
+            await video.play();
+            debug('Camera video playing successfully');
+          } catch (error) {
+            debug(`Camera video setup error: ${error}`);
+            console.error('Camera video setup failed:', error);
           }
-        }, 1000);
+        }, 100);
+      } else {
+        debug('Video ref or stream missing');
       }
 
       setupAudioMonitoring(stream);
@@ -276,46 +262,32 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         const video = videoRef.current;
         
-        // Set up event listeners first
-        const handleCanPlay = () => {
-          debug('Screen share video can play - starting playback');
-          video.play().catch(err => debug(`Screen share play error in canplay handler: ${err}`));
-        };
-        
-        const handleLoadedMetadata = () => {
-          debug(`Screen share metadata loaded - dimensions: ${video.videoWidth}x${video.videoHeight}`);
-        };
-        
-        video.addEventListener('canplay', handleCanPlay, { once: true });
-        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-        
-        // Set properties before assigning stream
-        video.muted = true; // Always mute to prevent feedback
-        video.playsInline = true;
-        video.autoplay = true;
-        
         // Clear any existing source first
         video.srcObject = null;
+        video.load(); // Force reset
         
         // Small delay to ensure clean state
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Set the new source
-        video.srcObject = combinedStream;
-        
-        debug('Screen share srcObject set, waiting for canplay event');
-        
-        // Fallback play attempt after timeout
         setTimeout(async () => {
-          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-            try {
-              await video.play();
-              debug('Fallback screen share video play successful');
-            } catch (playError) {
-              debug(`Fallback screen share video play error: ${playError}`);
-            }
+          try {
+            // Set properties
+            video.muted = true;
+            video.playsInline = true;
+            video.autoplay = true;
+            
+            // Set the stream
+            video.srcObject = combinedStream;
+            debug('Screen share srcObject assigned');
+            
+            // Force play
+            await video.play();
+            debug('Screen share video playing successfully');
+          } catch (error) {
+            debug(`Screen share video setup error: ${error}`);
+            console.error('Screen share video setup failed:', error);
           }
-        }, 1000);
+        }, 100);
+      } else {
+        debug('Video ref or combined stream missing');
       }
 
       // Handle screen share ending
