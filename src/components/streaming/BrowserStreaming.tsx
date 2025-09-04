@@ -825,27 +825,29 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             </Button>
           </div>
 
-          {/* Stream Control */}
-          <div className="flex items-center gap-2">
-            {!isStreaming ? (
-              <Button
-                onClick={startStream}
-                disabled={!hasVideo && !hasAudio}
-                className="bg-red-500 hover:bg-red-600 text-white"
-              >
-                <Play className="size-4 mr-2" />
-                {isPreviewMode ? 'Test Stream' : 'Go Live'}
-              </Button>
-            ) : (
-              <Button
-                onClick={stopStream}
-                variant="destructive"
-              >
-                <Square className="size-4 mr-2" />
-                {isPreviewMode ? 'Stop Test' : 'End Stream'}
-              </Button>
-            )}
-          </div>
+          {/* Stream Control - Only show Go Live button, not test buttons */}
+          {!isPreviewMode && (
+            <div className="flex items-center gap-2">
+              {!isStreaming ? (
+                <Button
+                  onClick={startStream}
+                  disabled={!hasVideo && !hasAudio}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                >
+                  <Play className="size-4 mr-2" />
+                  Go Live
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopStream}
+                  variant="destructive"
+                >
+                  <Square className="size-4 mr-2" />
+                  End Stream
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
