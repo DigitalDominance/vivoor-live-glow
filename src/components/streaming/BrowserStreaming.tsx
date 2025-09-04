@@ -108,13 +108,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // Set up video element
       if (videoRef.current && stream) {
         debug('Setting up video element...');
+        
+        // Clear any existing source first
+        videoRef.current.srcObject = null;
+        
+        // Wait a bit then set the new source
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         videoRef.current.srcObject = stream;
         videoRef.current.muted = true; // Always mute to prevent feedback
         videoRef.current.playsInline = true;
         videoRef.current.autoplay = true;
 
-        // Force play after a short delay
-        setTimeout(async () => {
+        // Set up event handlers
+        const handleLoadedMetadata = async () => {
+          debug(`Video metadata loaded - dimensions: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
           try {
             if (videoRef.current) {
               await videoRef.current.play();
@@ -124,28 +132,31 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             debug(`Video play error: ${playError}`);
             console.error('Video play failed:', playError);
           }
-        }, 100);
+        };
 
-        // Add event listeners for debugging
-        videoRef.current.onloadedmetadata = () => {
-          debug('Video metadata loaded');
+        const handleCanPlay = () => {
+          debug('Video can play - attempting to start playback');
           if (videoRef.current) {
-            debug(`Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+            videoRef.current.play().catch(console.error);
           }
         };
 
-        videoRef.current.oncanplay = () => {
-          debug('Video can play');
+        const handlePlaying = () => {
+          debug('Video is now playing');
         };
 
-        videoRef.current.onplaying = () => {
-          debug('Video is playing');
-        };
-
-        videoRef.current.onerror = (e) => {
-          debug(`Video error: ${e}`);
+        const handleError = (e: any) => {
+          debug(`Video error: ${e.target?.error?.message || 'Unknown error'}`);
           console.error('Video element error:', e);
         };
+
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoRef.current.addEventListener('canplay', handleCanPlay);
+        videoRef.current.addEventListener('playing', handlePlaying);
+        videoRef.current.addEventListener('error', handleError);
+        
+        // Also try to load and play immediately
+        videoRef.current.load();
       }
 
       setupAudioMonitoring(stream);
@@ -268,13 +279,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // Set up video element
       if (videoRef.current && combinedStream) {
         debug('Setting up video element for screen share...');
+        
+        // Clear any existing source first
+        videoRef.current.srcObject = null;
+        
+        // Wait a bit then set the new source
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         videoRef.current.srcObject = combinedStream;
         videoRef.current.muted = true; // Always mute to prevent feedback
         videoRef.current.playsInline = true;
         videoRef.current.autoplay = true;
-
-        // Force play after a short delay
-        setTimeout(async () => {
+        
+        // Set up event handlers
+        const handleLoadedMetadata = async () => {
+          debug(`Video metadata loaded - dimensions: ${videoRef.current?.videoWidth}x${videoRef.current?.videoHeight}`);
           try {
             if (videoRef.current) {
               await videoRef.current.play();
@@ -284,7 +303,20 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             debug(`Screen share video play error: ${playError}`);
             console.error('Screen share video play failed:', playError);
           }
-        }, 100);
+        };
+
+        const handleCanPlay = () => {
+          debug('Video can play - attempting to start playback');
+          if (videoRef.current) {
+            videoRef.current.play().catch(console.error);
+          }
+        };
+
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoRef.current.addEventListener('canplay', handleCanPlay);
+        
+        // Also try to load and play immediately
+        videoRef.current.load();
       }
 
       // Handle screen share ending
@@ -319,46 +351,102 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   }, []);
 
   // Setup audio level monitoring
-  const setupAudioMonitoring = useCallback((stream: MediaStream) => {
+  const setupAudioMonitoring = useCallback(async (stream: MediaStream) => {
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) {
       debug('No audio tracks for monitoring');
       return;
     }
 
+    debug(`Setting up audio monitoring with ${audioTracks.length} audio tracks`);
+    
+    // Log track details
+    audioTracks.forEach((track, index) => {
+      debug(`Audio track ${index}: ${track.label} - enabled: ${track.enabled} - ready: ${track.readyState}`);
+    });
+
     try {
-      debug('Setting up audio monitoring...');
+      // Clean up existing audio context first
+      if (audioContextRef.current) {
+        await audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
+      
+      // Resume audio context if it's suspended
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        debug('Audio context resumed');
+      }
+      
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.fftSize = 512; // Increased for better sensitivity
+      analyser.smoothingTimeConstant = 0.3; // More responsive
+      analyser.minDecibels = -90;
+      analyser.maxDecibels = -10;
+      
       source.connect(analyser);
       
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let isMonitoring = true;
       
       const updateAudioLevel = () => {
-        if (!analyserRef.current || (!isPreviewing && !isStreaming)) {
+        if (!analyserRef.current || !isMonitoring || (!isPreviewing && !isStreaming)) {
           return;
         }
         
         analyserRef.current.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setAudioLevel(Math.min(average / 128, 1));
+        
+        // Calculate RMS for better audio level detection
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        const level = Math.min(rms / 128, 1);
+        
+        setAudioLevel(level);
+        
+        // Debug high audio levels
+        if (level > 0.1) {
+          debug(`Audio level detected: ${(level * 100).toFixed(1)}%`);
+        }
         
         animationRef.current = requestAnimationFrame(updateAudioLevel);
       };
       
+      // Start monitoring
       updateAudioLevel();
-      debug('Audio monitoring setup complete');
+      debug('Audio monitoring setup complete - starting level detection');
+      
+      // Test audio by playing a brief tone (silent)
+      setTimeout(() => {
+        const testOscillator = audioContext.createOscillator();
+        const testGain = audioContext.createGain();
+        testOscillator.connect(testGain);
+        testGain.connect(audioContext.destination);
+        testGain.gain.setValueAtTime(0, audioContext.currentTime); // Silent
+        testOscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+        testOscillator.start();
+        testOscillator.stop(audioContext.currentTime + 0.01);
+        debug('Audio context test completed');
+      }, 100);
+      
     } catch (err) {
       debug(`Audio monitoring setup failed: ${err}`);
-      console.warn('Audio monitoring setup failed:', err);
+      console.error('Audio monitoring setup failed:', err);
     }
   }, [isPreviewing, isStreaming]);
 
