@@ -111,32 +111,46 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         const video = videoRef.current;
         
-        // Clear any existing source first
-        video.srcObject = null;
+        // Set up event listeners first
+        const handleCanPlay = () => {
+          debug('Video can play - starting playback');
+          video.play().catch(err => debug(`Play error in canplay handler: ${err}`));
+        };
         
-        // Set the new source immediately
-        video.srcObject = stream;
+        const handleLoadedMetadata = () => {
+          debug(`Video metadata loaded - dimensions: ${video.videoWidth}x${video.videoHeight}`);
+        };
+        
+        video.addEventListener('canplay', handleCanPlay, { once: true });
+        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        
+        // Set properties before assigning stream
         video.muted = true; // Always mute to prevent feedback
         video.playsInline = true;
         video.autoplay = true;
-
-        // Force video to load and play
-        try {
-          await video.load();
-          await video.play();
-          debug('Video element playing successfully');
-        } catch (playError) {
-          debug(`Initial video play error: ${playError}`);
-          // Try again after a short delay
-          setTimeout(async () => {
+        
+        // Clear any existing source first
+        video.srcObject = null;
+        
+        // Small delay to ensure clean state
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Set the new source
+        video.srcObject = stream;
+        
+        debug('Video srcObject set, waiting for canplay event');
+        
+        // Fallback play attempt after timeout
+        setTimeout(async () => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
             try {
               await video.play();
-              debug('Video playing after retry');
-            } catch (retryError) {
-              debug(`Video retry failed: ${retryError}`);
+              debug('Fallback video play successful');
+            } catch (playError) {
+              debug(`Fallback video play error: ${playError}`);
             }
-          }, 500);
-        }
+          }
+        }, 1000);
       }
 
       setupAudioMonitoring(stream);
@@ -262,32 +276,46 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         const video = videoRef.current;
         
-        // Clear any existing source first
-        video.srcObject = null;
+        // Set up event listeners first
+        const handleCanPlay = () => {
+          debug('Screen share video can play - starting playback');
+          video.play().catch(err => debug(`Screen share play error in canplay handler: ${err}`));
+        };
         
-        // Set the new source immediately
-        video.srcObject = combinedStream;
+        const handleLoadedMetadata = () => {
+          debug(`Screen share metadata loaded - dimensions: ${video.videoWidth}x${video.videoHeight}`);
+        };
+        
+        video.addEventListener('canplay', handleCanPlay, { once: true });
+        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        
+        // Set properties before assigning stream
         video.muted = true; // Always mute to prevent feedback
         video.playsInline = true;
         video.autoplay = true;
         
-        // Force video to load and play
-        try {
-          await video.load();
-          await video.play();
-          debug('Screen share video playing successfully');
-        } catch (playError) {
-          debug(`Screen share video play error: ${playError}`);
-          // Try again after a short delay
-          setTimeout(async () => {
+        // Clear any existing source first
+        video.srcObject = null;
+        
+        // Small delay to ensure clean state
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Set the new source
+        video.srcObject = combinedStream;
+        
+        debug('Screen share srcObject set, waiting for canplay event');
+        
+        // Fallback play attempt after timeout
+        setTimeout(async () => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
             try {
               await video.play();
-              debug('Screen share video playing after retry');
-            } catch (retryError) {
-              debug(`Screen share video retry failed: ${retryError}`);
+              debug('Fallback screen share video play successful');
+            } catch (playError) {
+              debug(`Fallback screen share video play error: ${playError}`);
             }
-          }, 500);
-        }
+          }
+        }, 1000);
       }
 
       // Handle screen share ending
