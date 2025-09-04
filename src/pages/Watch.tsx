@@ -64,7 +64,7 @@ const Watch = () => {
       if (!streamId) return null;
       const { data } = await supabase
         .from('streams')
-        .select('*, stream_type')
+        .select('*')
         .eq('id', streamId)
         .maybeSingle();
       return data;
