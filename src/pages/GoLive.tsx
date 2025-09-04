@@ -386,20 +386,11 @@ const GoLive = () => {
           playbackId: currentLivepeerPlaybackId
         });
          
-         // For browser streams, start the stream immediately since user will use in-browser controls
-         if (streamingMode === 'browser') {
-           // Update stream to be live immediately for browser streams
-           await supabase
-             .from('streams')
-             .update({ 
-               is_live: true,
-               last_heartbeat: new Date().toISOString()
-             })
-             .eq('id', streamId);
-           
-           // Mark that user has browser streaming active
-           localStorage.setItem('browserStreamingActive', 'false'); // They need to click "Go Live" to start
-         }
+          // For browser streams, mark that user is ready to stream but not live yet
+          if (streamingMode === 'browser') {
+            // Mark that user has browser streaming setup but not active yet
+            localStorage.setItem('browserStreamingActive', 'false'); // They need to click "Go Live" to start
+          }
          
          // Preserve browser stream state if user is currently streaming
          if (streamingMode === 'browser' && isPreviewing) {

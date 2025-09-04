@@ -529,13 +529,27 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
 
     try {
-      // For live streaming to RTMP endpoint
-      if (!ingestUrl || !streamKey) {
-        toast.error('Stream configuration missing. Please restart from Go Live page.');
-        return;
+      // First, mark the stream as live in the database immediately
+      const streamId = localStorage.getItem('currentStreamId');
+      if (streamId) {
+        debug('Marking stream as live in database...');
+        const { error } = await supabase
+          .from('streams')
+          .update({ 
+            is_live: true, 
+            last_heartbeat: new Date().toISOString()
+          })
+          .eq('id', streamId);
+          
+        if (error) {
+          console.error('Failed to mark stream as live:', error);
+          toast.error('Failed to start stream');
+          return;
+        }
+        debug('Stream marked as live in database');
       }
 
-      debug(`Starting RTMP stream to ${ingestUrl}`);
+      debug(`Starting browser stream`);
       
       // Create a canvas to capture the video stream
       const canvas = document.createElement('canvas');
@@ -549,7 +563,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error('Video element not available');
       }
 
-      // Create a new stream from canvas for RTMP
+      // Create a new stream from canvas for streaming
       const canvasStream = canvas.captureStream(30); // 30 FPS
       
       // Add audio tracks from original stream
@@ -566,7 +580,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         requestAnimationFrame(renderFrame);
       };
 
-      // Set up MediaRecorder for RTMP streaming
+      // Set up MediaRecorder for streaming
       const options: MediaRecorderOptions = {
         mimeType: 'video/webm;codecs=vp9,opus',
         videoBitsPerSecond: 2500000, // 2.5 Mbps
@@ -600,24 +614,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         if (event.data.size > 0) {
           chunks.push(event.data);
           debug(`Stream chunk: ${event.data.size} bytes`);
-          
-          // In a real implementation, we would send this to RTMP endpoint
-          // For now, we'll simulate by marking the stream as live in the database
-          try {
-            const streamId = localStorage.getItem('currentStreamId');
-            if (streamId) {
-              await fetch('/api/stream-heartbeat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ streamId, isActive: true })
-              }).catch(() => {
-                // If endpoint doesn't exist, we'll handle it in the stream monitoring
-                debug('Stream heartbeat endpoint not available, using database directly');
-              });
-            }
-          } catch (error) {
-            debug(`Heartbeat error: ${error}`);
-          }
         }
       };
 
@@ -627,7 +623,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         renderFrame(); // Start canvas rendering
         toast.success('Live stream started!');
         onStreamStart?.();
-        debug('Live stream started');
+        debug('Browser stream started');
+        
+        // Save that we're actively streaming
+        localStorage.setItem('browserStreamingActive', 'true');
       };
 
       mediaRecorder.onstop = () => {
@@ -635,8 +634,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         stopHeartbeat();
         toast.info('Stream stopped');
         onStreamEnd?.();
-        debug('Live stream stopped');
+        debug('Browser stream stopped');
         chunks = []; // Clear chunks
+        
+        // Clear streaming state
+        localStorage.setItem('browserStreamingActive', 'false');
       };
 
       mediaRecorder.onerror = (error) => {
@@ -656,11 +658,30 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   }, [isPreviewMode, streamKey, ingestUrl, onStreamStart, onStreamEnd, isStreaming]);
 
   // Stop streaming
-  const stopStream = useCallback(() => {
+  const stopStream = useCallback(async () => {
     debug('Stopping stream...');
     
     if (mediaRecorderRef.current && isStreaming) {
       mediaRecorderRef.current.stop();
+    }
+    
+    // Mark stream as not live in database
+    if (!isPreviewMode) {
+      const streamId = localStorage.getItem('currentStreamId');
+      if (streamId) {
+        try {
+          await supabase
+            .from('streams')
+            .update({ 
+              is_live: false,
+              ended_at: new Date().toISOString()
+            })
+            .eq('id', streamId);
+          debug('Stream marked as ended in database');
+        } catch (error) {
+          console.error('Failed to update stream status:', error);
+        }
+      }
     }
     
     if (isPreviewMode) {

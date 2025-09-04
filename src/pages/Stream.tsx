@@ -302,6 +302,7 @@ const Stream = () => {
                   console.log('Browser stream ended');
                   handleEndStream();
                 }}
+                isPreviewMode={false}
               />
             </div>
           ) : playbackUrl ? (
