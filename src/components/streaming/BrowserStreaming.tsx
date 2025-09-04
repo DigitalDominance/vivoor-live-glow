@@ -8,13 +8,15 @@ interface BrowserStreamingProps {
   ingestUrl: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
+  isPreviewMode?: boolean; // New prop to distinguish preview vs live mode
 }
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
   ingestUrl,
   onStreamStart,
-  onStreamEnd
+  onStreamEnd,
+  isPreviewMode = false
 }) => {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -31,6 +33,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const [microphoneEnabled, setMicrophoneEnabled] = React.useState(true);
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [audioLevel, setAudioLevel] = React.useState(0);
+  const [heartbeatInterval, setHeartbeatInterval] = React.useState<NodeJS.Timeout | null>(null);
+  const [isLiveStreaming, setIsLiveStreaming] = React.useState(false);
 
   // Initialize camera media
   const initializeCamera = async () => {
@@ -233,15 +237,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   // Start streaming
   const startStream = async () => {
-    if (!mediaStreamRef.current || !isPreviewing) {
+    if (!mediaStreamRef.current || (!isPreviewing && isPreviewMode)) {
       toast.error('Please start preview first');
       return;
     }
 
+    if (!isPreviewMode && streamKey === 'preview') {
+      toast.error('Cannot start live stream in preview mode');
+      return;
+    }
+
     try {
-      // For now, we'll use a simple approach - in a real implementation,
-      // you'd want to use WebRTC or FFmpeg.wasm to encode and send to RTMP
-      
       // Create a MediaRecorder to capture the stream
       const mediaRecorder = new MediaRecorder(mediaStreamRef.current, {
         mimeType: 'video/webm;codecs=vp9,opus'
@@ -255,20 +261,36 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         if (event.data.size > 0) {
           chunks.push(event.data);
           // In a real implementation, you'd send these chunks to your RTMP endpoint
-          // For now, we'll just simulate streaming
           console.log('Streaming data chunk:', event.data.size, 'bytes');
         }
       };
       
       mediaRecorder.onstart = () => {
         setIsStreaming(true);
-        toast.success('Stream started! You are now live!');
+        setIsLiveStreaming(true);
+        
+        if (!isPreviewMode) {
+          // Start heartbeat for live streams to prevent auto-end
+          startHeartbeat();
+          toast.success('Stream started! You are now live!');
+        } else {
+          toast.success('Preview stream started!');
+        }
+        
         onStreamStart?.();
       };
       
       mediaRecorder.onstop = () => {
         setIsStreaming(false);
-        toast.info('Stream stopped');
+        setIsLiveStreaming(false);
+        stopHeartbeat();
+        
+        if (!isPreviewMode) {
+          toast.info('Stream stopped');
+        } else {
+          toast.info('Preview stopped');
+        }
+        
         onStreamEnd?.();
       };
       
@@ -286,7 +308,76 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     if (mediaRecorderRef.current && isStreaming) {
       mediaRecorderRef.current.stop();
     }
+    stopHeartbeat();
   };
+
+  // Start heartbeat to prevent auto-end when user leaves page
+  const startHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+    
+    const interval = setInterval(async () => {
+      try {
+        // Send heartbeat to keep stream alive
+        const streamId = localStorage.getItem('currentStreamId');
+        if (streamId && !isPreviewMode) {
+          await fetch('/api/stream-heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ streamId })
+          });
+        }
+      } catch (error) {
+        console.warn('Heartbeat failed:', error);
+      }
+    }, 30000); // Send heartbeat every 30 seconds
+    
+    setHeartbeatInterval(interval);
+  };
+
+  // Stop heartbeat
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      setHeartbeatInterval(null);
+    }
+  };
+
+  // Page visibility handling for 1-minute grace period
+  React.useEffect(() => {
+    if (!isLiveStreaming || isPreviewMode) return;
+
+    let gracePeriodTimer: NodeJS.Timeout | null = null;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // User left the page, start 1-minute grace period
+        gracePeriodTimer = setTimeout(() => {
+          console.log('Grace period expired, ending stream');
+          stopStream();
+        }, 60000); // 1 minute
+        
+        toast.info('Stream will end in 1 minute if you don\'t return');
+      } else {
+        // User returned, cancel grace period
+        if (gracePeriodTimer) {
+          clearTimeout(gracePeriodTimer);
+          gracePeriodTimer = null;
+          toast.success('Welcome back! Stream continues');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (gracePeriodTimer) {
+        clearTimeout(gracePeriodTimer);
+      }
+    };
+  }, [isLiveStreaming, isPreviewMode]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -297,13 +388,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       if (websocketRef.current) {
         websocketRef.current.close();
       }
+      stopHeartbeat();
     };
   }, []);
 
   return (
     <div className="space-y-4">
-      {/* Stream Setup - Only show if not previewing */}
-      {!isPreviewing && (
+      {/* Stream Setup - Only show if not previewing and in preview mode */}
+      {!isPreviewing && isPreviewMode && (
         <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={initializeCamera}
@@ -447,7 +539,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                 className="bg-red-500 hover:bg-red-600"
               >
                 <Play className="size-4 mr-2" />
-                Go Live
+                {isPreviewMode ? 'Start Preview' : 'Go Live'}
               </Button>
             ) : (
               <Button
@@ -455,7 +547,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                 variant="destructive"
               >
                 <Square className="size-4 mr-2" />
-                End Stream
+                {isPreviewMode ? 'Stop Preview' : 'End Stream'}
               </Button>
             )}
           </div>
@@ -465,8 +557,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       {/* Info */}
       <div className="text-xs text-muted-foreground space-y-1">
         <p>• Choose between camera streaming or screen sharing</p>
-        <p>• Preview mode lets you test your audio and video before going live</p>
-        <p>• Audio level indicator shows your microphone activity</p>
+        {isPreviewMode ? (
+          <>
+            <p>• Preview mode lets you test your audio and video before going live</p>
+            <p>• Audio level indicator shows your microphone activity</p>
+          </>
+        ) : (
+          <>
+            <p>• Stream will continue even if you leave the page (1 minute grace period)</p>
+            <p>• Use the controls to manage your live stream</p>
+          </>
+        )}
         <p>• Make sure to allow camera/microphone or screen sharing permissions when prompted</p>
       </div>
     </div>

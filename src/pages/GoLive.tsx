@@ -576,6 +576,7 @@ const GoLive = () => {
                   <BrowserStreaming
                     streamKey={'preview'} // Placeholder for preview
                     ingestUrl={'preview'} // Placeholder for preview
+                    isPreviewMode={true} // Enable preview mode
                   />
                 </div>
               </div>
