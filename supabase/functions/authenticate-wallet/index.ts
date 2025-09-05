@@ -202,7 +202,7 @@ serve(async (req) => {
       );
     }
 
-    // Create a secure session token
+    // Create a secure session token using crypto.randomUUID and timestamp
     const { data: sessionToken, error: sessionError } = await supabaseClient
       .rpc('create_wallet_session', {
         encrypted_user_id: encryptedUserId,
