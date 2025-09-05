@@ -104,13 +104,11 @@ export default function Admin() {
         
         toast.success('Admin access granted');
         
-        // Wait a moment for state to update, then load data sequentially
-        setTimeout(() => {
-          console.log('Loading admin data with session token:', data.sessionToken.substring(0, 20) + '...');
-          loadUsers(0);
-          loadStreams(0);
-          loadReports(0);
-        }, 100);
+        // Load data immediately with the token from the response
+        console.log('Loading admin data with session token:', data.sessionToken.substring(0, 20) + '...');
+        loadUsersWithToken(0, data.sessionToken);
+        loadStreamsWithToken(0, data.sessionToken);
+        loadReportsWithToken(0, data.sessionToken);
       } else {
         const errorMsg = data?.lockoutUntil 
           ? `Account locked until ${new Date(data.lockoutUntil).toLocaleString()}`
@@ -125,19 +123,19 @@ export default function Admin() {
     }
   };
 
-  const loadUsers = async (page = 0) => {
-    if (!sessionToken) {
+  const loadUsersWithToken = async (page = 0, token = sessionToken) => {
+    if (!token) {
       console.error('No session token available for loadUsers');
       toast.error('Session expired. Please log in again.');
       return;
     }
     
     try {
-      console.log('Loading users with token:', sessionToken.substring(0, 20) + '...');
+      console.log('Loading users with token:', token.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_users',
-          sessionToken: sessionToken,
+          sessionToken: token,
           search: searchQuery || undefined,
           limit: itemsPerPage,
           offset: page * itemsPerPage
@@ -163,19 +161,23 @@ export default function Admin() {
     }
   };
 
-  const loadStreams = async (page = 0) => {
-    if (!sessionToken) {
+  const loadUsers = async (page = 0) => {
+    return loadUsersWithToken(page, sessionToken);
+  };
+
+  const loadStreamsWithToken = async (page = 0, token = sessionToken) => {
+    if (!token) {
       console.error('No session token available for loadStreams');
       toast.error('Session expired. Please log in again.');
       return;
     }
     
     try {
-      console.log('Loading streams with token:', sessionToken.substring(0, 20) + '...');
+      console.log('Loading streams with token:', token.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_live_streams',
-          sessionToken: sessionToken,
+          sessionToken: token,
           limit: itemsPerPage,
           offset: page * itemsPerPage
         }
@@ -199,19 +201,23 @@ export default function Admin() {
     }
   };
 
-  const loadReports = async (page = 0) => {
-    if (!sessionToken) {
+  const loadStreams = async (page = 0) => {
+    return loadStreamsWithToken(page, sessionToken);
+  };
+
+  const loadReportsWithToken = async (page = 0, token = sessionToken) => {
+    if (!token) {
       console.error('No session token available for loadReports');
       toast.error('Session expired. Please log in again.');
       return;
     }
     
     try {
-      console.log('Loading reports with token:', sessionToken.substring(0, 20) + '...');
+      console.log('Loading reports with token:', token.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_reports',
-          sessionToken: sessionToken,
+          sessionToken: token,
           statusFilter: statusFilter === 'all' ? undefined : statusFilter,
           limit: itemsPerPage,
           offset: page * itemsPerPage
@@ -234,6 +240,10 @@ export default function Admin() {
         toast.error('Failed to load reports');
       }
     }
+  };
+
+  const loadReports = async (page = 0) => {
+    return loadReportsWithToken(page, sessionToken);
   };
 
   const resolveReport = async (reportId: string) => {
