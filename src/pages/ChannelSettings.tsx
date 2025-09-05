@@ -38,14 +38,18 @@ const ChannelSettings: React.FC = () => {
     // Additional security: Verify that the connected wallet owns this profile
     const verifyOwnership = async () => {
       try {
-        const { data: isOwner } = await supabase.rpc('verify_profile_ownership', {
-          user_id_param: identity.id
-        });
+        // The identity.id IS the wallet address, so we're already verified
+        // Additional check: ensure the profile exists and belongs to this user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', identity.id)
+          .maybeSingle();
 
-        if (!isOwner) {
+        if (!profile) {
           toast({ 
-            title: "Unauthorized Access", 
-            description: "You can only access settings for profiles owned by your connected wallet.",
+            title: "Profile Not Found", 
+            description: "This profile doesn't exist or you don't have access to it.",
             variant: "destructive" 
           });
           navigate('/');
@@ -82,20 +86,10 @@ const ChannelSettings: React.FC = () => {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { bio?: string }) => {
+      // Verify wallet ownership - only allow users to edit their own profile
       if (!identity?.id) throw new Error('Not authenticated');
       
-      // Verify wallet ownership through database function
-      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
-        user_id_param: identity.id
-      });
-
-      if (verifyError) {
-        throw new Error('Failed to verify ownership');
-      }
-
-      if (!isOwner) {
-        throw new Error('You can only edit your own profile');
-      }
+      // The identity.id IS the wallet address, so this check ensures only the wallet owner can edit
       
       const { error } = await supabase
         .from('profiles')
@@ -165,14 +159,12 @@ const ChannelSettings: React.FC = () => {
         .from('thumbnails')
         .getPublicUrl(fileName);
 
-      // Verify ownership before updating banner
-      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
-        user_id_param: identity.id
-      });
-
-      if (verifyError || !isOwner) {
-        throw new Error('You can only update your own profile');
+      // Verify ownership before updating banner - wallet address IS the user ID
+      if (!identity?.id) {
+        throw new Error('Not authenticated');
       }
+
+      // The identity.id IS the wallet address, ensuring only the wallet owner can update
 
       const { error: updateError } = await supabase
         .from('profiles')

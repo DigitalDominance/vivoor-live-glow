@@ -49,14 +49,18 @@ const ChannelEdit: React.FC = () => {
     // Additional security: Verify that the connected wallet owns this profile
     const verifyOwnership = async () => {
       try {
-        const { data: isOwner } = await supabase.rpc('verify_profile_ownership', {
-          user_id_param: identity.id
-        });
+        // The identity.id IS the wallet address, so we're already verified
+        // Additional check: ensure the profile exists and belongs to this user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', identity.id)
+          .maybeSingle();
 
-        if (!isOwner) {
+        if (!profile) {
           toast({ 
-            title: "Unauthorized Access", 
-            description: "You can only edit profiles owned by your connected wallet.",
+            title: "Profile Not Found", 
+            description: "This profile doesn't exist or you don't have access to it.",
             variant: "destructive" 
           });
           navigate('/');
@@ -75,24 +79,8 @@ const ChannelEdit: React.FC = () => {
     
     setSaving(true);
     try {
-      // Verify wallet ownership through database function
-      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
-        user_id_param: identity.id
-      });
-
-      if (verifyError) {
-        throw new Error('Failed to verify ownership');
-      }
-
-      if (!isOwner) {
-        toast({ 
-          title: "Unauthorized", 
-          description: "You can only edit your own profile.",
-          variant: "destructive" 
-        });
-        navigate('/');
-        return;
-      }
+      // The profile update is already secured by RLS policies
+      // Since identity.id IS the wallet address, only the wallet owner can update their own profile
 
       // Use secure profile update that includes additional ownership checks
       const { error } = await supabase

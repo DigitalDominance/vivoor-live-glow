@@ -983,6 +983,10 @@ export type Database = {
           is_valid: boolean
         }[]
       }
+      verify_profile_ownership: {
+        Args: { user_id_param: string }
+        Returns: boolean
+      }
       viewer_heartbeat: {
         Args: { stream_id: string }
         Returns: undefined
