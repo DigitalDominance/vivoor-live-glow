@@ -98,7 +98,10 @@ const ChannelEdit: React.FC = () => {
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ 
+          avatar_url: publicUrl,
+          last_avatar_change: new Date().toISOString()
+        })
         .eq('id', identity.id);
 
       if (updateError) throw updateError;

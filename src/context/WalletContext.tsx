@@ -229,13 +229,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
       
-      // Update local storage
+      // Update local storage - preserve existing avatar change timestamp
       const map = readProfiles();
       const nowIso = new Date().toISOString();
       const rec: ProfileRecord = {
         username,
         avatarUrl: map[identity.id]?.avatarUrl,
         lastUsernameChange: nowIso,
+        lastAvatarChange: map[identity.id]?.lastAvatarChange, // Preserve existing avatar cooldown
       };
       map[identity.id] = rec;
       writeProfiles(map);
@@ -263,13 +264,13 @@ const saveAvatarUrl = useCallback(
         throw error;
       }
       
-      // Update local storage
+      // Update local storage - preserve existing username change timestamp
       const map = readProfiles();
       const nowIso = new Date().toISOString();
       const rec: ProfileRecord = {
         username: map[identity.id]?.username || profile?.username || "",
         avatarUrl: url,
-        lastUsernameChange: map[identity.id]?.lastUsernameChange,
+        lastUsernameChange: map[identity.id]?.lastUsernameChange, // Preserve existing username cooldown
         lastAvatarChange: nowIso,
       };
       map[identity.id] = rec;
@@ -319,6 +320,7 @@ const saveAvatarUrl = useCallback(
           username: updates.handle,
           avatarUrl: map[identity.id]?.avatarUrl,
           lastUsernameChange: nowIso,
+          lastAvatarChange: map[identity.id]?.lastAvatarChange, // Preserve existing avatar cooldown
         };
         map[identity.id] = rec;
         writeProfiles(map);
