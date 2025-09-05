@@ -70,8 +70,8 @@ export const useViewerTracking = (streamId: string | null, isLive: boolean, user
 
     joinAsViewer();
 
-    // Send heartbeat every 60 seconds
-    heartbeatInterval.current = setInterval(sendHeartbeat, 60000);
+    // Send heartbeat every 30 seconds (more frequent for better tracking)
+    heartbeatInterval.current = setInterval(sendHeartbeat, 30000);
 
     // Cleanup function
     return () => {
