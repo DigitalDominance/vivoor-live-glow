@@ -334,40 +334,33 @@ const GoLive = () => {
         console.log('Using category thumbnail:', thumbnailUrl);
       }
 
-      // Save stream to Supabase with treasury transaction info using JWT
+      // Save stream to Supabase with all stream details
       console.log('Creating stream in database...');
       try {
-        const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          title_param: title || 'Live Stream',
-          category_param: category,
-          livepeer_stream_id_param: currentLivepeerStreamId || null,
-          livepeer_playback_id_param: currentLivepeerPlaybackId || null,
-          streaming_mode_param: streamingMode,
-          is_live_param: streamingMode === 'browser' ? true : false
-        });
+        const { data: streamData, error } = await supabase
+          .from('streams')
+          .insert({
+            user_id: kaspaAddress,
+            title: title || 'Live Stream',
+            category: category,
+            livepeer_stream_id: currentLivepeerStreamId,
+            livepeer_playback_id: currentLivepeerPlaybackId,
+            playback_url: currentPlaybackUrl,
+            thumbnail_url: thumbnailUrl,
+            streaming_mode: streamingMode,
+            treasury_txid: treasuryTxid,
+            treasury_block_time: Date.now(),
+            is_live: streamingMode === 'browser' ? true : false
+          })
+          .select('id')
+          .single();
 
-        if (error || !streamId) {
+        if (error || !streamData?.id) {
           console.error('Failed to create stream in database:', error);
           throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
         }
 
-        // Need to also update additional fields that aren't in the secure function
-        const { error: updateError } = await supabase
-          .from('streams')
-          .update({
-            playback_url: currentPlaybackUrl,
-            thumbnail_url: thumbnailUrl,
-            treasury_txid: treasuryTxid,
-            treasury_block_time: Date.now() // Approximate block time
-          })
-          .eq('id', streamId);
-
-        if (updateError) {
-          console.error('Failed to update stream details:', updateError);
-          // Don't throw here since the stream was created successfully
-        }
+        const streamId = streamData.id;
 
         console.log('Stream created successfully with ID:', streamId);
         
