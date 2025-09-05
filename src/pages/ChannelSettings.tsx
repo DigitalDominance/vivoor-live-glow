@@ -60,12 +60,11 @@ const ChannelSettings: React.FC = () => {
     mutationFn: async (data: { bio?: string }) => {
       if (!identity?.id) throw new Error('Connect your wallet first');
       
-      // RLS policies ensure only the authenticated user can update their own profile
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', identity.id);
+      // Use the database function that updates bio with proper security
+      const { error } = await supabase.rpc('update_bio', {
+        user_id_param: identity.id,
+        new_bio: data.bio || ''
+      });
       
       if (error) throw error;
     },

@@ -931,6 +931,10 @@ export type Database = {
         Args: { new_banner_url: string; user_id_param: string }
         Returns: undefined
       }
+      update_bio: {
+        Args: { new_bio: string; user_id_param: string }
+        Returns: undefined
+      }
       update_stream_heartbeat: {
         Args: { stream_id: string }
         Returns: undefined
