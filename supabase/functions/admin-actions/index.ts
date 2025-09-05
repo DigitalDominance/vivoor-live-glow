@@ -26,26 +26,119 @@ function isValidUUID(uuid: string): boolean {
   return uuidRegex.test(uuid);
 }
 
-// Rate limiting store (simple in-memory)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+// Enhanced rate limiting and session management
+const rateLimitStore = new Map<string, { count: number; resetTime: number; failedAttempts: number; lockoutUntil: number }>();
+const sessionStore = new Map<string, { created: number; expires: number; ip: string }>();
 
-// Simple rate limiting function
-function checkRateLimit(ip: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
+// Generate secure session token
+function generateSessionToken(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2);
+  return `admin_${timestamp}_${random}`;
+}
+
+// Enhanced rate limiting with progressive delays and lockouts
+function checkRateLimit(ip: string, maxRequests: number = 5, windowMs: number = 60000): { allowed: boolean; delay?: number; lockoutUntil?: number } {
   const now = Date.now();
   const key = ip;
-  const record = rateLimitStore.get(key);
+  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs, failedAttempts: 0, lockoutUntil: 0 };
   
-  if (!record || now > record.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
-    return true;
+  // Check if IP is currently locked out
+  if (record.lockoutUntil > now) {
+    return { allowed: false, lockoutUntil: record.lockoutUntil };
   }
   
+  // Reset window if expired
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + windowMs;
+    rateLimitStore.set(key, record);
+    return { allowed: true };
+  }
+  
+  // Check request limit
   if (record.count >= maxRequests) {
-    return false;
+    return { allowed: false };
   }
   
   record.count++;
+  rateLimitStore.set(key, record);
+  return { allowed: true };
+}
+
+// Track failed authentication attempts with progressive lockouts
+function handleFailedAuth(ip: string): { lockoutUntil?: number; delay: number } {
+  const now = Date.now();
+  const key = ip;
+  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + 60000, failedAttempts: 0, lockoutUntil: 0 };
+  
+  record.failedAttempts++;
+  
+  // Progressive delays: 1s, 5s, 15s, then lockout
+  let delay = 1000; // 1 second
+  if (record.failedAttempts === 2) delay = 5000; // 5 seconds
+  else if (record.failedAttempts === 3) delay = 15000; // 15 seconds
+  else if (record.failedAttempts >= 4) {
+    // Lockout for 15 minutes after 4 failed attempts
+    record.lockoutUntil = now + (15 * 60 * 1000);
+    rateLimitStore.set(key, record);
+    return { lockoutUntil: record.lockoutUntil, delay: 0 };
+  }
+  
+  rateLimitStore.set(key, record);
+  return { delay };
+}
+
+// Reset failed attempts on successful auth
+function resetFailedAttempts(ip: string): void {
+  const record = rateLimitStore.get(ip);
+  if (record) {
+    record.failedAttempts = 0;
+    record.lockoutUntil = 0;
+    rateLimitStore.set(ip, record);
+  }
+}
+
+// Validate session token
+function validateSessionToken(token: string, ip: string): boolean {
+  const session = sessionStore.get(token);
+  if (!session) return false;
+  
+  const now = Date.now();
+  if (now > session.expires) {
+    sessionStore.delete(token);
+    return false;
+  }
+  
+  // Optional: Validate IP (comment out if users might have changing IPs)
+  // if (session.ip !== ip) return false;
+  
   return true;
+}
+
+// Create new session
+function createSession(ip: string): string {
+  const token = generateSessionToken();
+  const now = Date.now();
+  const expires = now + (60 * 60 * 1000); // 1 hour
+  
+  sessionStore.set(token, {
+    created: now,
+    expires,
+    ip
+  });
+  
+  return token;
+}
+
+// Clean up expired sessions
+function cleanupExpiredSessions(): void {
+  const now = Date.now();
+  for (const [token, session] of sessionStore.entries()) {
+    if (now > session.expires) {
+      sessionStore.delete(token);
+    }
+  }
 }
 
 const corsHeaders = {
@@ -56,6 +149,7 @@ const corsHeaders = {
 interface AdminAction {
   action: 'verify_password' | 'ban_user' | 'unban_user' | 'end_stream' | 'get_users' | 'get_live_streams' | 'get_reports' | 'resolve_report';
   password?: string;
+  sessionToken?: string;
   userId?: string;
   streamId?: string;
   reportId?: string;
@@ -83,13 +177,26 @@ serve(async (req) => {
   }
 
   try {
-    // Get client IP for rate limiting
+    // Get client IP for enhanced rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
     
-    // Apply rate limiting (max 10 requests per minute per IP)
-    if (!checkRateLimit(clientIP, 10, 60000)) {
+    // Clean up expired sessions periodically
+    if (Math.random() < 0.1) { // 10% chance to cleanup on each request
+      cleanupExpiredSessions();
+    }
+    
+    // Apply enhanced rate limiting (max 5 requests per minute per IP)
+    const rateLimitResult = checkRateLimit(clientIP, 5, 60000);
+    if (!rateLimitResult.allowed) {
+      const error = rateLimitResult.lockoutUntil 
+        ? `IP locked out until ${new Date(rateLimitResult.lockoutUntil).toISOString()}`
+        : 'Too many requests. Please try again later.';
+      
       return new Response(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        JSON.stringify({ 
+          error,
+          lockoutUntil: rateLimitResult.lockoutUntil 
+        }),
         { 
           status: 429, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -141,7 +248,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, password, userId, streamId, reportId, search, offset = 0, limit = 50, statusFilter } = body;
+    const { action, password, sessionToken, userId, streamId, reportId, search, offset = 0, limit = 50, statusFilter } = body;
 
     // Validate action parameter
     const validActions = ['verify_password', 'ban_user', 'unban_user', 'end_stream', 'get_users', 'get_live_streams', 'get_reports', 'resolve_report'];
@@ -166,42 +273,98 @@ serve(async (req) => {
       );
     }
 
-    // Validate password presence
-    if (!password || typeof password !== 'string' || password.trim() === '') {
+    // Handle authentication differently for password verification vs session token validation
+    if (action === 'verify_password') {
+      // For initial login, validate password
+      if (!password || typeof password !== 'string' || password.trim() === '') {
+        return new Response(
+          JSON.stringify({ error: 'Password required' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      const isValidPassword = await verifyPasswordSecure(password, adminPassword);
+      
+      if (!isValidPassword) {
+        // Track failed attempt and apply progressive delays
+        const failureResult = handleFailedAuth(clientIP);
+        
+        if (failureResult.delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, failureResult.delay));
+        }
+        
+        console.log('Admin authentication failed from IP:', clientIP);
+        
+        const errorMessage = failureResult.lockoutUntil 
+          ? `Too many failed attempts. Locked out until ${new Date(failureResult.lockoutUntil).toISOString()}`
+          : 'Invalid admin password';
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            lockoutUntil: failureResult.lockoutUntil 
+          }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      // Reset failed attempts on successful auth
+      resetFailedAttempts(clientIP);
+      
+      // Create new session token
+      const newSessionToken = createSession(clientIP);
+      
+      console.log('Admin authentication successful from IP:', clientIP);
+      
       return new Response(
-        JSON.stringify({ error: 'Password required' }),
+        JSON.stringify({ 
+          verified: true, 
+          sessionToken: newSessionToken,
+          expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
+        }),
         { 
-          status: 401, 
+          status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
-    }
+    } else {
+      // For all other actions, validate session token
+      if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
+        return new Response(
+          JSON.stringify({ error: 'Session token required' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
 
-    // Verify admin password for all actions using constant-time comparison
-    const isValidPassword = await verifyPasswordSecure(password, adminPassword);
-    
-    if (!isValidPassword) {
-      // Add delay to prevent timing attacks
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Log failed attempt for monitoring
-      console.log('Admin authentication failed from IP:', clientIP);
-      return new Response(
-        JSON.stringify({ error: 'Invalid admin password' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+      if (!validateSessionToken(sessionToken, clientIP)) {
+        console.log('Invalid session token from IP:', clientIP);
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session token' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
 
-    // Log successful admin access for auditing
-    console.log('Admin access granted for action:', action, 'from IP:', clientIP);
+      // Log successful admin access for auditing
+      console.log('Admin access granted for action:', action, 'from IP:', clientIP);
+    }
 
     let result = null;
 
     switch (action) {
       case 'verify_password':
-        result = { verified: true };
+        // This case is now handled above before the switch statement
         break;
 
       case 'ban_user':

@@ -53,6 +53,7 @@ interface Report {
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [sessionExpiry, setSessionExpiry] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -91,18 +92,25 @@ export default function Admin() {
         throw error;
       }
 
-      if (data?.verified) {
+      if (data?.verified && data?.sessionToken) {
         setIsAuthenticated(true);
-        // Set session expiry to 1 hour from now
-        const expiry = new Date();
-        expiry.setHours(expiry.getHours() + 1);
+        setSessionToken(data.sessionToken);
+        // Clear password from memory immediately
+        setPassword('');
+        
+        // Set session expiry from server response
+        const expiry = new Date(data.expiresAt);
         setSessionExpiry(expiry);
+        
         toast.success('Admin access granted');
         loadUsers(0);
         loadStreams(0);
         loadReports(0);
       } else {
-        toast.error('Invalid admin password');
+        const errorMsg = data?.lockoutUntil 
+          ? `Account locked until ${new Date(data.lockoutUntil).toLocaleString()}`
+          : 'Invalid admin password';
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error('Authentication error:', error);
@@ -117,7 +125,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_users',
-          password: password,
+          sessionToken: sessionToken,
           search: searchQuery || undefined,
           limit: itemsPerPage,
           offset: page * itemsPerPage
@@ -139,7 +147,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_live_streams',
-          password: password,
+          sessionToken: sessionToken,
           limit: itemsPerPage,
           offset: page * itemsPerPage
         }
@@ -159,7 +167,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_reports',
-          password: password,
+          sessionToken: sessionToken,
           statusFilter: statusFilter === 'all' ? undefined : statusFilter,
           limit: itemsPerPage,
           offset: page * itemsPerPage
@@ -181,7 +189,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'resolve_report',
-          password: password,
+          sessionToken: sessionToken,
           reportId
         }
       });
@@ -205,7 +213,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action,
-          password: password,
+          sessionToken: sessionToken,
           userId
         }
       });
@@ -228,7 +236,7 @@ export default function Admin() {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'end_stream',
-          password: password,
+          sessionToken: sessionToken,
           streamId
         }
       });
@@ -264,19 +272,20 @@ export default function Admin() {
 
   // Session expiry check
   useEffect(() => {
-    if (isAuthenticated && sessionExpiry) {
-      const checkExpiry = () => {
-        if (new Date() > sessionExpiry) {
-          setIsAuthenticated(false);
-          setPassword('');
-          setSessionExpiry(null);
-          toast.error('Admin session expired. Please log in again.');
-        }
-      };
+      if (isAuthenticated && sessionExpiry) {
+        const checkExpiry = () => {
+          if (new Date() > sessionExpiry) {
+            setIsAuthenticated(false);
+            setPassword('');
+            setSessionToken(null);
+            setSessionExpiry(null);
+            toast.error('Admin session expired. Please log in again.');
+          }
+        };
 
-      const interval = setInterval(checkExpiry, 60000); // Check every minute
-      return () => clearInterval(interval);
-    }
+        const interval = setInterval(checkExpiry, 60000); // Check every minute
+        return () => clearInterval(interval);
+      }
   }, [isAuthenticated, sessionExpiry]);
 
   // Password protection screen
