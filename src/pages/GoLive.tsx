@@ -337,6 +337,10 @@ const GoLive = () => {
       // Save stream to Supabase with treasury transaction info using JWT
       console.log('Creating stream in database...');
       try {
+        if (!sessionToken || !identity?.address) {
+          throw new Error('Authentication required - please reconnect your wallet');
+        }
+
         const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
           session_token_param: sessionToken,
           wallet_address_param: identity.address,
