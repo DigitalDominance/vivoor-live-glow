@@ -54,24 +54,25 @@ async function verifyECDSASignature(
     console.log('Signature (raw):', signature);
     console.log('Message:', message);
     
-    // Kasware returns base64 encoded signatures, try to decode
+    // Detect signature format and decode appropriately
     let signatureBytes: Uint8Array;
     
-    try {
-      // First try base64 decoding (Kasware default format)
-      const base64Decoded = atob(signature);
-      signatureBytes = new Uint8Array(base64Decoded.length);
-      for (let i = 0; i < base64Decoded.length; i++) {
-        signatureBytes[i] = base64Decoded.charCodeAt(i);
-      }
-      console.log('Signature decoded from base64, length:', signatureBytes.length);
-    } catch (base64Error) {
-      // Fallback to hex decoding
-      if (signature.length === 128 && /^[0-9a-fA-F]{128}$/.test(signature)) {
-        signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-        console.log('Signature decoded from hex, length:', signatureBytes.length);
-      } else {
-        console.error('Invalid signature format - not base64 or hex');
+    // Check if it's a hex string (128 chars = 64 bytes)
+    if (signature.length === 128 && /^[0-9a-fA-F]{128}$/.test(signature)) {
+      // Hex format (most common from Kasware)
+      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+      console.log('Signature decoded from hex, length:', signatureBytes.length);
+    } else {
+      // Try base64 decoding
+      try {
+        const base64Decoded = atob(signature);
+        signatureBytes = new Uint8Array(base64Decoded.length);
+        for (let i = 0; i < base64Decoded.length; i++) {
+          signatureBytes[i] = base64Decoded.charCodeAt(i);
+        }
+        console.log('Signature decoded from base64, length:', signatureBytes.length);
+      } catch (base64Error) {
+        console.error('Invalid signature format - not hex or valid base64');
         return false;
       }
     }
