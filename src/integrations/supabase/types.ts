@@ -799,6 +799,19 @@ export type Database = {
         Args: { _stream_id: string }
         Returns: string
       }
+      get_stream_viewer_count: {
+        Args: { stream_id_param: string }
+        Returns: number
+      }
+      get_stream_viewers_for_owner: {
+        Args: { stream_id_param: string }
+        Returns: {
+          joined_at: string
+          last_heartbeat: string
+          session_id: string
+          user_id: string
+        }[]
+      }
       get_streams_with_profiles: {
         Args: { _limit?: number; _offset?: number }
         Returns: {

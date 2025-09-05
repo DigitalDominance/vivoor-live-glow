@@ -16,6 +16,7 @@ import { useWallet } from "@/context/WalletContext";
 import { useRealtimeTips } from "@/hooks/useRealtimeTips";
 import { useStreamStatus } from "@/hooks/useStreamStatus";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
+import { useSecureViewerCount } from "@/hooks/useSecureViewerCount";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
@@ -305,10 +306,13 @@ const Watch = () => {
   }, [streamData?.id, shownTipIds, watchStartTime]);
 
   // Use new stream status tracking
-  const { isLive: livepeerIsLive, viewerCount, isConnected: streamConnected } = useStreamStatus(
+  const { isLive: livepeerIsLive, isConnected: streamConnected } = useStreamStatus(
     streamData?.id || null, 
     streamData?.livepeer_stream_id
   );
+
+  // Use secure viewer count that doesn't expose personal data
+  const { viewerCount } = useSecureViewerCount(streamData?.id || null);
 
   // Use improved viewer tracking with unique session ID
   useViewerTracking(
