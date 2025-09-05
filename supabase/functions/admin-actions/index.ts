@@ -99,20 +99,43 @@ function resetFailedAttempts(ip: string): void {
   }
 }
 
+// Normalize IP address to handle X-Forwarded-For headers
+function normalizeIP(ipHeader: string): string {
+  if (!ipHeader) return 'unknown';
+  // Take the first IP from comma-separated list (original client IP)
+  return ipHeader.split(',')[0].trim();
+}
+
 // Validate session token
 function validateSessionToken(token: string, ip: string): boolean {
+  console.log('Validating session token:', token.substring(0, 20) + '...');
+  console.log('Current IP:', ip);
+  
   const session = sessionStore.get(token);
-  if (!session) return false;
+  if (!session) {
+    console.log('Session not found in store');
+    return false;
+  }
+  
+  console.log('Session found, stored IP:', session.ip);
+  console.log('Session expires:', new Date(session.expires).toISOString());
   
   const now = Date.now();
   if (now > session.expires) {
+    console.log('Session expired');
     sessionStore.delete(token);
     return false;
   }
   
-  // Optional: Validate IP (comment out if users might have changing IPs)
-  // if (session.ip !== ip) return false;
+  // Normalize both IPs for comparison (disabled for now due to proxy complexity)
+  // const normalizedCurrentIP = normalizeIP(ip);
+  // const normalizedStoredIP = normalizeIP(session.ip);
+  // if (normalizedCurrentIP !== normalizedStoredIP) {
+  //   console.log('IP mismatch:', normalizedCurrentIP, 'vs', normalizedStoredIP);
+  //   return false;
+  // }
   
+  console.log('Session validation successful');
   return true;
 }
 
@@ -121,11 +144,16 @@ function createSession(ip: string): string {
   const token = generateSessionToken();
   const now = Date.now();
   const expires = now + (60 * 60 * 1000); // 1 hour
+  const normalizedIP = normalizeIP(ip);
+  
+  console.log('Creating session with token:', token.substring(0, 20) + '...');
+  console.log('Session IP:', normalizedIP);
+  console.log('Session expires:', new Date(expires).toISOString());
   
   sessionStore.set(token, {
     created: now,
     expires,
-    ip
+    ip: normalizedIP
   });
   
   return token;
@@ -178,7 +206,9 @@ serve(async (req) => {
 
   try {
     // Get client IP for enhanced rate limiting
-    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rawClientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const clientIP = normalizeIP(rawClientIP);
+    console.log('Request from IP:', clientIP, '(raw:', rawClientIP + ')');
     
     // Clean up expired sessions periodically
     if (Math.random() < 0.1) { // 10% chance to cleanup on each request
