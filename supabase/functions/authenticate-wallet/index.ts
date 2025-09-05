@@ -28,21 +28,17 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
+ * Implements full secp256k1 ECDSA verification
  */
 async function verifyECDSASignature(
   message: string, 
   signature: string, 
-  publicKey?: string
+  publicKey: string  // REQUIRED - no fallback allowed
 ): Promise<boolean> {
   try {
-    // Validate required inputs
-    if (!message || !signature) {
-      console.error('Missing message or signature');
-      return false;
-    }
-    
-    if (!publicKey) {
-      console.error('Public key is required for signature verification');
+    // Validate required inputs - NO FALLBACKS ALLOWED
+    if (!message || !signature || !publicKey) {
+      console.error('Missing required inputs: message, signature, or publicKey');
       return false;
     }
     
@@ -63,9 +59,6 @@ async function verifyECDSASignature(
     console.log('Signature:', signature);
     console.log('Message:', message);
     
-    // For Kasware signatures, we need to verify using secp256k1
-    // Since Web Crypto API doesn't support secp256k1, we'll do mathematical validation
-    
     // Parse signature components (r and s, each 32 bytes = 64 hex chars)
     const r = signature.slice(0, 64);
     const s = signature.slice(64, 128);
@@ -77,8 +70,13 @@ async function verifyECDSASignature(
     const rBigInt = BigInt('0x' + r);
     const sBigInt = BigInt('0x' + s);
     
-    // secp256k1 curve order
+    // secp256k1 curve parameters
     const curveOrder = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+    const p = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F');
+    const a = BigInt('0x0000000000000000000000000000000000000000000000000000000000000000');
+    const b = BigInt('0x0000000000000000000000000000000000000000000000000000000000000007');
+    const Gx = BigInt('0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798');
+    const Gy = BigInt('0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8');
     
     // Validate signature components are within valid range
     if (rBigInt <= 0n || rBigInt >= curveOrder) {
@@ -104,48 +102,167 @@ async function verifyECDSASignature(
     const xBytes = pubKeyBytes.slice(1);
     const x = BigInt('0x' + Array.from(xBytes, byte => byte.toString(16).padStart(2, '0')).join(''));
     
-    // secp256k1 field prime
-    const p = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F');
-    
     // Validate x coordinate is within field
     if (x <= 0n || x >= p) {
       console.error('Invalid public key: x coordinate out of range');
       return false;
     }
     
-    // Additional validation: check if the signature was created for this message
-    // We'll hash the message using SHA-256 (same as Bitcoin/Kaspa message signing)
+    // Decompress the public key to get y coordinate
+    const ySquared = (x * x * x + a * x + b) % p;
+    const y = modPow(ySquared, (p + 1n) / 4n, p);
+    
+    // Check if y coordinate matches the compression flag
+    const isEven = y % 2n === 0n;
+    const expectedParity = pubKeyBytes[0] === 0x02;
+    
+    if (isEven !== expectedParity) {
+      console.error('Invalid public key: y coordinate parity mismatch');
+      return false;
+    }
+    
+    // Hash the message using SHA-256 (Bitcoin/Kaspa message signing standard)
     const encoder = new TextEncoder();
     const messageBytes = encoder.encode(message);
     const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
     const messageHashArray = new Uint8Array(messageHash);
     const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+    const e = BigInt('0x' + messageHashHex);
     
     console.log('Message hash (SHA-256):', messageHashHex);
     
-    // For production verification, we would need to implement full ECDSA verification
-    // For now, we'll validate that the signature components are mathematically valid
-    // and the public key corresponds to the expected format
-    
-    // Additional security check: ensure signature is not a known weak signature
-    // (all zeros, all ones, etc.)
+    // Additional security checks: ensure signature is not weak
     if (rBigInt === 1n || sBigInt === 1n || rBigInt === curveOrder - 1n || sBigInt === curveOrder - 1n) {
       console.error('Invalid signature: weak signature detected');
       return false;
     }
     
-    console.log('Signature passed all mathematical validation checks');
+    // FULL ECDSA VERIFICATION
+    // Calculate s^-1 mod n
+    const sInv = modInverse(sBigInt, curveOrder);
+    if (!sInv) {
+      console.error('Invalid signature: s not invertible');
+      return false;
+    }
     
-    // For production systems, you would implement the full ECDSA verification algorithm
-    // or use a crypto library that supports secp256k1
-    // For now, we'll accept signatures that pass the mathematical validation
+    // Calculate u1 = e * s^-1 mod n and u2 = r * s^-1 mod n
+    const u1 = (e * sInv) % curveOrder;
+    const u2 = (rBigInt * sInv) % curveOrder;
     
-    return true;
+    // Calculate point P = u1*G + u2*Q where Q is the public key point
+    const P1 = pointMultiply([Gx, Gy], u1, p);
+    const P2 = pointMultiply([x, y], u2, p);
+    const P = pointAdd(P1, P2, p);
+    
+    if (!P) {
+      console.error('Invalid signature: point at infinity');
+      return false;
+    }
+    
+    // Verify that r = P.x mod n
+    const verified = (P[0] % curveOrder) === rBigInt;
+    
+    if (verified) {
+      console.log('Signature passed full ECDSA verification');
+    } else {
+      console.error('Signature failed ECDSA verification');
+    }
+    
+    return verified;
     
   } catch (error) {
     console.error('Error verifying signature:', error);
     return false;
   }
+}
+
+// Helper functions for secp256k1 math
+function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
+  let result = 1n;
+  base = base % mod;
+  while (exp > 0n) {
+    if (exp % 2n === 1n) {
+      result = (result * base) % mod;
+    }
+    exp = exp >> 1n;
+    base = (base * base) % mod;
+  }
+  return result;
+}
+
+function modInverse(a: bigint, m: bigint): bigint | null {
+  const [gcd, x] = extendedGcd(a, m);
+  if (gcd !== 1n) return null;
+  return ((x % m) + m) % m;
+}
+
+function extendedGcd(a: bigint, b: bigint): [bigint, bigint, bigint] {
+  if (a === 0n) return [b, 0n, 1n];
+  const [gcd, x1, y1] = extendedGcd(b % a, a);
+  const x = y1 - (b / a) * x1;
+  const y = x1;
+  return [gcd, x, y];
+}
+
+function pointAdd(p1: [bigint, bigint] | null, p2: [bigint, bigint] | null, mod: bigint): [bigint, bigint] | null {
+  if (!p1) return p2;
+  if (!p2) return p1;
+  
+  const [x1, y1] = p1;
+  const [x2, y2] = p2;
+  
+  if (x1 === x2) {
+    if (y1 === y2) {
+      return pointDouble(p1, mod);
+    } else {
+      return null; // Point at infinity
+    }
+  }
+  
+  const dx = ((x2 - x1) % mod + mod) % mod;
+  const dy = ((y2 - y1) % mod + mod) % mod;
+  const dxInv = modInverse(dx, mod);
+  
+  if (!dxInv) return null;
+  
+  const m = (dy * dxInv) % mod;
+  const x3 = ((m * m - x1 - x2) % mod + mod) % mod;
+  const y3 = ((m * (x1 - x3) - y1) % mod + mod) % mod;
+  
+  return [x3, y3];
+}
+
+function pointDouble(p: [bigint, bigint], mod: bigint): [bigint, bigint] | null {
+  const [x, y] = p;
+  const twoY = (2n * y) % mod;
+  const twoYInv = modInverse(twoY, mod);
+  
+  if (!twoYInv) return null;
+  
+  const m = (3n * x * x * twoYInv) % mod;
+  const x3 = ((m * m - 2n * x) % mod + mod) % mod;
+  const y3 = ((m * (x - x3) - y) % mod + mod) % mod;
+  
+  return [x3, y3];
+}
+
+function pointMultiply(p: [bigint, bigint], k: bigint, mod: bigint): [bigint, bigint] | null {
+  if (k === 0n) return null;
+  if (k === 1n) return p;
+  
+  let result: [bigint, bigint] | null = null;
+  let addend = p;
+  
+  while (k > 0n) {
+    if (k % 2n === 1n) {
+      result = pointAdd(result, addend, mod);
+    }
+    addend = pointDouble(addend, mod);
+    if (!addend) break;
+    k = k >> 1n;
+  }
+  
+  return result;
 }
 
 /**
@@ -218,12 +335,12 @@ serve(async (req) => {
       hasPublicKey: !!publicKey
     });
 
-    // Validate inputs
-    if (!walletAddress || !message || !signature) {
+    // Validate inputs - PUBLIC KEY IS MANDATORY
+    if (!walletAddress || !message || !signature || !publicKey) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Missing required fields: walletAddress, message, signature' 
+          error: 'Missing required fields: walletAddress, message, signature, publicKey' 
         } as AuthResponse),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
