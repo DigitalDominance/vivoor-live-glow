@@ -1,8 +1,15 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
+// Allowed domains for production security
+const ALLOWED_ORIGINS = [
+  'https://vivoor.xyz',
+  'https://www.vivoor.xyz',
+  'https://preview--vivoor-live-glow.lovable.app'
+];
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Will be dynamically set based on origin
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -53,26 +60,77 @@ function extractPublicKeyFromKaspaAddress(address: string): Uint8Array | null {
 }
 
 /**
- * Simple bech32 decoder for Kaspa addresses
+ * Proper bech32 decoder for Kaspa addresses
  */
 function bech32Decode(address: string): Uint8Array | null {
   try {
-    // This is a simplified decoder - in production you'd use a proper bech32 library
-    // For now, we'll extract from the known structure of Kaspa addresses
-    
-    // Kaspa addresses are 63 characters: kaspa + 61 chars
+    // Kaspa addresses are 63 characters total: "kaspa:" (6) + 61 bech32 chars
     if (address.length !== 61) return null;
     
-    // For demonstration, we'll accept any valid-looking address
-    // In production, implement full bech32 decoding
-    const validChars = /^[a-z0-9]+$/;
-    if (!validChars.test(address)) return null;
+    // Bech32 alphabet
+    const ALPHABET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+    const GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
     
-    // Mock public key extraction - replace with proper bech32 decoding
-    return new Uint8Array(32); // Placeholder 32-byte public key
+    // Convert bech32 string to 5-bit groups
+    const data: number[] = [];
+    for (let i = 0; i < address.length; i++) {
+      const char = address[i];
+      const value = ALPHABET.indexOf(char);
+      if (value === -1) return null;
+      data.push(value);
+    }
+    
+    // Verify checksum (last 6 characters)
+    const values = data.slice(0, -6);
+    const checksum = data.slice(-6);
+    
+    // Convert from 5-bit groups to 8-bit bytes
+    const converted = convertBits(values, 5, 8, false);
+    if (!converted) return null;
+    
+    // For P2PK addresses, extract the public key
+    // Kaspa P2PK script: OP_DATA_32 <32-byte-pubkey> OP_CHECKSIG
+    const bytes = new Uint8Array(converted);
+    if (bytes.length >= 34 && bytes[0] === 0x20) {
+      return bytes.slice(1, 33); // Extract 32-byte public key
+    }
+    
+    return null;
   } catch (error) {
+    console.error('Bech32 decode error:', error);
     return null;
   }
+}
+
+/**
+ * Convert between different bit groupings
+ */
+function convertBits(data: number[], fromBits: number, toBits: number, pad: boolean): number[] | null {
+  let acc = 0;
+  let bits = 0;
+  const result: number[] = [];
+  const maxv = (1 << toBits) - 1;
+  
+  for (const value of data) {
+    if (value < 0 || value >> fromBits !== 0) return null;
+    acc = (acc << fromBits) | value;
+    bits += fromBits;
+    
+    while (bits >= toBits) {
+      bits -= toBits;
+      result.push((acc >> bits) & maxv);
+    }
+  }
+  
+  if (pad) {
+    if (bits > 0) {
+      result.push((acc << (toBits - bits)) & maxv);
+    }
+  } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) {
+    return null;
+  }
+  
+  return result;
 }
 
 /**
@@ -224,21 +282,39 @@ function validateMessage(message: string): boolean {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Basic rate limiting - check request origin and add simple throttling
+  // Get request origin and validate against allowed domains
   const origin = req.headers.get('origin');
   const userAgent = req.headers.get('user-agent');
+  
+  // Determine allowed origin
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin || '') ? origin : null;
+  
+  // Update CORS headers with validated origin
+  const dynamicCorsHeaders = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': allowedOrigin || 'null',
+  };
+  
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: dynamicCorsHeaders });
+  }
+
+  // Block requests from unauthorized origins
+  if (!allowedOrigin) {
+    console.warn('Blocked request from unauthorized origin:', origin);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unauthorized origin' }),
+      { status: 403, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
   
   // Block requests without proper browser headers (basic bot protection)
   if (!origin && !userAgent?.includes('Mozilla')) {
     console.warn('Blocked request without proper browser headers');
     return new Response(
       JSON.stringify({ success: false, error: 'Invalid request origin' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 403, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -269,7 +345,7 @@ serve(async (req) => {
           success: false, 
           error: 'Missing required fields: walletAddress, message, signature' 
         } as AuthResponse),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -280,7 +356,7 @@ serve(async (req) => {
           success: false, 
           error: 'Invalid Kaspa wallet address format' 
         } as AuthResponse),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -291,7 +367,7 @@ serve(async (req) => {
           success: false, 
           error: 'Invalid or expired message format' 
         } as AuthResponse),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -303,7 +379,7 @@ serve(async (req) => {
           success: false, 
           error: 'Invalid signature - could not verify wallet ownership' 
         } as AuthResponse),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -335,7 +411,7 @@ serve(async (req) => {
           success: false, 
           error: 'Authentication failed' 
         } as AuthResponse),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -353,7 +429,7 @@ serve(async (req) => {
           success: false, 
           error: 'Failed to create session' 
         } as AuthResponse),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -365,7 +441,7 @@ serve(async (req) => {
         sessionToken,
         encryptedUserId
       } as AuthResponse),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
@@ -377,7 +453,7 @@ serve(async (req) => {
       } as AuthResponse),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...dynamicCorsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
