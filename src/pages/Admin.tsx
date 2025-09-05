@@ -58,7 +58,7 @@ export default function Admin() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('users');
 
   const authenticateAdmin = async () => {
@@ -138,7 +138,7 @@ export default function Admin() {
         body: {
           action: 'get_reports',
           password: password,
-          statusFilter: statusFilter || undefined,
+          statusFilter: statusFilter === 'all' ? undefined : statusFilter,
           limit: 100
         }
       });
@@ -429,7 +429,7 @@ export default function Admin() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Reports</SelectItem>
+                  <SelectItem value="all">All Reports</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
                 </SelectContent>
