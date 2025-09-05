@@ -268,11 +268,52 @@ if (!finalUrl) {
 
     // Upload the watermarked clip to Supabase Storage and update DB row
     const wmBlob = await (new Response(rRes.body)).blob();
+    
+    // Check blob size and compress if too large (>45MB for safety margin under 50MB limit)
+    const MAX_SIZE_BYTES = 45 * 1024 * 1024; // 45MB
+    let finalBlob = wmBlob;
+    
+    console.log(`Original watermarked clip size: ${(wmBlob.size / 1024 / 1024).toFixed(2)}MB`);
+    
+    if (wmBlob.size > MAX_SIZE_BYTES) {
+      console.log('Clip exceeds size limit, compressing via watermark proxy...');
+      
+      try {
+        // Use the watermark proxy to compress the video
+        const watermarkProxyUrl = getWatermarkProxyUrl(req);
+        const compressForm = new FormData();
+        compressForm.set('videoUrl', finalUrl);
+        compressForm.set('position', 'br');
+        compressForm.set('margin', String(24));
+        compressForm.set('wmWidth', String(120)); // Smaller watermark
+        compressForm.set('filename', `${sanitizedTitle}_compressed.mp4`);
+        compressForm.set('quality', '23'); // Lower quality for smaller size
+        compressForm.set('scale', '720:-1'); // Scale down to 720p height
+        
+        const compressRes = await fetch(watermarkProxyUrl, {
+          method: 'POST',
+          body: compressForm,
+          headers: {
+            'Authorization': req.headers.get('Authorization') || '',
+          }
+        });
+        
+        if (compressRes.ok && compressRes.body) {
+          finalBlob = await compressRes.blob();
+          console.log(`Compressed clip size: ${(finalBlob.size / 1024 / 1024).toFixed(2)}MB`);
+        } else {
+          console.warn('Compression failed, using original size');
+        }
+      } catch (compressErr) {
+        console.error('Compression error, using original:', compressErr);
+      }
+    }
+    
     try {
       const filePath = `${userId}/clips/${savedClip.id}-${sanitizedTitle}.mp4`;
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('clips')
-        .upload(filePath, wmBlob, { contentType: 'video/mp4', upsert: true });
+        .upload(filePath, finalBlob, { contentType: 'video/mp4', upsert: true });
 
       if (uploadError) {
         console.error('Error uploading watermarked clip to storage:', uploadError);
