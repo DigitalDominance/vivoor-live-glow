@@ -650,6 +650,10 @@ export type Database = {
         Args: { stream_id: string }
         Returns: undefined
       }
+      encrypt_wallet_address: {
+        Args: { wallet_address: string }
+        Returns: string
+      }
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number
@@ -990,6 +994,10 @@ export type Database = {
           block_time: number
           is_valid: boolean
         }[]
+      }
+      verify_encrypted_user_id: {
+        Args: { encrypted_id: string; wallet_address: string }
+        Returns: boolean
       }
       verify_profile_ownership: {
         Args: { user_id_param: string }
