@@ -711,14 +711,12 @@ const Watch = () => {
                       </div>
                     </div>
                   </div>
-                ) : streamData.playback_url ? (
-                  // Show HLS player if we have a playback URL and stream is marked as live in DB
-                  // Don't wait for livepeerIsLive since it might be delayed/cached
+                ) : streamData.playback_url && livepeerIsLive ? (
                   <>
                     <HlsPlayer 
                       src={streamData.playback_url} 
                       autoPlay 
-                      isLiveStream={streamData.is_live}
+                      isLiveStream={livepeerIsLive}
                       key={streamData.id}
                       className="w-full h-full"
                       videoRef={videoRef}
@@ -737,7 +735,7 @@ const Watch = () => {
                        onToggleMute={handleToggleMute}
                        elapsed={elapsed}
                        viewers={viewerCount}
-                       isLive={streamData.is_live}
+                       isLive={livepeerIsLive}
                        showClipping={true}
                        qualityLevels={qualityLevels}
                        currentQuality={currentQuality}
@@ -753,7 +751,7 @@ const Watch = () => {
                         Stream Offline
                       </div>
                       <div className="text-gray-400">
-                        Stream is starting up, please wait...
+                        This stream is not currently available
                       </div>
                     </div>
                   </div>
@@ -810,7 +808,7 @@ const Watch = () => {
                     <span className="text-xs px-2 py-1 rounded-full bg-muted">
                       {streamData.category || 'IRL'}
                     </span>
-                    {streamData.is_live && streamConnected && (
+                    {livepeerIsLive && streamConnected && (
                       <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
                         LIVE
                       </span>
@@ -863,7 +861,7 @@ const Watch = () => {
                     });
                     setTipOpen(true);
                   }}
-                  disabled={!identity || !streamerKaspaAddress || !streamData.is_live}
+                  disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
                   className="flex-1 sm:flex-none"
                 >
                   Tip KAS
