@@ -58,12 +58,15 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
 
     const fetchViewerCount = async () => {
       try {
-        const { data, error } = await supabase.rpc('get_stream_viewer_count', {
-          stream_id_param: streamId
-        });
+        // Use the same approach as AppDirectory - fetch viewers directly from streams table
+        const { data, error } = await supabase
+          .from('streams')
+          .select('viewers')
+          .eq('id', streamId)
+          .single();
         
-        if (!error && data !== null) {
-          setLiveViewerCount(data);
+        if (!error && data) {
+          setLiveViewerCount(data.viewers || 0);
         }
       } catch (error) {
         console.error('Error fetching viewer count:', error);
