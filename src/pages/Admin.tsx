@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Search, Ban, Shield, StopCircle, Users, Radio, Flag, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Search, Ban, Shield, StopCircle, Users, Radio, Flag, CheckCircle, Clock, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
 
 interface User {
   id: string;
@@ -27,11 +28,10 @@ interface Stream {
   viewers: number;
   created_at: string;
   stream_type: string;
-  profiles: {
-    handle: string;
-    display_name: string;
-    avatar_url: string;
-  };
+  is_live: boolean;
+  profile_handle: string;
+  profile_display_name: string;
+  profile_avatar_url: string;
 }
 
 interface Report {
@@ -60,6 +60,15 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('users');
+  
+  // Pagination states
+  const [usersPage, setUsersPage] = useState(0);
+  const [streamsPage, setStreamsPage] = useState(0);
+  const [reportsPage, setReportsPage] = useState(0);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [streamsTotal, setStreamsTotal] = useState(0);
+  const [reportsTotal, setReportsTotal] = useState(0);
+  const itemsPerPage = 20;
 
   const authenticateAdmin = async () => {
     if (!password.trim()) {
@@ -81,9 +90,9 @@ export default function Admin() {
       if (data?.verified) {
         setIsAuthenticated(true);
         toast.success('Admin access granted');
-        loadUsers();
-        loadStreams();
-        loadReports();
+        loadUsers(0);
+        loadStreams(0);
+        loadReports(0);
       } else {
         toast.error('Invalid admin password');
       }
@@ -95,56 +104,63 @@ export default function Admin() {
     }
   };
 
-  const loadUsers = async () => {
+  const loadUsers = async (page = 0) => {
     try {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_users',
           password: password,
           search: searchQuery || undefined,
-          limit: 100
+          limit: itemsPerPage,
+          offset: page * itemsPerPage
         }
       });
 
       if (error) throw error;
       setUsers(data?.users || []);
+      // For now, estimate total based on current page results
+      setUsersTotal(data?.users?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.users?.length || 0));
     } catch (error) {
       console.error('Error loading users:', error);
       toast.error('Failed to load users');
     }
   };
 
-  const loadStreams = async () => {
+  const loadStreams = async (page = 0) => {
     try {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_live_streams',
           password: password,
-          limit: 100
+          limit: itemsPerPage,
+          offset: page * itemsPerPage
         }
       });
 
       if (error) throw error;
       setStreams(data?.streams || []);
+      setStreamsTotal(data?.streams?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.streams?.length || 0));
     } catch (error) {
       console.error('Error loading streams:', error);
       toast.error('Failed to load streams');
     }
   };
 
-  const loadReports = async () => {
+  const loadReports = async (page = 0) => {
     try {
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_reports',
           password: password,
           statusFilter: statusFilter === 'all' ? undefined : statusFilter,
-          limit: 100
+          limit: itemsPerPage,
+          offset: page * itemsPerPage
         }
       });
 
       if (error) throw error;
       setReports(data?.reports || []);
+      setReportsTotal(data?.reports?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.reports?.length || 0));
     } catch (error) {
       console.error('Error loading reports:', error);
       toast.error('Failed to load reports');
@@ -165,7 +181,7 @@ export default function Admin() {
       if (error) throw error;
 
       toast.success(data?.message || 'Report resolved');
-      loadReports();
+      loadReports(reportsPage);
     } catch (error) {
       console.error('Error resolving report:', error);
       toast.error('Failed to resolve report');
@@ -189,7 +205,7 @@ export default function Admin() {
       if (error) throw error;
 
       toast.success(data?.message || 'User status updated');
-      loadUsers();
+      loadUsers(usersPage);
     } catch (error) {
       console.error('Error updating user ban status:', error);
       toast.error('Failed to update user status');
@@ -212,7 +228,7 @@ export default function Admin() {
       if (error) throw error;
 
       toast.success(data?.message || 'Stream ended');
-      loadStreams();
+      loadStreams(streamsPage);
     } catch (error) {
       console.error('Error ending stream:', error);
       toast.error('Failed to end stream');
@@ -224,7 +240,8 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthenticated && searchQuery !== '') {
       const timeoutId = setTimeout(() => {
-        loadUsers();
+        setUsersPage(0);
+        loadUsers(0);
       }, 500);
       return () => clearTimeout(timeoutId);
     }
@@ -232,7 +249,8 @@ export default function Admin() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadReports();
+      setReportsPage(0);
+      loadReports(0);
     }
   }, [statusFilter, isAuthenticated]);
 
@@ -306,7 +324,7 @@ export default function Admin() {
                   className="pl-10"
                 />
               </div>
-              <Button onClick={loadUsers} variant="outline">
+              <Button onClick={() => loadUsers(usersPage)} variant="outline">
                 Refresh
               </Button>
             </div>
@@ -359,12 +377,69 @@ export default function Admin() {
                 </Card>
               )}
             </div>
+
+            {/* Users Pagination */}
+            {users.length > 0 && (
+              <div className="flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (usersPage > 0) {
+                            setUsersPage(usersPage - 1);
+                            loadUsers(usersPage - 1);
+                          }
+                        }}
+                        className={usersPage === 0 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: Math.min(5, Math.ceil(usersTotal / itemsPerPage)) }, (_, i) => {
+                      const pageNum = usersPage > 2 ? usersPage - 2 + i : i;
+                      if (pageNum >= Math.ceil(usersTotal / itemsPerPage)) return null;
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setUsersPage(pageNum);
+                              loadUsers(pageNum);
+                            }}
+                            isActive={pageNum === usersPage}
+                          >
+                            {pageNum + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if ((usersPage + 1) * itemsPerPage < usersTotal) {
+                            setUsersPage(usersPage + 1);
+                            loadUsers(usersPage + 1);
+                          }
+                        }}
+                        className={((usersPage + 1) * itemsPerPage >= usersTotal) ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="streams" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Active Live Streams</h2>
-              <Button onClick={loadStreams} variant="outline">
+              <Button onClick={() => loadStreams(streamsPage)} variant="outline">
                 Refresh
               </Button>
             </div>
@@ -375,15 +450,15 @@ export default function Admin() {
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={stream.profiles.avatar_url} />
+                        <AvatarImage src={stream.profile_avatar_url} />
                         <AvatarFallback>
-                          {stream.profiles.display_name?.charAt(0) || stream.profiles.handle?.charAt(0) || 'S'}
+                          {stream.profile_display_name?.charAt(0) || stream.profile_handle?.charAt(0) || 'S'}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium">{stream.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          by @{stream.profiles.handle || stream.profiles.display_name} • {stream.viewers} viewers
+                          by @{stream.profile_handle || stream.profile_display_name} • {stream.viewers} viewers
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
@@ -419,6 +494,63 @@ export default function Admin() {
                 </Card>
               )}
             </div>
+
+            {/* Streams Pagination */}
+            {streams.length > 0 && (
+              <div className="flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (streamsPage > 0) {
+                            setStreamsPage(streamsPage - 1);
+                            loadStreams(streamsPage - 1);
+                          }
+                        }}
+                        className={streamsPage === 0 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: Math.min(5, Math.ceil(streamsTotal / itemsPerPage)) }, (_, i) => {
+                      const pageNum = streamsPage > 2 ? streamsPage - 2 + i : i;
+                      if (pageNum >= Math.ceil(streamsTotal / itemsPerPage)) return null;
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setStreamsPage(pageNum);
+                              loadStreams(pageNum);
+                            }}
+                            isActive={pageNum === streamsPage}
+                          >
+                            {pageNum + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if ((streamsPage + 1) * itemsPerPage < streamsTotal) {
+                            setStreamsPage(streamsPage + 1);
+                            loadStreams(streamsPage + 1);
+                          }
+                        }}
+                        className={((streamsPage + 1) * itemsPerPage >= streamsTotal) ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">
@@ -434,7 +566,7 @@ export default function Admin() {
                   <SelectItem value="resolved">Resolved</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={loadReports} variant="outline">
+              <Button onClick={() => loadReports(reportsPage)} variant="outline">
                 Refresh
               </Button>
             </div>
@@ -539,6 +671,63 @@ export default function Admin() {
                 </Card>
               )}
             </div>
+
+            {/* Reports Pagination */}
+            {reports.length > 0 && (
+              <div className="flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (reportsPage > 0) {
+                            setReportsPage(reportsPage - 1);
+                            loadReports(reportsPage - 1);
+                          }
+                        }}
+                        className={reportsPage === 0 ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: Math.min(5, Math.ceil(reportsTotal / itemsPerPage)) }, (_, i) => {
+                      const pageNum = reportsPage > 2 ? reportsPage - 2 + i : i;
+                      if (pageNum >= Math.ceil(reportsTotal / itemsPerPage)) return null;
+                      return (
+                        <PaginationItem key={pageNum}>
+                          <PaginationLink 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setReportsPage(pageNum);
+                              loadReports(pageNum);
+                            }}
+                            isActive={pageNum === reportsPage}
+                          >
+                            {pageNum + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if ((reportsPage + 1) * itemsPerPage < reportsTotal) {
+                            setReportsPage(reportsPage + 1);
+                            loadReports(reportsPage + 1);
+                          }
+                        }}
+                        className={((reportsPage + 1) * itemsPerPage >= reportsTotal) ? 'pointer-events-none opacity-50' : ''}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

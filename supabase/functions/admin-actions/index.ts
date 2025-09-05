@@ -127,24 +127,17 @@ serve(async (req) => {
         break;
 
       case 'get_live_streams':
-        const { data: streams, error: streamsError } = await supabaseClient
-          .from('streams')
-          .select(`
-            id,
-            title,
-            user_id,
-            viewers,
-            created_at,
-            stream_type,
-            profiles!inner(handle, display_name, avatar_url)
-          `)
-          .eq('is_live', true)
-          .order('created_at', { ascending: false })
-          .limit(limit)
-          .range(offset, offset + limit - 1);
+        // Use RPC function to get streams with profile data
+        const { data: streams, error: streamsError } = await supabaseClient.rpc('get_streams_with_profiles_and_likes', {
+          _limit: limit,
+          _offset: offset
+        });
         
         if (streamsError) throw streamsError;
-        result = { streams };
+        
+        // Filter only live streams from the result
+        const liveStreams = streams?.filter(stream => stream.is_live) || [];
+        result = { streams: liveStreams };
         break;
 
       case 'get_reports':
