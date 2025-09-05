@@ -857,6 +857,10 @@ export type Database = {
         Args: { stream_id: string }
         Returns: undefined
       }
+      is_admin_context: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_stream_live: {
         Args: { stream_id_param: string }
         Returns: boolean
