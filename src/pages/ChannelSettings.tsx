@@ -139,15 +139,11 @@ const ChannelSettings: React.FC = () => {
         .from('thumbnails')
         .getPublicUrl(fileName);
 
-      // RLS policies ensure only the authenticated user can update their own profile
-      if (!identity?.id) {
-        throw new Error('Connect your wallet first');
-      }
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ banner_url: publicUrl })
-        .eq('id', identity.id);
+      // Use the database function that updates banner with proper security
+      const { error: updateError } = await supabase.rpc('update_banner', {
+        user_id_param: identity.id,
+        new_banner_url: publicUrl
+      });
 
       if (updateError) throw updateError;
 
