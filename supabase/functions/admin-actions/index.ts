@@ -26,6 +26,28 @@ function isValidUUID(uuid: string): boolean {
   return uuidRegex.test(uuid);
 }
 
+// Rate limiting store (simple in-memory)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Simple rate limiting function
+function checkRateLimit(ip: string, maxRequests: number = 10, windowMs: number = 60000): boolean {
+  const now = Date.now();
+  const key = ip;
+  const record = rateLimitStore.get(key);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -61,6 +83,20 @@ serve(async (req) => {
   }
 
   try {
+    // Get client IP for rate limiting
+    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    
+    // Apply rate limiting (max 10 requests per minute per IP)
+    if (!checkRateLimit(clientIP, 10, 60000)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -78,7 +114,7 @@ serve(async (req) => {
       );
     }
 
-    // Rate limiting check - basic protection
+    // Additional security headers validation
     const userAgent = req.headers.get('user-agent') || '';
     const contentType = req.headers.get('content-type') || '';
     
@@ -147,6 +183,8 @@ serve(async (req) => {
     if (!isValidPassword) {
       // Add delay to prevent timing attacks
       await new Promise(resolve => setTimeout(resolve, 1000));
+      // Log failed attempt for monitoring
+      console.log('Admin authentication failed from IP:', clientIP);
       return new Response(
         JSON.stringify({ error: 'Invalid admin password' }),
         { 
@@ -155,6 +193,9 @@ serve(async (req) => {
         }
       );
     }
+
+    // Log successful admin access for auditing
+    console.log('Admin access granted for action:', action, 'from IP:', clientIP);
 
     let result = null;
 
