@@ -9,7 +9,7 @@ declare global {
       disconnect?: (origin: string) => Promise<void>;
       sendKaspa: (toAddress: string, sompi: number, options?: { priorityFee?: number; payload?: string }) => Promise<string>;
       signMessage: (message: string, type?: "ecdsa" | "bip322-simple") => Promise<string>;
-      verifyMessage?: (pubkey: string, message: string, signature: string) => boolean;
+      verifyMessage?: (pubkey: string, message: string, signature: string) => Promise<boolean>;
       // Additional methods may exist; we only type what we use.
     };
   }
