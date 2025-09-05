@@ -108,9 +108,25 @@ const ChannelEdit: React.FC = () => {
       await refetch();
     } catch (error) {
       console.error('Error uploading avatar:', error);
+      
+      let errorMessage = "Please try again.";
+      if (error instanceof Error) {
+        // Format the cooldown message nicely
+        if (error.message.includes("Next change available at:")) {
+          const dateMatch = error.message.match(/Next change available at: (.+)$/);
+          if (dateMatch) {
+            const nextChangeDate = new Date(dateMatch[1]);
+            const formattedDate = nextChangeDate.toLocaleDateString() + " at " + nextChangeDate.toLocaleTimeString();
+            errorMessage = `Avatar can only be changed once every 24 hours. You can change it again on ${formattedDate}.`;
+          }
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({ 
         title: "Failed to upload avatar", 
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: errorMessage,
         variant: "destructive" 
       });
     }

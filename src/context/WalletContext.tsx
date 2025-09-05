@@ -278,30 +278,35 @@ const saveAvatarUrl = useCallback(
       
       // Check if handle is already taken (if updating handle)
       if (updates.handle) {
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('handle', updates.handle)
-          .neq('id', identity.id)
-          .maybeSingle();
-        
-        if (existingProfile) {
-          throw new Error('Username is already taken');
+        try {
+          // Use the database function that enforces cooldown for username changes
+          const { error } = await supabase.rpc('update_username', {
+            user_id_param: identity.id,
+            new_username: updates.handle
+          });
+          
+          if (error) {
+            console.error('Failed to update username:', error);
+            throw new Error(error.message);
+          }
+        } catch (error) {
+          console.error('Failed to update profile:', error);
+          throw error;
         }
-      }
-      
-      // Update Supabase database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', identity.id);
-      
-      if (error) {
-        console.error('Failed to update profile in database:', error);
-        throw error;
+      } else {
+        // Update Supabase database for non-username changes
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', identity.id);
+        
+        if (error) {
+          console.error('Failed to update profile in database:', error);
+          throw error;
+        }
       }
       
       // Update local storage if username changed

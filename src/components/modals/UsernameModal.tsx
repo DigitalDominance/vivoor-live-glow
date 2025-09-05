@@ -29,7 +29,20 @@ const UsernameModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => voi
       await saveUsername(clean);
       onOpenChange(false);
     } catch (error) {
-      alert("Failed to save username. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save username. Please try again.";
+      
+      // Format the cooldown message nicely
+      if (errorMessage.includes("Next change available at:")) {
+        const dateMatch = errorMessage.match(/Next change available at: (.+)$/);
+        if (dateMatch) {
+          const nextChangeDate = new Date(dateMatch[1]);
+          const formattedDate = nextChangeDate.toLocaleDateString() + " at " + nextChangeDate.toLocaleTimeString();
+          alert(`Username can only be changed once every 14 days. You can change it again on ${formattedDate}.`);
+          return;
+        }
+      }
+      
+      alert(errorMessage);
     }
   };
 
