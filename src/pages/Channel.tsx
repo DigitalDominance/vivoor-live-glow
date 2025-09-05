@@ -228,6 +228,11 @@ const Channel: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
                       <VerifiedUserBadge userId={profile.id} />
+                      {profile.banned && (
+                        <span className="px-2 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
+                          BANNED
+                        </span>
+                      )}
                     </div>
                     {profile.bio ? (
                       <p className="text-muted-foreground">{profile.bio}</p>
@@ -269,9 +274,24 @@ const Channel: React.FC = () => {
         </div>
       </div>
 
-      {/* User's Streams and Clips */}
-      <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
-      <ChannelClips userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
+      {/* User's Streams and Clips - Only show if user is not banned */}
+      {!profile.banned && (
+        <>
+          <ChannelStreams userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
+          <ChannelClips userId={profile.id} isOwnChannel={isOwnChannel} profile={profile} />
+        </>
+      )}
+      
+      {/* Show message if user is banned */}
+      {profile.banned && (
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="text-lg font-medium text-muted-foreground">
+              This user has been banned and their content is not available.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -285,6 +305,11 @@ const ChannelStreams: React.FC<{ userId: string; isOwnChannel: boolean; profile:
   const { data: streams = [], isLoading } = useQuery({
     queryKey: ['user-streams', userId],
     queryFn: async () => {
+      // Don't fetch streams if user is banned
+      if (profile?.banned) {
+        return [];
+      }
+      
       const { data, error } = await supabase
         .from('streams')
         .select(`
@@ -470,6 +495,11 @@ const ChannelClips: React.FC<{ userId: string; isOwnChannel: boolean; profile: a
   const { data: clips = [], isLoading } = useQuery({
     queryKey: ['user-clips', userId],
     queryFn: async () => {
+      // Don't fetch clips if user is banned
+      if (profile?.banned) {
+        return [];
+      }
+      
       const { data, error } = await supabase
         .rpc('get_clips_with_profiles_and_stats', { 
           _limit: 100, 

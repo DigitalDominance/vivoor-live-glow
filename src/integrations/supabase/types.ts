@@ -551,6 +551,10 @@ export type Database = {
         Args: { ban_status: boolean; user_id_param: string }
         Returns: undefined
       }
+      admin_delete_stream: {
+        Args: { stream_id_param: string }
+        Returns: undefined
+      }
       admin_end_stream: {
         Args: { stream_id_param: string }
         Returns: undefined
@@ -766,6 +770,7 @@ export type Database = {
         Args: { _id: string }
         Returns: {
           avatar_url: string
+          banned: boolean
           banner_url: string
           bio: string
           created_at: string

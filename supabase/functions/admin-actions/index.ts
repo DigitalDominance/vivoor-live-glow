@@ -109,11 +109,11 @@ serve(async (req) => {
             }
           );
         }
-        const { error: endStreamError } = await supabaseClient.rpc('admin_end_stream', {
+        const { error: endStreamError } = await supabaseClient.rpc('admin_delete_stream', {
           stream_id_param: streamId
         });
         if (endStreamError) throw endStreamError;
-        result = { success: true, message: 'Stream ended successfully' };
+        result = { success: true, message: 'Stream deleted successfully' };
         break;
 
       case 'get_users':
