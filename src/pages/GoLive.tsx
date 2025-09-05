@@ -484,12 +484,8 @@ const GoLive = () => {
                 </button>
                 
                 <button
-                  onClick={() => setStreamingMode('browser')}
-                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
-                    streamingMode === 'browser' 
-                      ? 'border-cyan-400 bg-cyan-500/20' 
-                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
-                  }`}
+                  onClick={() => {}} // Disabled - coming soon
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 border-white/20 bg-white/5 cursor-not-allowed`}
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <Camera className="size-6 text-cyan-400" />
@@ -498,14 +494,9 @@ const GoLive = () => {
                   <p className="text-sm text-gray-300 text-left">
                     Stream directly from your browser using your camera, microphone, or screen
                   </p>
-                  {streamingMode === 'browser' && (
-                    <div className="absolute top-3 right-3">
-                      <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
-                    </div>
-                  )}
                   
                   {/* Coming Soon Overlay */}
-                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center pointer-events-none">
                     <div className="text-center">
                       <h4 className="text-white text-xl font-semibold mb-2">Coming Soon</h4>
                       <p className="text-gray-300 text-sm">Browser streaming is currently under development</p>
