@@ -223,6 +223,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banned: boolean | null
           banner_url: string | null
           bio: string | null
           created_at: string
@@ -235,6 +236,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banned?: boolean | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
@@ -247,6 +249,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banned?: boolean | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string
@@ -494,6 +497,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_ban_user: {
+        Args: { ban_status: boolean; user_id_param: string }
+        Returns: undefined
+      }
+      admin_end_stream: {
+        Args: { stream_id_param: string }
+        Returns: undefined
+      }
+      admin_get_users: {
+        Args: {
+          limit_param?: number
+          offset_param?: number
+          search_query?: string
+        }
+        Returns: {
+          avatar_url: string
+          banned: boolean
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+          stream_count: number
+        }[]
+      }
       authenticate_wallet_user: {
         Args: {
           user_display_name?: string
