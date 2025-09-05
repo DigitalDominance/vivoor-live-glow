@@ -144,9 +144,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const addr = accounts?.[0];
       if (!addr) throw new Error("No Kasware account returned");
       
-      // Generate a unique message for the user to sign
+      // Generate a cryptographically secure message for signature verification
       const timestamp = Date.now();
-      const message = `VIVOOR_AUTH_${timestamp}_${addr.slice(-8)}`;
+      // Generate a 32-character hex nonce for replay attack prevention
+      const nonceArray = new Uint8Array(16);
+      crypto.getRandomValues(nonceArray);
+      const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('');
+      const message = `VIVOOR_AUTH_${timestamp}_${nonce}`;
       
       // Request signature to prove wallet ownership
       let signature: string;
@@ -161,35 +165,33 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error('Invalid signature - unable to verify wallet ownership');
       }
       
-      // Use the secure authentication function with signature verification
-      const { data: encryptedUserId, error: authError } = await supabase.rpc('authenticate_wallet_secure', {
-        wallet_address_param: addr,
-        message_param: message,
-        signature_param: signature
-      });
+      console.log('Authenticating with secure edge function...');
+      
+      // Use the secure edge function for authentication
+      const { data: authResult, error: authError } = await supabase.functions.invoke(
+        'authenticate-wallet',
+        {
+          body: {
+            walletAddress: addr,
+            message,
+            signature
+          }
+        }
+      );
 
-      if (authError || !encryptedUserId) {
-        console.error('Failed to authenticate wallet user:', authError);
-        throw authError || new Error('Failed to authenticate wallet');
+      if (authError || !authResult?.success) {
+        console.error('Authentication failed:', authError, authResult);
+        throw new Error(authResult?.error || authError?.message || 'Authentication failed');
       }
 
-      // Generate secure JWT session token
-      const { data: jwtToken, error: jwtError } = await supabase.rpc('generate_wallet_jwt', {
-        wallet_address_param: addr,
-        encrypted_user_id_param: encryptedUserId
-      });
-
-      if (jwtError || !jwtToken) {
-        console.error('Failed to generate JWT token:', jwtError);
-        throw new Error('Failed to generate secure session');
-      }
+      const { sessionToken, encryptedUserId } = authResult;
 
       // Set identity with the encrypted user ID and store session token
       const ident: WalletIdentity = { provider: "kasware", id: encryptedUserId, address: addr };
       setIdentity(ident);
-      setSessionToken(jwtToken);
+      setSessionToken(sessionToken);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
-      localStorage.setItem(LS_KEYS.SESSION_TOKEN, jwtToken);
+      localStorage.setItem(LS_KEYS.SESSION_TOKEN, sessionToken);
       
       // Load profile from database to sync with local storage
       const { data: dbProfile } = await supabase

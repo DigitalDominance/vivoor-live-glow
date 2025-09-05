@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.watermark-clip]
 verify_jwt = false
+
+[functions.authenticate-wallet]
+verify_jwt = false

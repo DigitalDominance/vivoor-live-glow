@@ -747,6 +747,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_wallet_session: {
+        Args: { encrypted_user_id: string; wallet_address: string }
+        Returns: string
+      }
       decrement_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
