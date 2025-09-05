@@ -38,12 +38,36 @@ const ChannelEdit: React.FC = () => {
     }
   }, [profile]);
 
-  // Redirect if not logged in
+  // Redirect if not logged in or verify ownership
   React.useEffect(() => {
     if (!identity) {
       navigate('/app');
       toast({ title: "Connect your wallet to edit your channel", variant: "destructive" });
+      return;
     }
+
+    // Additional security: Verify that the connected wallet owns this profile
+    const verifyOwnership = async () => {
+      try {
+        const { data: isOwner } = await supabase.rpc('verify_profile_ownership', {
+          user_id_param: identity.id
+        });
+
+        if (!isOwner) {
+          toast({ 
+            title: "Unauthorized Access", 
+            description: "You can only edit profiles owned by your connected wallet.",
+            variant: "destructive" 
+          });
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Failed to verify ownership:', error);
+        navigate('/');
+      }
+    };
+
+    verifyOwnership();
   }, [identity, navigate]);
 
   const handleSave = async () => {
@@ -51,6 +75,26 @@ const ChannelEdit: React.FC = () => {
     
     setSaving(true);
     try {
+      // Verify wallet ownership through database function
+      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
+        user_id_param: identity.id
+      });
+
+      if (verifyError) {
+        throw new Error('Failed to verify ownership');
+      }
+
+      if (!isOwner) {
+        toast({ 
+          title: "Unauthorized", 
+          description: "You can only edit your own profile.",
+          variant: "destructive" 
+        });
+        navigate('/');
+        return;
+      }
+
+      // Use secure profile update that includes additional ownership checks
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -70,7 +114,7 @@ const ChannelEdit: React.FC = () => {
       console.error('Error updating profile:', error);
       toast({ 
         title: "Failed to update channel", 
-        description: "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive" 
       });
     } finally {

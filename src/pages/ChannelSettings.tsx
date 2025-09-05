@@ -27,11 +27,36 @@ const ChannelSettings: React.FC = () => {
   const [bannerSrc, setBannerSrc] = React.useState<string | null>(null);
   const [showBannerCropper, setShowBannerCropper] = React.useState(false);
 
-  // Redirect if not logged in
+  // Redirect if not logged in or verify ownership
   React.useEffect(() => {
     if (!identity?.id) {
       navigate('/');
+      toast({ title: "Connect your wallet to access settings", variant: "destructive" });
+      return;
     }
+
+    // Additional security: Verify that the connected wallet owns this profile
+    const verifyOwnership = async () => {
+      try {
+        const { data: isOwner } = await supabase.rpc('verify_profile_ownership', {
+          user_id_param: identity.id
+        });
+
+        if (!isOwner) {
+          toast({ 
+            title: "Unauthorized Access", 
+            description: "You can only access settings for profiles owned by your connected wallet.",
+            variant: "destructive" 
+          });
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Failed to verify ownership:', error);
+        navigate('/');
+      }
+    };
+
+    verifyOwnership();
   }, [identity, navigate]);
 
   // Fetch current profile data
@@ -58,6 +83,19 @@ const ChannelSettings: React.FC = () => {
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { bio?: string }) => {
       if (!identity?.id) throw new Error('Not authenticated');
+      
+      // Verify wallet ownership through database function
+      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
+        user_id_param: identity.id
+      });
+
+      if (verifyError) {
+        throw new Error('Failed to verify ownership');
+      }
+
+      if (!isOwner) {
+        throw new Error('You can only edit your own profile');
+      }
       
       const { error } = await supabase
         .from('profiles')
@@ -126,6 +164,15 @@ const ChannelSettings: React.FC = () => {
       const { data: { publicUrl } } = supabase.storage
         .from('thumbnails')
         .getPublicUrl(fileName);
+
+      // Verify ownership before updating banner
+      const { data: isOwner, error: verifyError } = await supabase.rpc('verify_profile_ownership', {
+        user_id_param: identity.id
+      });
+
+      if (verifyError || !isOwner) {
+        throw new Error('You can only update your own profile');
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
