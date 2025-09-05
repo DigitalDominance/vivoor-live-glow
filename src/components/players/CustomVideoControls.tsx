@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Maximize, Users, Scissors, Volume2, VolumeX, Settings, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Popover,
   PopoverContent,
@@ -24,6 +25,7 @@ interface CustomVideoControlsProps {
   qualityLevels?: Array<{label: string, value: number}>;
   currentQuality?: number;
   onQualityChange?: (quality: number) => void;
+  streamId?: string; // Add streamId to fetch live viewer count
 }
 
 const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
@@ -41,9 +43,42 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
   showClipping = true,
   qualityLevels,
   currentQuality,
-  onQualityChange
+  onQualityChange,
+  streamId
 }) => {
   const [qualityPopoverOpen, setQualityPopoverOpen] = useState(false);
+  const [liveViewerCount, setLiveViewerCount] = useState(viewers);
+  
+  // Fetch live viewer count every 10 seconds when streamId is provided
+  useEffect(() => {
+    if (!streamId || !isLive) {
+      setLiveViewerCount(viewers);
+      return;
+    }
+
+    const fetchViewerCount = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_stream_viewer_count', {
+          stream_id_param: streamId
+        });
+        
+        if (!error && data !== null) {
+          setLiveViewerCount(data);
+        }
+      } catch (error) {
+        console.error('Error fetching viewer count:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchViewerCount();
+    
+    // Update every 10 seconds
+    const interval = setInterval(fetchViewerCount, 10000);
+    
+    return () => clearInterval(interval);
+  }, [streamId, isLive, viewers]);
+
   const formatTime = (seconds: number) => {
     return new Date(seconds * 1000).toISOString().substring(11, 19);
   };
@@ -114,7 +149,7 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
           {/* Viewer count */}
           <div className="flex items-center gap-0.5 md:gap-2 text-white text-[10px] md:text-sm px-1 md:px-3 py-0.5 md:py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
             <Users className="h-2.5 w-2.5 md:h-4 md:w-4" />
-            <span className="font-medium">{viewers}</span>
+            <span className="font-medium">{liveViewerCount}</span>
           </div>
 
           {/* Clip button */}

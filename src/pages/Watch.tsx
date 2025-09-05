@@ -723,25 +723,26 @@ const Watch = () => {
                       onQualityLevelsUpdate={setQualityLevels}
                       onQualityChange={qualityChangeRef}
                     />
-                  {showControls && (
-                    <CustomVideoControls
-                      isPlaying={isPlaying}
-                      onPlayPause={handlePlayPause}
-                      onFullscreen={handleFullscreen}
-                      onCreateClip={() => setClipModalOpen(true)}
-                      volume={volume}
-                      onVolumeChange={handleVolumeChange}
-                      isMuted={isMuted}
-                      onToggleMute={handleToggleMute}
-                      elapsed={elapsed}
-                      viewers={viewerCount}
-                      isLive={livepeerIsLive}
-                      showClipping={true}
-                      qualityLevels={qualityLevels}
-                      currentQuality={currentQuality}
-                      onQualityChange={handleQualityChange}
-                    />
-                   )}
+                   {showControls && (
+                     <CustomVideoControls
+                       isPlaying={isPlaying}
+                       onPlayPause={handlePlayPause}
+                       onFullscreen={handleFullscreen}
+                       onCreateClip={() => setClipModalOpen(true)}
+                       volume={volume}
+                       onVolumeChange={handleVolumeChange}
+                       isMuted={isMuted}
+                       onToggleMute={handleToggleMute}
+                       elapsed={elapsed}
+                       viewers={viewerCount}
+                       isLive={livepeerIsLive}
+                       showClipping={true}
+                       qualityLevels={qualityLevels}
+                       currentQuality={currentQuality}
+                       onQualityChange={handleQualityChange}
+                       streamId={streamData?.id}
+                     />
+                    )}
                  </>
                 ) : (
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
