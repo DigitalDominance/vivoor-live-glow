@@ -26,15 +26,51 @@ function isValidUUID(uuid: string): boolean {
   return uuidRegex.test(uuid);
 }
 
-// Enhanced rate limiting and session management
+// Enhanced rate limiting (no session storage needed)
 const rateLimitStore = new Map<string, { count: number; resetTime: number; failedAttempts: number; lockoutUntil: number }>();
-const sessionStore = new Map<string, { created: number; expires: number; ip: string }>();
 
-// Generate secure session token
-function generateSessionToken(): string {
+// JWT-like token generation and validation (stateless)
+function generateAdminToken(): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2);
-  return `admin_${timestamp}_${random}`;
+  const expires = (Date.now() + (60 * 60 * 1000)).toString(36); // 1 hour from now
+  return `admin_${timestamp}_${expires}_${random}`;
+}
+
+function validateAdminToken(token: string): { valid: boolean; expired?: boolean } {
+  console.log('Validating admin token:', token.substring(0, 20) + '...');
+  
+  if (!token.startsWith('admin_')) {
+    console.log('Invalid token format');
+    return { valid: false };
+  }
+  
+  const parts = token.split('_');
+  if (parts.length !== 4) {
+    console.log('Invalid token structure');
+    return { valid: false };
+  }
+  
+  const expiresStr = parts[2];
+  const expires = parseInt(expiresStr, 36);
+  const now = Date.now();
+  
+  console.log('Token expires:', new Date(expires).toISOString());
+  console.log('Current time:', new Date(now).toISOString());
+  
+  if (now > expires) {
+    console.log('Token expired');
+    return { valid: false, expired: true };
+  }
+  
+  console.log('Token validation successful');
+  return { valid: true };
+}
+
+// Normalize IP address to handle X-Forwarded-For headers
+function normalizeIP(ipHeader: string): string {
+  if (!ipHeader) return 'unknown';
+  return ipHeader.split(',')[0].trim();
 }
 
 // Enhanced rate limiting with progressive delays and lockouts
@@ -99,76 +135,6 @@ function resetFailedAttempts(ip: string): void {
   }
 }
 
-// Normalize IP address to handle X-Forwarded-For headers
-function normalizeIP(ipHeader: string): string {
-  if (!ipHeader) return 'unknown';
-  // Take the first IP from comma-separated list (original client IP)
-  return ipHeader.split(',')[0].trim();
-}
-
-// Validate session token
-function validateSessionToken(token: string, ip: string): boolean {
-  console.log('Validating session token:', token.substring(0, 20) + '...');
-  console.log('Current IP:', ip);
-  
-  const session = sessionStore.get(token);
-  if (!session) {
-    console.log('Session not found in store');
-    return false;
-  }
-  
-  console.log('Session found, stored IP:', session.ip);
-  console.log('Session expires:', new Date(session.expires).toISOString());
-  
-  const now = Date.now();
-  if (now > session.expires) {
-    console.log('Session expired');
-    sessionStore.delete(token);
-    return false;
-  }
-  
-  // Normalize both IPs for comparison (disabled for now due to proxy complexity)
-  // const normalizedCurrentIP = normalizeIP(ip);
-  // const normalizedStoredIP = normalizeIP(session.ip);
-  // if (normalizedCurrentIP !== normalizedStoredIP) {
-  //   console.log('IP mismatch:', normalizedCurrentIP, 'vs', normalizedStoredIP);
-  //   return false;
-  // }
-  
-  console.log('Session validation successful');
-  return true;
-}
-
-// Create new session
-function createSession(ip: string): string {
-  const token = generateSessionToken();
-  const now = Date.now();
-  const expires = now + (60 * 60 * 1000); // 1 hour
-  const normalizedIP = normalizeIP(ip);
-  
-  console.log('Creating session with token:', token.substring(0, 20) + '...');
-  console.log('Session IP:', normalizedIP);
-  console.log('Session expires:', new Date(expires).toISOString());
-  
-  sessionStore.set(token, {
-    created: now,
-    expires,
-    ip: normalizedIP
-  });
-  
-  return token;
-}
-
-// Clean up expired sessions
-function cleanupExpiredSessions(): void {
-  const now = Date.now();
-  for (const [token, session] of sessionStore.entries()) {
-    if (now > session.expires) {
-      sessionStore.delete(token);
-    }
-  }
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -210,10 +176,7 @@ serve(async (req) => {
     const clientIP = normalizeIP(rawClientIP);
     console.log('Request from IP:', clientIP, '(raw:', rawClientIP + ')');
     
-    // Clean up expired sessions periodically
-    if (Math.random() < 0.1) { // 10% chance to cleanup on each request
-      cleanupExpiredSessions();
-    }
+    // No need to cleanup sessions since we're using stateless tokens now
     
     // Apply enhanced rate limiting (max 5 requests per minute per IP)
     const rateLimitResult = checkRateLimit(clientIP, 5, 60000);
@@ -356,15 +319,15 @@ serve(async (req) => {
       // Reset failed attempts on successful auth
       resetFailedAttempts(clientIP);
       
-      // Create new session token
-      const newSessionToken = createSession(clientIP);
+      // Create new stateless admin token
+      const newToken = generateAdminToken();
       
       console.log('Admin authentication successful from IP:', clientIP);
       
       return new Response(
         JSON.stringify({ 
           verified: true, 
-          sessionToken: newSessionToken,
+          sessionToken: newToken,
           expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour
         }),
         { 
@@ -373,10 +336,10 @@ serve(async (req) => {
         }
       );
     } else {
-      // For all other actions, validate session token
+      // For all other actions, validate stateless admin token
       if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
         return new Response(
-          JSON.stringify({ error: 'Session token required' }),
+          JSON.stringify({ error: 'Admin token required' }),
           { 
             status: 401, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -384,10 +347,12 @@ serve(async (req) => {
         );
       }
 
-      if (!validateSessionToken(sessionToken, clientIP)) {
-        console.log('Invalid session token from IP:', clientIP);
+      const tokenValidation = validateAdminToken(sessionToken);
+      if (!tokenValidation.valid) {
+        console.log('Invalid admin token from IP:', clientIP);
+        const errorMessage = tokenValidation.expired ? 'Admin token expired' : 'Invalid admin token';
         return new Response(
-          JSON.stringify({ error: 'Invalid or expired session token' }),
+          JSON.stringify({ error: errorMessage }),
           { 
             status: 401, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
