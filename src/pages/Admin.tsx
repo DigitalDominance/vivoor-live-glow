@@ -103,9 +103,14 @@ export default function Admin() {
         setSessionExpiry(expiry);
         
         toast.success('Admin access granted');
-        loadUsers(0);
-        loadStreams(0);
-        loadReports(0);
+        
+        // Wait a moment for state to update, then load data sequentially
+        setTimeout(() => {
+          console.log('Loading admin data with session token:', data.sessionToken.substring(0, 20) + '...');
+          loadUsers(0);
+          loadStreams(0);
+          loadReports(0);
+        }, 100);
       } else {
         const errorMsg = data?.lockoutUntil 
           ? `Account locked until ${new Date(data.lockoutUntil).toLocaleString()}`
@@ -121,7 +126,14 @@ export default function Admin() {
   };
 
   const loadUsers = async (page = 0) => {
+    if (!sessionToken) {
+      console.error('No session token available for loadUsers');
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+    
     try {
+      console.log('Loading users with token:', sessionToken.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_users',
@@ -132,18 +144,34 @@ export default function Admin() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in loadUsers:', error);
+        throw error;
+      }
       setUsers(data?.users || []);
       // For now, estimate total based on current page results
       setUsersTotal(data?.users?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.users?.length || 0));
     } catch (error) {
       console.error('Error loading users:', error);
-      toast.error('Failed to load users');
+      if (error.message?.includes('401') || error.message?.includes('token')) {
+        toast.error('Session expired. Please log in again.');
+        setIsAuthenticated(false);
+        setSessionToken(null);
+      } else {
+        toast.error('Failed to load users');
+      }
     }
   };
 
   const loadStreams = async (page = 0) => {
+    if (!sessionToken) {
+      console.error('No session token available for loadStreams');
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+    
     try {
+      console.log('Loading streams with token:', sessionToken.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_live_streams',
@@ -153,17 +181,33 @@ export default function Admin() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in loadStreams:', error);
+        throw error;
+      }
       setStreams(data?.streams || []);
       setStreamsTotal(data?.streams?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.streams?.length || 0));
     } catch (error) {
       console.error('Error loading streams:', error);
-      toast.error('Failed to load streams');
+      if (error.message?.includes('401') || error.message?.includes('token')) {
+        toast.error('Session expired. Please log in again.');
+        setIsAuthenticated(false);
+        setSessionToken(null);
+      } else {
+        toast.error('Failed to load streams');
+      }
     }
   };
 
   const loadReports = async (page = 0) => {
+    if (!sessionToken) {
+      console.error('No session token available for loadReports');
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+    
     try {
+      console.log('Loading reports with token:', sessionToken.substring(0, 20) + '...');
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'get_reports',
@@ -174,12 +218,21 @@ export default function Admin() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in loadReports:', error);
+        throw error;
+      }
       setReports(data?.reports || []);
       setReportsTotal(data?.reports?.length === itemsPerPage ? (page + 2) * itemsPerPage : (page * itemsPerPage) + (data?.reports?.length || 0));
     } catch (error) {
       console.error('Error loading reports:', error);
-      toast.error('Failed to load reports');
+      if (error.message?.includes('401') || error.message?.includes('token')) {
+        toast.error('Session expired. Please log in again.');
+        setIsAuthenticated(false);
+        setSessionToken(null);
+      } else {
+        toast.error('Failed to load reports');
+      }
     }
   };
 
