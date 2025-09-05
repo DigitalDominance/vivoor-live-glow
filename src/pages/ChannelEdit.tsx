@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/context/WalletContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, Save } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 const ChannelEdit: React.FC = () => {
   const navigate = useNavigate();
   const { identity } = useWallet();
+  const queryClient = useQueryClient();
   const [bio, setBio] = React.useState("");
   const [saving, setSaving] = React.useState(false);
 
@@ -69,7 +70,18 @@ const ChannelEdit: React.FC = () => {
       }
 
       toast({ title: "Channel updated successfully!" });
-      await refetch();
+      
+      // Invalidate ALL profile-related queries to ensure updates show everywhere
+      queryClient.invalidateQueries({ queryKey: ['my-profile', identity.id] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          // Invalidate any query that might contain profile data
+          return query.queryKey[0] === 'profile-by-username' || 
+                 query.queryKey[0] === 'profile' ||
+                 (query.queryKey[0] === 'user-content' && query.queryKey[1] === identity.id);
+        }
+      });
+      
       navigate(`/channel/${identity.id}`);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -110,7 +122,17 @@ const ChannelEdit: React.FC = () => {
       if (updateError) throw updateError;
 
       toast({ title: "Avatar updated successfully!" });
-      await refetch();
+      
+      // Invalidate ALL profile-related queries to ensure updates show everywhere
+      queryClient.invalidateQueries({ queryKey: ['my-profile', identity.id] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          // Invalidate any query that might contain profile data
+          return query.queryKey[0] === 'profile-by-username' || 
+                 query.queryKey[0] === 'profile' ||
+                 (query.queryKey[0] === 'user-content' && query.queryKey[1] === identity.id);
+        }
+      });
     } catch (error) {
       console.error('Error uploading avatar:', error);
       

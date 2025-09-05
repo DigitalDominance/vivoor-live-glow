@@ -70,7 +70,16 @@ const ChannelSettings: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate ALL profile-related queries to ensure updates show everywhere
       queryClient.invalidateQueries({ queryKey: ['profile', identity?.id] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          // Invalidate any query that might contain profile data
+          return query.queryKey[0] === 'profile-by-username' || 
+                 query.queryKey[0] === 'profile' ||
+                 (query.queryKey[0] === 'user-content' && query.queryKey[1] === identity?.id);
+        }
+      });
       toast({ title: "Profile updated successfully!" });
     },
     onError: (error) => {
@@ -142,7 +151,17 @@ const ChannelSettings: React.FC = () => {
 
       if (updateError) throw updateError;
 
+      // Invalidate ALL profile-related queries to ensure banner shows up everywhere
       queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          // Invalidate any query that might contain profile data
+          return query.queryKey[0] === 'profile-by-username' || 
+                 query.queryKey[0] === 'profile' ||
+                 (query.queryKey[0] === 'user-content' && query.queryKey[1] === identity.id);
+        }
+      });
+      
       toast({ title: "Banner updated successfully!" });
       setShowBannerCropper(false);
       setBannerFile(null);
