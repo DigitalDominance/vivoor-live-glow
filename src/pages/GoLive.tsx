@@ -349,28 +349,17 @@ const GoLive = () => {
           livepeer_stream_id_param: currentLivepeerStreamId || null,
           livepeer_playback_id_param: currentLivepeerPlaybackId || null,
           streaming_mode_param: streamingMode,
-          is_live_param: streamingMode === 'browser' ? true : false
+          is_live_param: streamingMode === 'browser' ? true : false,
+          playback_url_param: currentPlaybackUrl,
+          treasury_txid_param: treasuryTxid,
+          treasury_block_time_param: Date.now(),
+          stream_type_param: 'livepeer',
+          thumbnail_url_param: thumbnailUrl
         });
 
         if (error || !streamId) {
           console.error('Failed to create stream in database:', error);
           throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
-        }
-
-        // Need to also update additional fields that aren't in the secure function
-        const { error: updateError } = await supabase
-          .from('streams')
-          .update({
-            playback_url: currentPlaybackUrl,
-            thumbnail_url: thumbnailUrl,
-            treasury_txid: treasuryTxid,
-            treasury_block_time: Date.now() // Approximate block time
-          })
-          .eq('id', streamId);
-
-        if (updateError) {
-          console.error('Failed to update stream details:', updateError);
-          // Don't throw here since the stream was created successfully
         }
 
         console.log('Stream created successfully with ID:', streamId);

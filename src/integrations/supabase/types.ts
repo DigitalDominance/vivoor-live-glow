@@ -735,16 +735,32 @@ export type Database = {
         Returns: string
       }
       create_stream_secure: {
-        Args: {
-          category_param?: string
-          is_live_param?: boolean
-          livepeer_playback_id_param?: string
-          livepeer_stream_id_param?: string
-          session_token_param: string
-          streaming_mode_param?: string
-          title_param: string
-          wallet_address_param: string
-        }
+        Args:
+          | {
+              category_param?: string
+              is_live_param?: boolean
+              livepeer_playback_id_param?: string
+              livepeer_stream_id_param?: string
+              playback_url_param?: string
+              session_token_param: string
+              stream_type_param?: string
+              streaming_mode_param?: string
+              thumbnail_url_param?: string
+              title_param: string
+              treasury_block_time_param?: number
+              treasury_txid_param?: string
+              wallet_address_param: string
+            }
+          | {
+              category_param?: string
+              is_live_param?: boolean
+              livepeer_playback_id_param?: string
+              livepeer_stream_id_param?: string
+              session_token_param: string
+              streaming_mode_param?: string
+              title_param: string
+              wallet_address_param: string
+            }
         Returns: string
       }
       create_wallet_session: {
