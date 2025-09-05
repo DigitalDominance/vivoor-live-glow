@@ -29,7 +29,7 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
- * Handles Kaspa's specific message signing format (not Bitcoin)
+ * Tries multiple message signing formats to handle Kasware's specific implementation
  */
 async function verifyECDSASignature(
   message: string, 
@@ -94,35 +94,75 @@ async function verifyECDSASignature(
       return false;
     }
     
-    // For Kaspa: Use simple SHA-256 hash of the raw message (no Bitcoin prefix)
-    const encoder = new TextEncoder();
-    const messageBytes = encoder.encode(message);
-    const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
-    const messageHashArray = new Uint8Array(messageHash);
-    const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+    // Convert public key hex to bytes
+    const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+    console.log('Public key bytes length:', publicKeyBytes.length);
     
-    console.log('Message hash (Kaspa SHA-256):', messageHashHex);
-    
-    try {
-      // Convert public key hex to bytes
-      const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-      console.log('Public key bytes length:', publicKeyBytes.length);
-      
-      // Verify the signature using noble-secp256k1
-      const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
-      
-      if (isValid) {
-        console.log('✅ Signature verification PASSED with Kaspa format');
-        return true;
-      } else {
-        console.log('❌ Signature verification FAILED with Kaspa format');
-        return false;
+    // Try multiple message signing approaches
+    const approaches = [
+      {
+        name: 'Raw message SHA-256',
+        getHash: async () => {
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(message);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
+      },
+      {
+        name: 'Bitcoin message format with double SHA-256',
+        getHash: async () => {
+          const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(bitcoinMessage);
+          const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', firstHash));
+        }
+      },
+      {
+        name: 'Bitcoin message format with single SHA-256',
+        getHash: async () => {
+          const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(bitcoinMessage);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
+      },
+      {
+        name: 'Kaspa message format',
+        getHash: async () => {
+          const kaspaMessage = `\x17Kaspa Signed Message:\n${message.length}${message}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(kaspaMessage);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
       }
-      
-    } catch (cryptoError) {
-      console.error('Cryptographic verification error:', cryptoError);
-      return false;
+    ];
+    
+    // Try each approach
+    for (const approach of approaches) {
+      try {
+        const messageHashArray = await approach.getHash();
+        const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+        console.log(`${approach.name} hash:`, messageHashHex);
+        
+        // Verify the signature using noble-secp256k1
+        const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
+        
+        if (isValid) {
+          console.log(`✅ Signature verification PASSED with ${approach.name}`);
+          return true;
+        } else {
+          console.log(`❌ Signature verification FAILED with ${approach.name}`);
+        }
+        
+      } catch (cryptoError) {
+        console.error(`Cryptographic verification error for ${approach.name}:`, cryptoError);
+        continue;
+      }
     }
+    
+    console.error('All signature verification approaches failed');
+    return false;
     
   } catch (error) {
     console.error('Error verifying signature:', error);
