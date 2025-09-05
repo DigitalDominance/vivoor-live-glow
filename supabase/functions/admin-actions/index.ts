@@ -276,7 +276,12 @@ serve(async (req) => {
     // Handle authentication differently for password verification vs session token validation
     if (action === 'verify_password') {
       // For initial login, validate password
+      console.log('Password verification request received');
+      console.log('Password provided:', !!password);
+      console.log('Admin password configured:', !!adminPassword);
+      
       if (!password || typeof password !== 'string' || password.trim() === '') {
+        console.log('Password validation failed - missing or invalid password');
         return new Response(
           JSON.stringify({ error: 'Password required' }),
           { 
@@ -286,11 +291,15 @@ serve(async (req) => {
         );
       }
 
+      console.log('Attempting password verification...');
       const isValidPassword = await verifyPasswordSecure(password, adminPassword);
+      console.log('Password verification result:', isValidPassword);
       
       if (!isValidPassword) {
         // Track failed attempt and apply progressive delays
+        console.log('Password verification failed for IP:', clientIP);
         const failureResult = handleFailedAuth(clientIP);
+        console.log('Failure result:', failureResult);
         
         if (failureResult.delay > 0) {
           await new Promise(resolve => setTimeout(resolve, failureResult.delay));
