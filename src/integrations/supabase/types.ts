@@ -1193,7 +1193,6 @@ export type Database = {
         Args: { session_token_param: string; wallet_address_param: string }
         Returns: {
           encrypted_user_id: string
-          expires_at: string
           is_valid: boolean
         }[]
       }
