@@ -3,7 +3,6 @@ declare global {
     kasware?: {
       requestAccounts: () => Promise<string[]>;
       getAccounts: () => Promise<string[]>;
-      getPublicKey: () => Promise<string>;
       getVersion?: () => Promise<string>;
       getNetwork?: () => Promise<string>;
       switchNetwork?: (network: string) => Promise<void>;
