@@ -29,7 +29,7 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
- * Handles Kasware's base64 signature format with Bitcoin message signing
+ * Handles Kaspa's specific message signing format (not Bitcoin)
  */
 async function verifyECDSASignature(
   message: string, 
@@ -54,47 +54,54 @@ async function verifyECDSASignature(
     console.log('Public key:', publicKey);
     console.log('Signature (raw):', signature);
     
-    // Decode base64 signature from Kasware
+    // Try to decode signature - handle both hex and base64 formats
     let signatureBytes: Uint8Array;
-    try {
-      // Kasware returns base64 encoded signatures
-      const binaryString = atob(signature);
-      signatureBytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        signatureBytes[i] = binaryString.charCodeAt(i);
+    
+    // First try hex format (128 characters = 64 bytes)
+    if (/^[0-9a-fA-F]{128}$/.test(signature)) {
+      console.log('Hex signature format detected');
+      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+      console.log('Signature decoded from hex, length:', signatureBytes.length);
+    } else {
+      // Try base64 format
+      try {
+        console.log('Attempting base64 decode...');
+        const binaryString = atob(signature);
+        signatureBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          signatureBytes[i] = binaryString.charCodeAt(i);
+        }
+        console.log('Signature decoded from base64, length:', signatureBytes.length);
+        
+        // If it's 65 bytes (Bitcoin recoverable format), extract r+s components
+        if (signatureBytes.length === 65) {
+          console.log('Bitcoin recoverable format detected, extracting r+s');
+          const r = signatureBytes.slice(1, 33);
+          const s = signatureBytes.slice(33, 65);
+          signatureBytes = new Uint8Array(64);
+          signatureBytes.set(r);
+          signatureBytes.set(s, 32);
+        }
+      } catch (e) {
+        console.error('Failed to decode signature as base64:', e);
+        return false;
       }
-      console.log('Signature decoded from base64, length:', signatureBytes.length);
-    } catch (e) {
-      console.error('Failed to decode base64 signature:', e);
+    }
+    
+    // Validate signature length (should be 64 bytes for r+s)
+    if (signatureBytes.length !== 64) {
+      console.error('Invalid signature length:', signatureBytes.length, 'expected 64 bytes');
       return false;
     }
     
-    // Kasware signatures are 65 bytes (Bitcoin recoverable format)
-    if (signatureBytes.length !== 65) {
-      console.error('Invalid signature length:', signatureBytes.length, 'expected 65 bytes');
-      return false;
-    }
-    
-    // Extract r and s components (first 64 bytes, skip recovery ID)
-    const r = signatureBytes.slice(1, 33);
-    const s = signatureBytes.slice(33, 65);
-    const rsCombined = new Uint8Array(64);
-    rsCombined.set(r);
-    rsCombined.set(s, 32);
-    
-    // Create Bitcoin message format
-    const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
-    console.log('Message with Bitcoin prefix length:', bitcoinMessage.length);
-    
-    // Hash with double SHA-256 (Bitcoin standard)
+    // For Kaspa: Use simple SHA-256 hash of the raw message (no Bitcoin prefix)
     const encoder = new TextEncoder();
-    const messageBytes = encoder.encode(bitcoinMessage);
-    const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
-    const secondHash = await crypto.subtle.digest('SHA-256', firstHash);
-    const messageHashArray = new Uint8Array(secondHash);
+    const messageBytes = encoder.encode(message);
+    const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
+    const messageHashArray = new Uint8Array(messageHash);
     const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
     
-    console.log('Message hash (double SHA-256):', messageHashHex);
+    console.log('Message hash (Kaspa SHA-256):', messageHashHex);
     
     try {
       // Convert public key hex to bytes
@@ -102,26 +109,14 @@ async function verifyECDSASignature(
       console.log('Public key bytes length:', publicKeyBytes.length);
       
       // Verify the signature using noble-secp256k1
-      const isValid = secp256k1.verify(rsCombined, messageHashArray, publicKeyBytes);
+      const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
       
       if (isValid) {
-        console.log('✅ Signature verification PASSED with double SHA-256');
+        console.log('✅ Signature verification PASSED with Kaspa format');
         return true;
       } else {
-        console.log('❌ Signature verification FAILED with double SHA-256');
-        
-        // Try with single SHA-256 as fallback
-        const singleHash = await crypto.subtle.digest('SHA-256', messageBytes);
-        const singleHashArray = new Uint8Array(singleHash);
-        const isValidSingle = secp256k1.verify(rsCombined, singleHashArray, publicKeyBytes);
-        
-        if (isValidSingle) {
-          console.log('✅ Signature verification PASSED with single SHA-256');
-          return true;
-        } else {
-          console.log('❌ Signature verification FAILED with single SHA-256');
-          return false;
-        }
+        console.log('❌ Signature verification FAILED with Kaspa format');
+        return false;
       }
       
     } catch (cryptoError) {
