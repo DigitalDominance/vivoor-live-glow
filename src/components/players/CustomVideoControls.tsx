@@ -176,12 +176,12 @@ const CustomVideoControls: React.FC<CustomVideoControlsProps> = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="group h-5 w-5 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
+                  className="group h-8 w-8 md:h-10 md:w-10 rounded-full bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 backdrop-blur-sm border border-white/20 hover:from-brand-cyan/30 hover:via-brand-iris/30 hover:to-brand-pink/30 transition-all duration-300"
                   title="Quality Settings"
                   onClick={() => setQualityPopoverOpen(!qualityPopoverOpen)}
                 >
                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
-                  <Settings className="h-2.5 w-2.5 md:h-4 md:w-4 text-white" />
+                  <Settings className="h-3 w-3 md:h-4 md:w-4 text-white" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent 
