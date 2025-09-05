@@ -141,11 +141,23 @@ serve(async (req) => {
       );
     }
 
+    // Debug logging
+    console.log('Password verification attempt:', {
+      action,
+      passwordLength: password?.length,
+      expectedLength: adminPassword?.length,
+      passwordProvided: !!password,
+      expectedDefined: !!adminPassword
+    });
+
     // Verify admin password for all actions using constant-time comparison
     const isValidPassword = await verifyPasswordSecure(password, adminPassword);
+    console.log('Password verification result:', isValidPassword);
+    
     if (!isValidPassword) {
       // Add delay to prevent timing attacks
       await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Password verification failed - returning 401');
       return new Response(
         JSON.stringify({ error: 'Invalid admin password' }),
         { 
