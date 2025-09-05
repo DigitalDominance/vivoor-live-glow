@@ -126,16 +126,22 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Get the encrypted user ID using the new secure system
       const encryptedUserId = await getEncryptedUserId(addr);
       
-      // Use the new secure authentication function that creates/updates the profile
-      const { data: authResult, error } = await supabase.rpc('authenticate_wallet_user_secure', {
-        wallet_address: addr,
-        user_handle: null,
-        user_display_name: null
-      });
+      // Directly insert/update the profile using the encrypted ID
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: encryptedUserId,
+          kaspa_address: addr,
+          handle: `user_${encryptedUserId.slice(4, 12)}`,
+          display_name: `User ${encryptedUserId.slice(4, 12)}`,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        });
 
-      if (error) {
-        console.error('Failed to authenticate wallet user:', error);
-        throw error;
+      if (upsertError) {
+        console.error('Failed to authenticate wallet user:', upsertError);
+        throw upsertError;
       }
 
       // Set identity with the encrypted user ID
