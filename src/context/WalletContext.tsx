@@ -144,25 +144,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const addr = accounts?.[0];
       if (!addr) throw new Error("No Kasware account returned");
       
-      // Get the encrypted user ID using the new secure system
-      const encryptedUserId = await getEncryptedUserId(addr);
-      
-      // Directly insert/update the profile using the encrypted ID
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: encryptedUserId,
-          kaspa_address: addr,
-          handle: `user_${encryptedUserId.slice(4, 12)}`,
-          display_name: `User ${encryptedUserId.slice(4, 12)}`,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        });
+      // Use the secure authentication function that bypasses RLS
+      const { data: encryptedUserId, error: authError } = await supabase.rpc('authenticate_wallet_secure', {
+        wallet_address_param: addr
+      });
 
-      if (upsertError) {
-        console.error('Failed to authenticate wallet user:', upsertError);
-        throw upsertError;
+      if (authError || !encryptedUserId) {
+        console.error('Failed to authenticate wallet user:', authError);
+        throw authError || new Error('Failed to authenticate wallet');
       }
 
       // Generate secure JWT session token

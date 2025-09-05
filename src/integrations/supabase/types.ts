@@ -674,6 +674,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      authenticate_wallet_secure: {
+        Args: { wallet_address_param: string }
+        Returns: string
+      }
       authenticate_wallet_user: {
         Args: {
           user_display_name?: string
