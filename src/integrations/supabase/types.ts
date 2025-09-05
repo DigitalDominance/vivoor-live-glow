@@ -616,6 +616,14 @@ export type Database = {
         }
         Returns: string
       }
+      authenticate_wallet_user_secure: {
+        Args: {
+          user_display_name?: string
+          user_handle?: string
+          wallet_address: string
+        }
+        Returns: string
+      }
       auto_end_disconnected_streams: {
         Args: { timeout_minutes?: number }
         Returns: number
