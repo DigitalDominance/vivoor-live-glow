@@ -41,23 +41,12 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
 
         if (existingTips) {
           const processedTips: ProcessedTip[] = existingTips.map(tip => {
-            let decrypted = null;
-            try {
-              if (tip.decrypted_message) {
-                decrypted = typeof tip.decrypted_message === 'string' 
-                  ? JSON.parse(tip.decrypted_message) 
-                  : tip.decrypted_message;
-              }
-            } catch {
-              // Ignore parse errors
-            }
-
             return {
               id: tip.id,
               amount: Math.round(tip.amount_sompi / 100000000), // Convert sompi to KAS
-              sender: decrypted?.sender || 'Anonymous',
-              message: decrypted?.message,
-              timestamp: decrypted?.timestamp || Date.now(),
+              sender: tip.sender_name || 'Anonymous',
+              message: tip.tip_message || tip.decrypted_message,
+              timestamp: new Date(tip.created_at).getTime(),
               txid: tip.txid
             };
           });
@@ -94,23 +83,12 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
             return;
           }
 
-          let decrypted = null;
-          try {
-            if (newTipData.decrypted_message) {
-              decrypted = typeof newTipData.decrypted_message === 'string' 
-                ? JSON.parse(newTipData.decrypted_message) 
-                : newTipData.decrypted_message;
-            }
-          } catch (error) {
-            console.error('Error parsing decrypted message:', error);
-          }
-
           const processedTip: ProcessedTip = {
             id: newTipData.id,
             amount: Math.round(newTipData.amount_sompi / 100000000), // Convert sompi to KAS
-            sender: decrypted?.sender || 'Anonymous',
-            message: decrypted?.message,
-            timestamp: decrypted?.timestamp || Date.now(),
+            sender: newTipData.sender_name || 'Anonymous',
+            message: newTipData.tip_message || newTipData.decrypted_message,
+            timestamp: new Date(newTipData.created_at).getTime(),
             txid: newTipData.txid
           };
 
