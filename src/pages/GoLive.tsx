@@ -503,6 +503,14 @@ const GoLive = () => {
                       <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
                     </div>
                   )}
+                  
+                  {/* Coming Soon Overlay */}
+                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <h4 className="text-white text-xl font-semibold mb-2">Coming Soon</h4>
+                      <p className="text-gray-300 text-sm">Browser streaming is currently under development</p>
+                    </div>
+                  </div>
                 </button>
               </div>
             </div>
