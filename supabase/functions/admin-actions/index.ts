@@ -7,13 +7,15 @@ const corsHeaders = {
 };
 
 interface AdminAction {
-  action: 'verify_password' | 'ban_user' | 'unban_user' | 'end_stream' | 'get_users' | 'get_live_streams';
+  action: 'verify_password' | 'ban_user' | 'unban_user' | 'end_stream' | 'get_users' | 'get_live_streams' | 'get_reports' | 'resolve_report';
   password?: string;
   userId?: string;
   streamId?: string;
+  reportId?: string;
   search?: string;
   offset?: number;
   limit?: number;
+  statusFilter?: string;
 }
 
 serve(async (req) => {
@@ -41,7 +43,7 @@ serve(async (req) => {
     }
 
     const body: AdminAction = await req.json();
-    const { action, password, userId, streamId, search, offset = 0, limit = 50 } = body;
+    const { action, password, userId, streamId, reportId, search, offset = 0, limit = 50, statusFilter } = body;
 
     // Verify admin password for all actions
     if (password !== adminPassword) {
@@ -143,6 +145,35 @@ serve(async (req) => {
         
         if (streamsError) throw streamsError;
         result = { streams };
+        break;
+
+      case 'get_reports':
+        const { data: reports, error: reportsError } = await supabaseClient.rpc('admin_get_reports', {
+          limit_param: limit,
+          offset_param: offset,
+          status_filter: statusFilter || null
+        });
+        if (reportsError) throw reportsError;
+        result = { reports };
+        break;
+
+      case 'resolve_report':
+        if (!reportId) {
+          return new Response(
+            JSON.stringify({ error: 'Report ID required' }),
+            { 
+              status: 400, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+        const { error: resolveError } = await supabaseClient.rpc('admin_resolve_report', {
+          report_id_param: reportId,
+          action_taken: 'resolved_by_admin',
+          admin_user_id: 'admin'
+        });
+        if (resolveError) throw resolveError;
+        result = { success: true, message: 'Report resolved successfully' };
         break;
 
       default:

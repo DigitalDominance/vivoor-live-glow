@@ -20,11 +20,12 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { toast } from "sonner";
-import { Heart, Volume2, VolumeX } from "lucide-react";
+import { Heart, Volume2, VolumeX, Flag } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { containsBadWords, cleanText } from "@/lib/badWords";
 import { startStreamTracking, updateStreamStatus, stopStreamTracking } from "@/lib/streamLocal";
+import ReportModal from "@/components/modals/ReportModal";
 
 const Watch = () => {
   const { streamId } = useParams();
@@ -33,6 +34,7 @@ const Watch = () => {
   const [elapsed, setElapsed] = React.useState(0);
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [reportOpen, setReportOpen] = React.useState(false);
   const [liked, setLiked] = React.useState(false);
   const [followed, setFollowed] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(0);
@@ -826,6 +828,14 @@ const Watch = () => {
                   <span className="ml-1">{likeCount}</span>
                 </Button>
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReportOpen(true)}
+                  className="flex-1 sm:flex-none border border-white/10 hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <Flag className="size-4" />
+                </Button>
+                <Button
                   variant={followed ? "secondary" : "hero"}
                   size="sm"
                   onClick={handleFollow}
@@ -933,6 +943,18 @@ const Watch = () => {
           onOpenChange={setClipModalOpen}
           livepeerPlaybackId={streamData.playback_url.match(/\/hls\/([^\/]+)\//)?.[1] || ''}
           streamTitle={streamData.title}
+        />
+      )}
+
+      {/* Report Modal */}
+      {streamData && streamerProfile && (
+        <ReportModal
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          streamId={streamData.id}
+          streamTitle={streamData.title}
+          reportedUserId={streamData.user_id}
+          reportedUserHandle={streamerProfile.handle || 'streamer'}
         />
       )}
     </main>

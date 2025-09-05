@@ -262,6 +262,56 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          report_type: string
+          reported_stream_id: string | null
+          reported_user_id: string
+          reporter_user_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          report_type: string
+          reported_stream_id?: string | null
+          reported_user_id: string
+          reporter_user_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          report_type?: string
+          reported_stream_id?: string | null
+          reported_user_id?: string
+          reporter_user_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reported_stream_id_fkey"
+            columns: ["reported_stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_viewers: {
         Row: {
           id: string
@@ -505,6 +555,28 @@ export type Database = {
         Args: { stream_id_param: string }
         Returns: undefined
       }
+      admin_get_reports: {
+        Args: {
+          limit_param?: number
+          offset_param?: number
+          status_filter?: string
+        }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          report_type: string
+          reported_stream_id: string
+          reported_user_display_name: string
+          reported_user_handle: string
+          reported_user_id: string
+          reporter_user_display_name: string
+          reporter_user_handle: string
+          reporter_user_id: string
+          status: string
+          stream_title: string
+        }[]
+      }
       admin_get_users: {
         Args: {
           limit_param?: number
@@ -520,6 +592,14 @@ export type Database = {
           id: string
           stream_count: number
         }[]
+      }
+      admin_resolve_report: {
+        Args: {
+          action_taken: string
+          admin_user_id: string
+          report_id_param: string
+        }
+        Returns: undefined
       }
       authenticate_wallet_user: {
         Args: {

@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Search, Ban, Shield, StopCircle, Users, Radio } from 'lucide-react';
+import { Search, Ban, Shield, StopCircle, Users, Radio, Flag, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 
 interface User {
   id: string;
@@ -33,13 +34,31 @@ interface Stream {
   };
 }
 
+interface Report {
+  id: string;
+  reported_stream_id: string;
+  reported_user_id: string;
+  reporter_user_id: string;
+  report_type: string;
+  description: string;
+  status: string;
+  created_at: string;
+  stream_title: string;
+  reported_user_handle: string;
+  reported_user_display_name: string;
+  reporter_user_handle: string;
+  reporter_user_display_name: string;
+}
+
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('users');
 
   const authenticateAdmin = async () => {
@@ -64,6 +83,7 @@ export default function Admin() {
         toast.success('Admin access granted');
         loadUsers();
         loadStreams();
+        loadReports();
       } else {
         toast.error('Invalid admin password');
       }
@@ -109,6 +129,48 @@ export default function Admin() {
     } catch (error) {
       console.error('Error loading streams:', error);
       toast.error('Failed to load streams');
+    }
+  };
+
+  const loadReports = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-actions', {
+        body: {
+          action: 'get_reports',
+          password: password,
+          statusFilter: statusFilter || undefined,
+          limit: 100
+        }
+      });
+
+      if (error) throw error;
+      setReports(data?.reports || []);
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      toast.error('Failed to load reports');
+    }
+  };
+
+  const resolveReport = async (reportId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-actions', {
+        body: {
+          action: 'resolve_report',
+          password: password,
+          reportId
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(data?.message || 'Report resolved');
+      loadReports();
+    } catch (error) {
+      console.error('Error resolving report:', error);
+      toast.error('Failed to resolve report');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -168,6 +230,12 @@ export default function Admin() {
     }
   }, [searchQuery, isAuthenticated]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadReports();
+    }
+  }, [statusFilter, isAuthenticated]);
+
   // Password protection screen
   if (!isAuthenticated) {
     return (
@@ -212,7 +280,7 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Management
@@ -220,6 +288,10 @@ export default function Admin() {
             <TabsTrigger value="streams" className="flex items-center gap-2">
               <Radio className="h-4 w-4" />
               Live Streams
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <Flag className="h-4 w-4" />
+              Reports
             </TabsTrigger>
           </TabsList>
 
@@ -343,6 +415,126 @@ export default function Admin() {
                 <Card>
                   <CardContent className="text-center p-8">
                     <p className="text-muted-foreground">No active streams</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold flex-1">Reports Management</h2>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Reports</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={loadReports} variant="outline">
+                Refresh
+              </Button>
+            </div>
+
+            <div className="grid gap-4">
+              {reports.map((report) => (
+                <Card key={report.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={report.status === 'pending' ? 'destructive' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {report.status === 'pending' ? (
+                              <>
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pending
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Resolved
+                              </>
+                            )}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {report.report_type.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(report.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-sm font-medium">
+                              Stream: {report.stream_title || 'Unknown Stream'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Reported User: @{report.reported_user_handle || report.reported_user_display_name || 'Unknown'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Reporter: @{report.reporter_user_handle || report.reporter_user_display_name || 'Unknown'}
+                            </p>
+                          </div>
+                          
+                          {report.description && (
+                            <div className="bg-muted/50 p-3 rounded-lg">
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Details:</strong> {report.description}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        {report.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => endStream(report.reported_stream_id)}
+                              disabled={loading}
+                            >
+                              <StopCircle className="h-4 w-4 mr-1" />
+                              End Stream
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => toggleUserBan(report.reported_user_id, false)}
+                              disabled={loading}
+                            >
+                              <Ban className="h-4 w-4 mr-1" />
+                              Ban User
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => resolveReport(report.id)}
+                              disabled={loading}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Resolve
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {reports.length === 0 && (
+                <Card>
+                  <CardContent className="text-center p-8">
+                    <p className="text-muted-foreground">No reports found</p>
                   </CardContent>
                 </Card>
               )}
