@@ -29,7 +29,7 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
- * Uses noble-secp256k1 library for cryptographically secure verification
+ * Uses Bitcoin message signing format with proper prefix
  */
 async function verifyECDSASignature(
   message: string, 
@@ -60,28 +60,69 @@ async function verifyECDSASignature(
     console.log('Signature:', signature);
     console.log('Message:', message);
     
-    // Hash the message using SHA-256 (Bitcoin/Kaspa message signing standard)
-    const encoder = new TextEncoder();
-    const messageBytes = encoder.encode(message);
-    const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
-    const messageHashArray = new Uint8Array(messageHash);
-    const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+    // Create Bitcoin message signing format
+    // Bitcoin uses: "\x18Bitcoin Signed Message:\n" + message_length + message
+    const prefix = "\x18Bitcoin Signed Message:\n";
+    const messageLength = message.length;
+    const messageWithPrefix = prefix + String.fromCharCode(messageLength) + message;
     
-    console.log('Message hash (SHA-256):', messageHashHex);
+    console.log('Message with Bitcoin prefix:', messageWithPrefix);
+    console.log('Message with prefix length:', messageWithPrefix.length);
+    
+    // Hash the formatted message using double SHA-256 (Bitcoin standard)
+    const encoder = new TextEncoder();
+    const messageBytes = encoder.encode(messageWithPrefix);
+    
+    // First SHA-256
+    const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
+    const firstHashArray = new Uint8Array(firstHash);
+    
+    // Second SHA-256 (double hash as per Bitcoin standard)
+    const finalHash = await crypto.subtle.digest('SHA-256', firstHashArray);
+    const finalHashArray = new Uint8Array(finalHash);
+    const finalHashHex = Array.from(finalHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+    
+    console.log('Message hash (double SHA-256):', finalHashHex);
     
     try {
       // Convert hex strings to Uint8Array for noble-secp256k1
       const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
       const signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
       
+      console.log('Attempting secp256k1 verification with noble library...');
+      
       // Verify the signature using noble-secp256k1
-      const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
+      const isValid = secp256k1.verify(signatureBytes, finalHashArray, publicKeyBytes);
       
       if (isValid) {
-        console.log('Signature passed cryptographic verification');
+        console.log('Signature passed cryptographic verification with Bitcoin message format');
         return true;
       } else {
-        console.error('Signature failed cryptographic verification');
+        console.error('Signature failed cryptographic verification with Bitcoin message format');
+        
+        // Try with single SHA-256 as fallback
+        console.log('Trying single SHA-256 as fallback...');
+        const singleHash = await crypto.subtle.digest('SHA-256', messageBytes);
+        const singleHashArray = new Uint8Array(singleHash);
+        const isSingleHashValid = secp256k1.verify(signatureBytes, singleHashArray, publicKeyBytes);
+        
+        if (isSingleHashValid) {
+          console.log('Signature passed with single SHA-256');
+          return true;
+        }
+        
+        // Try without prefix as last resort
+        console.log('Trying without Bitcoin prefix as last resort...');
+        const rawMessageBytes = encoder.encode(message);
+        const rawHash = await crypto.subtle.digest('SHA-256', rawMessageBytes);
+        const rawHashArray = new Uint8Array(rawHash);
+        const isRawValid = secp256k1.verify(signatureBytes, rawHashArray, publicKeyBytes);
+        
+        if (isRawValid) {
+          console.log('Signature passed with raw message hash');
+          return true;
+        }
+        
         return false;
       }
       
