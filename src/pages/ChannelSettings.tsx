@@ -27,40 +27,12 @@ const ChannelSettings: React.FC = () => {
   const [bannerSrc, setBannerSrc] = React.useState<string | null>(null);
   const [showBannerCropper, setShowBannerCropper] = React.useState(false);
 
-  // Redirect if not logged in or verify ownership
+  // Authentication check - redirect if not logged in
   React.useEffect(() => {
     if (!identity?.id) {
       navigate('/');
       toast({ title: "Connect your wallet to access settings", variant: "destructive" });
-      return;
     }
-
-    // Additional security: Verify that the connected wallet owns this profile
-    const verifyOwnership = async () => {
-      try {
-        // The identity.id IS the wallet address, so we're already verified
-        // Additional check: ensure the profile exists and belongs to this user
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', identity.id)
-          .maybeSingle();
-
-        if (!profile) {
-          toast({ 
-            title: "Profile Not Found", 
-            description: "This profile doesn't exist or you don't have access to it.",
-            variant: "destructive" 
-          });
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Failed to verify ownership:', error);
-        navigate('/');
-      }
-    };
-
-    verifyOwnership();
   }, [identity, navigate]);
 
   // Fetch current profile data
@@ -86,10 +58,9 @@ const ChannelSettings: React.FC = () => {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { bio?: string }) => {
-      // Verify wallet ownership - only allow users to edit their own profile
-      if (!identity?.id) throw new Error('Not authenticated');
+      if (!identity?.id) throw new Error('Connect your wallet first');
       
-      // The identity.id IS the wallet address, so this check ensures only the wallet owner can edit
+      // RLS policies ensure only the authenticated user can update their own profile
       
       const { error } = await supabase
         .from('profiles')
@@ -159,12 +130,10 @@ const ChannelSettings: React.FC = () => {
         .from('thumbnails')
         .getPublicUrl(fileName);
 
-      // Verify ownership before updating banner - wallet address IS the user ID
+      // RLS policies ensure only the authenticated user can update their own profile
       if (!identity?.id) {
-        throw new Error('Not authenticated');
+        throw new Error('Connect your wallet first');
       }
-
-      // The identity.id IS the wallet address, ensuring only the wallet owner can update
 
       const { error: updateError } = await supabase
         .from('profiles')
