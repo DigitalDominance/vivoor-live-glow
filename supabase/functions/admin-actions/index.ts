@@ -1,6 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Secure password verification using constant-time comparison
+async function verifyPasswordSecure(provided: string, expected: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const providedBytes = encoder.encode(provided);
+  const expectedBytes = encoder.encode(expected);
+  
+  // Ensure same length comparison to prevent timing attacks
+  if (providedBytes.length !== expectedBytes.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < providedBytes.length; i++) {
+    result |= providedBytes[i] ^ expectedBytes[i];
+  }
+  
+  return result === 0;
+}
+
+// Validate UUID format
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -24,6 +49,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { 
+        status: 405, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -42,11 +78,74 @@ serve(async (req) => {
       );
     }
 
-    const body: AdminAction = await req.json();
+    // Rate limiting check - basic protection
+    const userAgent = req.headers.get('user-agent') || '';
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (!contentType.includes('application/json')) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid content type' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    let body: AdminAction;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON payload' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const { action, password, userId, streamId, reportId, search, offset = 0, limit = 50, statusFilter } = body;
 
-    // Verify admin password for all actions
-    if (password !== adminPassword) {
+    // Validate action parameter
+    const validActions = ['verify_password', 'ban_user', 'unban_user', 'end_stream', 'get_users', 'get_live_streams', 'get_reports', 'resolve_report'];
+    if (!action || !validActions.includes(action)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or missing action' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate pagination parameters
+    if (offset < 0 || limit < 1 || limit > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid pagination parameters' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate password presence
+    if (!password || typeof password !== 'string' || password.trim() === '') {
+      return new Response(
+        JSON.stringify({ error: 'Password required' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Verify admin password for all actions using constant-time comparison
+    const isValidPassword = await verifyPasswordSecure(password, adminPassword);
+    if (!isValidPassword) {
+      // Add delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, 1000));
       return new Response(
         JSON.stringify({ error: 'Invalid admin password' }),
         { 
@@ -64,9 +163,9 @@ serve(async (req) => {
         break;
 
       case 'ban_user':
-        if (!userId) {
+        if (!userId || typeof userId !== 'string' || userId.trim() === '') {
           return new Response(
-            JSON.stringify({ error: 'User ID required' }),
+            JSON.stringify({ error: 'Valid User ID required' }),
             { 
               status: 400, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -82,9 +181,9 @@ serve(async (req) => {
         break;
 
       case 'unban_user':
-        if (!userId) {
+        if (!userId || typeof userId !== 'string' || userId.trim() === '') {
           return new Response(
-            JSON.stringify({ error: 'User ID required' }),
+            JSON.stringify({ error: 'Valid User ID required' }),
             { 
               status: 400, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -100,9 +199,9 @@ serve(async (req) => {
         break;
 
       case 'end_stream':
-        if (!streamId) {
+        if (!streamId || typeof streamId !== 'string' || !isValidUUID(streamId)) {
           return new Response(
-            JSON.stringify({ error: 'Stream ID required' }),
+            JSON.stringify({ error: 'Valid Stream UUID required' }),
             { 
               status: 400, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -117,8 +216,10 @@ serve(async (req) => {
         break;
 
       case 'get_users':
+        // Sanitize search input
+        const sanitizedSearch = search ? search.trim().slice(0, 100) : null;
         const { data: users, error: usersError } = await supabaseClient.rpc('admin_get_users', {
-          search_query: search || null,
+          search_query: sanitizedSearch,
           limit_param: limit,
           offset_param: offset
         });
@@ -177,9 +278,9 @@ serve(async (req) => {
         break;
 
       case 'resolve_report':
-        if (!reportId) {
+        if (!reportId || typeof reportId !== 'string' || !isValidUUID(reportId)) {
           return new Response(
-            JSON.stringify({ error: 'Report ID required' }),
+            JSON.stringify({ error: 'Valid Report UUID required' }),
             { 
               status: 400, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

@@ -53,6 +53,7 @@ interface Report {
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [sessionExpiry, setSessionExpiry] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
@@ -89,6 +90,10 @@ export default function Admin() {
 
       if (data?.verified) {
         setIsAuthenticated(true);
+        // Set session expiry to 1 hour from now
+        const expiry = new Date();
+        expiry.setHours(expiry.getHours() + 1);
+        setSessionExpiry(expiry);
         toast.success('Admin access granted');
         loadUsers(0);
         loadStreams(0);
@@ -254,6 +259,23 @@ export default function Admin() {
     }
   }, [statusFilter, isAuthenticated]);
 
+  // Session expiry check
+  useEffect(() => {
+    if (isAuthenticated && sessionExpiry) {
+      const checkExpiry = () => {
+        if (new Date() > sessionExpiry) {
+          setIsAuthenticated(false);
+          setPassword('');
+          setSessionExpiry(null);
+          toast.error('Admin session expired. Please log in again.');
+        }
+      };
+
+      const interval = setInterval(checkExpiry, 60000); // Check every minute
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, sessionExpiry]);
+
   // Password protection screen
   if (!isAuthenticated) {
     return (
@@ -273,6 +295,8 @@ export default function Admin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && authenticateAdmin()}
+                autoComplete="current-password"
+                maxLength={128}
               />
             </div>
             <Button 
