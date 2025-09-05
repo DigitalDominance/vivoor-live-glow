@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from '@/integrations/supabase/client';
 import { getEncryptedUserId } from '@/lib/walletEncryption';
+import { useAuth } from './AuthContext';
 
 
 // Simple local storage helpers

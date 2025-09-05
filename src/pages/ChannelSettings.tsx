@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { useWallet } from "@/context/WalletContext";
+import { useSecureWallet } from "@/context/SecureWalletContext";
+import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Save, ArrowLeft } from "lucide-react";
@@ -17,7 +18,8 @@ import { validateBio } from "@/lib/badWords";
 
 const ChannelSettings: React.FC = () => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { user } = useAuth();
+  const { identity, profile: walletProfile, updateBio, updateBanner, authenticated } = useSecureWallet();
   const queryClient = useQueryClient();
   
   const [bio, setBio] = React.useState('');
@@ -29,11 +31,27 @@ const ChannelSettings: React.FC = () => {
 
   // Authentication check - redirect if not logged in
   React.useEffect(() => {
-    if (!identity?.id) {
-      navigate('/');
-      toast({ title: "Connect your wallet to access settings", variant: "destructive" });
+    if (!authenticated || !user) {
+      navigate('/auth');
+      toast({ 
+        title: "Authentication required", 
+        description: "Please sign in to access channel settings",
+        variant: "destructive" 
+      });
     }
-  }, [identity, navigate]);
+  }, [authenticated, user, navigate]);
+
+  // Authentication check - redirect if wallet not connected
+  React.useEffect(() => {
+    if (authenticated && user && !identity) {
+      navigate('/');
+      toast({ 
+        title: "Wallet required", 
+        description: "Please connect your wallet to access channel settings",
+        variant: "destructive" 
+      });
+    }
+  }, [authenticated, user, identity, navigate]);
 
   // Fetch current profile data
   const { data: profile } = useQuery({
@@ -44,7 +62,7 @@ const ChannelSettings: React.FC = () => {
         .from('profiles')
         .select('*')
         .eq('id', identity.id)
-        .single();
+        .maybeSingle();
       
       if (data) {
         setBio(data.bio || '');
@@ -52,43 +70,25 @@ const ChannelSettings: React.FC = () => {
       
       return data;
     },
-    enabled: !!identity?.id
+    enabled: !!identity?.id && !!authenticated
   });
 
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: { bio?: string }) => {
-      if (!identity?.id) throw new Error('Connect your wallet first');
-      
-      // Use the database function that updates bio with proper security
-      const { error } = await supabase.rpc('update_bio', {
-        user_id_param: identity.id,
-        new_bio: data.bio || ''
-      });
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      // Invalidate ALL profile-related queries to ensure updates show everywhere
-      queryClient.invalidateQueries({ queryKey: ['profile', identity?.id] });
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          // Invalidate any query that might contain profile data
-          return query.queryKey[0] === 'profile-by-username' || 
-                 query.queryKey[0] === 'profile' ||
-                 (query.queryKey[0] === 'user-content' && query.queryKey[1] === identity?.id);
-        }
-      });
-      toast({ title: "Profile updated successfully!" });
-    },
-    onError: (error) => {
-      console.error('Error updating profile:', error);
-      toast({ title: "Failed to update profile", variant: "destructive" });
+  // Initialize bio from wallet profile if available
+  React.useEffect(() => {
+    if (walletProfile?.bio) {
+      setBio(walletProfile.bio);
     }
-  });
+  }, [walletProfile?.bio]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!authenticated || !identity) {
+      toast({ title: "Authentication required", variant: "destructive" });
+      return;
+    }
     
     // Validate bio
     const bioValidation = validateBio(bio);
@@ -97,9 +97,22 @@ const ChannelSettings: React.FC = () => {
       return;
     }
     
-    updateProfileMutation.mutate({
-      bio: bio
-    });
+    setIsSubmitting(true);
+    try {
+      await updateBio(bio);
+      
+      // Invalidate profile queries
+      queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
+    } catch (error) {
+      console.error('Failed to update bio:', error);
+      toast({ 
+        title: "Failed to update bio", 
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -138,13 +151,8 @@ const ChannelSettings: React.FC = () => {
         .from('thumbnails')
         .getPublicUrl(fileName);
 
-      // Use the database function that updates banner with proper security
-      const { error: updateError } = await supabase.rpc('update_banner', {
-        user_id_param: identity.id,
-        new_banner_url: publicUrl
-      });
-
-      if (updateError) throw updateError;
+      // Use the secure banner update function
+      await updateBanner(publicUrl);
 
       // Invalidate ALL profile-related queries to ensure banner shows up everywhere
       queryClient.invalidateQueries({ queryKey: ['profile', identity.id] });
@@ -267,10 +275,10 @@ const ChannelSettings: React.FC = () => {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={updateProfileMutation.isPending}
+                disabled={isSubmitting}
               >
                 <Save className="size-4 mr-2" />
-                {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
           </CardContent>
