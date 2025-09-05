@@ -288,25 +288,25 @@ function validateMessage(message: string): boolean {
 }
 
 serve(async (req) => {
-  // Get request origin and validate against allowed domains
+  // Get request origin
   const origin = req.headers.get('origin');
   const userAgent = req.headers.get('user-agent');
   
   // Determine allowed origin
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin || '') ? origin : null;
   
-  // Update CORS headers with validated origin
+  // Update CORS headers with validated origin or wildcard for OPTIONS
   const dynamicCorsHeaders = {
     ...corsHeaders,
-    'Access-Control-Allow-Origin': allowedOrigin || 'null',
+    'Access-Control-Allow-Origin': allowedOrigin || '*', // Allow OPTIONS from anywhere
   };
   
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests - always allow OPTIONS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: dynamicCorsHeaders });
   }
 
-  // Block requests from unauthorized origins
+  // Block actual requests from unauthorized origins (but not OPTIONS)
   if (!allowedOrigin) {
     console.warn('Blocked request from unauthorized origin:', origin);
     return new Response(

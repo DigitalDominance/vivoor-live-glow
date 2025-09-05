@@ -167,6 +167,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       console.log('Authenticating with secure edge function...');
       
+      // Get public key from Kasware for enhanced verification
+      let publicKey: string | undefined;
+      try {
+        publicKey = await w.getPublicKey();
+        console.log('Retrieved public key from Kasware:', publicKey ? 'success' : 'failed');
+      } catch (pubKeyError) {
+        console.warn('Failed to get public key from Kasware:', pubKeyError);
+        // Continue without public key - the backend can extract it from the address
+      }
+      
       // Use the secure edge function for authentication
       const { data: authResult, error: authError } = await supabase.functions.invoke(
         'authenticate-wallet',
@@ -174,7 +184,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           body: {
             walletAddress: addr,
             message,
-            signature
+            signature,
+            publicKey // Include public key if available
           }
         }
       );
