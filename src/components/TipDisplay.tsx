@@ -18,8 +18,9 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
   // Process new tips into notifications with profile resolution
   React.useEffect(() => {
     const processNewTips = async () => {
+      console.log('TipDisplay - Processing new tips:', newTips);
       for (const tip of newTips) {
-        console.log('Processing tip:', tip);
+        console.log('Processing individual tip:', tip);
         
         // Skip tips that occurred before user joined
         if (tip.timestamp && new Date(tip.timestamp) < userJoinedAt) {
@@ -96,8 +97,10 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
     setActiveTips(prev => prev.filter(tip => tip.id !== tipId));
   };
 
+  console.log('TipDisplay render - newTips:', newTips.length, 'activeTips:', activeTips.length);
+
   return (
-    <div className="absolute top-4 right-4 z-[100] space-y-2 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
       {activeTips.slice(-MAX_TIPS).map(tip => (
         <TipNotification
           key={tip.id}
