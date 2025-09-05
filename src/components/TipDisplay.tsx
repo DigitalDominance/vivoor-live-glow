@@ -100,7 +100,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
   console.log('TipDisplay render - newTips:', newTips.length, 'activeTips:', activeTips.length);
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+    <div className="absolute top-4 right-4 z-[9999] space-y-2 pointer-events-none">
       {activeTips.slice(-MAX_TIPS).map(tip => (
         <TipNotification
           key={tip.id}

@@ -289,27 +289,32 @@ const Stream = () => {
       
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
-          {/* Stream content - Show browser streaming interface for browser mode */}
-          {streamingMode === 'browser' && isOwnStream ? (
-            <div className="space-y-4">
-              <BrowserStreaming
-                streamKey={localStreamData.streamKey || ''}
-                ingestUrl={localStreamData.ingestUrl || ''}
-                onStreamStart={() => {
-                  console.log('Browser stream started');
-                }}
-                onStreamEnd={() => {
-                  console.log('Browser stream ended');
-                  handleEndStream();
-                }}
-                isPreviewMode={false}
-              />
-            </div>
-          ) : playbackUrl ? (
-            <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
-          ) : (
-            <PlayerPlaceholder />
-          )}
+          <div className="relative">
+            {/* Stream content - Show browser streaming interface for browser mode */}
+            {streamingMode === 'browser' && isOwnStream ? (
+              <div className="space-y-4">
+                <BrowserStreaming
+                  streamKey={localStreamData.streamKey || ''}
+                  ingestUrl={localStreamData.ingestUrl || ''}
+                  onStreamStart={() => {
+                    console.log('Browser stream started');
+                  }}
+                  onStreamEnd={() => {
+                    console.log('Browser stream ended');
+                    handleEndStream();
+                  }}
+                  isPreviewMode={false}
+                />
+              </div>
+            ) : playbackUrl ? (
+              <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+            ) : (
+              <PlayerPlaceholder />
+            )}
+            
+            {/* Tip notifications overlay positioned over the video player */}
+            <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} />
+          </div>
           
           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
             <span className="px-2 py-0.5 rounded-full bg-red-500 text-white">LIVE</span>
@@ -481,8 +486,6 @@ const Stream = () => {
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
       
-      {/* Tip notifications overlay */}
-      <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} />
     </main>
   );
 };
