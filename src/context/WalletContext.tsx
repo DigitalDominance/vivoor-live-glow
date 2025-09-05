@@ -86,7 +86,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Load profile from database to ensure consistency
             const { data: dbProfile } = await supabase
               .from('profiles')
-              .select('handle, display_name, avatar_url, last_avatar_change')
+              .select('handle, display_name, avatar_url, last_avatar_change, last_username_change')
               .eq('id', userId)
               .maybeSingle();
             
@@ -95,6 +95,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 username: dbProfile.handle || '',
                 avatarUrl: dbProfile.avatar_url || undefined,
                 lastAvatarChange: dbProfile.last_avatar_change || undefined,
+                lastUsernameChange: dbProfile.last_username_change || undefined,
               };
               setProfile(profileRecord);
               
@@ -144,7 +145,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Load profile from database to sync with local storage
       const { data: dbProfile } = await supabase
         .from('profiles')
-        .select('handle, display_name, avatar_url, last_avatar_change')
+        .select('handle, display_name, avatar_url, last_avatar_change, last_username_change')
         .eq('id', userId)
         .maybeSingle();
       
@@ -153,6 +154,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           username: dbProfile.handle || '',
           avatarUrl: dbProfile.avatar_url || undefined,
           lastAvatarChange: dbProfile.last_avatar_change || undefined,
+          lastUsernameChange: dbProfile.last_username_change || undefined,
         };
         setProfile(profileRecord);
         
@@ -202,45 +204,34 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     async (username: string) => {
       if (!identity) return;
       
-      // Check if username is already taken
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('handle', username)
-        .neq('id', identity.id)
-        .maybeSingle();
-      
-      if (existingProfile) {
-        throw new Error('Username is already taken');
-      }
-      
-      // Update Supabase database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          handle: username,
-          display_name: username,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', identity.id);
-      
-      if (error) {
-        console.error('Failed to update username in database:', error);
+      try {
+        // Use the database function that enforces cooldown
+        const { error } = await supabase.rpc('update_username', {
+          user_id_param: identity.id,
+          new_username: username
+        });
+        
+        if (error) {
+          console.error('Failed to update username:', error);
+          throw new Error(error.message);
+        }
+        
+        // Update local storage
+        const map = readProfiles();
+        const nowIso = new Date().toISOString();
+        const rec: ProfileRecord = {
+          username,
+          avatarUrl: map[identity.id]?.avatarUrl,
+          lastUsernameChange: nowIso,
+          lastAvatarChange: map[identity.id]?.lastAvatarChange, // Preserve existing avatar cooldown
+        };
+        map[identity.id] = rec;
+        writeProfiles(map);
+        setProfile(rec);
+      } catch (error) {
+        console.error('Failed to update username:', error);
         throw error;
       }
-      
-      // Update local storage - preserve existing avatar change timestamp
-      const map = readProfiles();
-      const nowIso = new Date().toISOString();
-      const rec: ProfileRecord = {
-        username,
-        avatarUrl: map[identity.id]?.avatarUrl,
-        lastUsernameChange: nowIso,
-        lastAvatarChange: map[identity.id]?.lastAvatarChange, // Preserve existing avatar cooldown
-      };
-      map[identity.id] = rec;
-      writeProfiles(map);
-      setProfile(rec);
     },
     [identity]
   );
@@ -249,33 +240,34 @@ const saveAvatarUrl = useCallback(
     async (url: string) => {
       if (!identity) return;
       
-      // Update Supabase database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          avatar_url: url,
-          last_avatar_change: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', identity.id);
-      
-      if (error) {
-        console.error('Failed to update avatar in database:', error);
+      try {
+        // Use the database function that enforces cooldown
+        const { error } = await supabase.rpc('update_avatar', {
+          user_id_param: identity.id,
+          new_avatar_url: url
+        });
+        
+        if (error) {
+          console.error('Failed to update avatar:', error);
+          throw new Error(error.message);
+        }
+        
+        // Update local storage - preserve existing username change timestamp
+        const map = readProfiles();
+        const nowIso = new Date().toISOString();
+        const rec: ProfileRecord = {
+          username: map[identity.id]?.username || profile?.username || "",
+          avatarUrl: url,
+          lastUsernameChange: map[identity.id]?.lastUsernameChange, // Preserve existing username cooldown
+          lastAvatarChange: nowIso,
+        };
+        map[identity.id] = rec;
+        writeProfiles(map);
+        setProfile(rec);
+      } catch (error) {
+        console.error('Failed to update avatar:', error);
         throw error;
       }
-      
-      // Update local storage - preserve existing username change timestamp
-      const map = readProfiles();
-      const nowIso = new Date().toISOString();
-      const rec: ProfileRecord = {
-        username: map[identity.id]?.username || profile?.username || "",
-        avatarUrl: url,
-        lastUsernameChange: map[identity.id]?.lastUsernameChange, // Preserve existing username cooldown
-        lastAvatarChange: nowIso,
-      };
-      map[identity.id] = rec;
-      writeProfiles(map);
-      setProfile(rec);
     },
     [identity, profile?.username]
   );

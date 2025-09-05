@@ -232,6 +232,7 @@ export type Database = {
           id: string
           kaspa_address: string | null
           last_avatar_change: string | null
+          last_username_change: string | null
           updated_at: string
         }
         Insert: {
@@ -245,6 +246,7 @@ export type Database = {
           id: string
           kaspa_address?: string | null
           last_avatar_change?: string | null
+          last_username_change?: string | null
           updated_at?: string
         }
         Update: {
@@ -258,6 +260,7 @@ export type Database = {
           id?: string
           kaspa_address?: string | null
           last_avatar_change?: string | null
+          last_username_change?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -617,6 +620,20 @@ export type Database = {
         Args: { timeout_minutes?: number }
         Returns: number
       }
+      can_change_avatar: {
+        Args: { user_id_param: string }
+        Returns: {
+          can_change: boolean
+          cooldown_ends_at: string
+        }[]
+      }
+      can_change_username: {
+        Args: { user_id_param: string }
+        Returns: {
+          can_change: boolean
+          cooldown_ends_at: string
+        }[]
+      }
       cleanup_inactive_streams: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -906,8 +923,16 @@ export type Database = {
         Args: { _stream_id: string }
         Returns: undefined
       }
+      update_avatar: {
+        Args: { new_avatar_url: string; user_id_param: string }
+        Returns: undefined
+      }
       update_stream_heartbeat: {
         Args: { stream_id: string }
+        Returns: undefined
+      }
+      update_username: {
+        Args: { new_username: string; user_id_param: string }
         Returns: undefined
       }
       update_viewer_heartbeat: {

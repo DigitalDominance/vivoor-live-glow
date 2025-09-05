@@ -96,13 +96,11 @@ const ChannelEdit: React.FC = () => {
         .from('avatars')
         .getPublicUrl(fileName);
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          avatar_url: publicUrl,
-          last_avatar_change: new Date().toISOString()
-        })
-        .eq('id', identity.id);
+      // Use the database function that enforces cooldown
+      const { error: updateError } = await supabase.rpc('update_avatar', {
+        user_id_param: identity.id,
+        new_avatar_url: publicUrl
+      });
 
       if (updateError) throw updateError;
 
@@ -112,7 +110,7 @@ const ChannelEdit: React.FC = () => {
       console.error('Error uploading avatar:', error);
       toast({ 
         title: "Failed to upload avatar", 
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive" 
       });
     }

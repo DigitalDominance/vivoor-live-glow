@@ -3,22 +3,24 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/context/WalletContext";
+import { useProfileCooldowns } from "@/hooks/useProfileCooldowns";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const UsernameModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
-  const { profile, saveUsername } = useWallet();
+  const { profile, saveUsername, identity } = useWallet();
   const [value, setValue] = useState("");
+  const { usernameCooldown } = useProfileCooldowns(identity?.id);
 
   const cooldownLeft = useMemo(() => {
-    if (!profile?.lastUsernameChange) return 0;
-    const last = new Date(profile.lastUsernameChange).getTime();
+    if (!usernameCooldown.cooldown_ends_at) return 0;
+    const endsAt = new Date(usernameCooldown.cooldown_ends_at).getTime();
     const now = Date.now();
-    const diff = 14 * DAY_MS - (now - last);
+    const diff = endsAt - now;
     return diff > 0 ? diff : 0;
-  }, [profile?.lastUsernameChange]);
+  }, [usernameCooldown.cooldown_ends_at]);
 
-  const canEdit = cooldownLeft === 0 || !profile?.username;
+  const canEdit = usernameCooldown.can_change || !profile?.username;
 
   const onSave = async () => {
     const clean = value.trim();
