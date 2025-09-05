@@ -222,7 +222,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          auth_user_id: string | null
           avatar_url: string | null
           banned: boolean | null
           banner_url: string | null
@@ -237,7 +236,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          auth_user_id?: string | null
           avatar_url?: string | null
           banned?: boolean | null
           banner_url?: string | null
@@ -252,7 +250,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          auth_user_id?: string | null
           avatar_url?: string | null
           banned?: boolean | null
           banner_url?: string | null
@@ -548,36 +545,6 @@ export type Database = {
         }
         Relationships: []
       }
-      wallet_connections: {
-        Row: {
-          connected_at: string
-          encrypted_user_id: string
-          id: string
-          is_primary: boolean
-          last_used_at: string
-          user_id: string
-          wallet_address: string
-        }
-        Insert: {
-          connected_at?: string
-          encrypted_user_id: string
-          id?: string
-          is_primary?: boolean
-          last_used_at?: string
-          user_id: string
-          wallet_address: string
-        }
-        Update: {
-          connected_at?: string
-          encrypted_user_id?: string
-          id?: string
-          is_primary?: boolean
-          last_used_at?: string
-          user_id?: string
-          wallet_address?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -686,10 +653,6 @@ export type Database = {
       cleanup_stale_viewers: {
         Args: Record<PropertyKey, never>
         Returns: number
-      }
-      connect_wallet_to_user: {
-        Args: { wallet_address: string }
-        Returns: string
       }
       decrement_stream_viewers: {
         Args: { stream_id: string }
@@ -980,16 +943,8 @@ export type Database = {
         Args: { new_banner_url: string; user_id_param: string }
         Returns: undefined
       }
-      update_banner_secure: {
-        Args: { encrypted_user_id: string; new_banner_url: string }
-        Returns: undefined
-      }
       update_bio: {
         Args: { new_bio: string; user_id_param: string }
-        Returns: undefined
-      }
-      update_bio_secure: {
-        Args: { encrypted_user_id: string; new_bio: string }
         Returns: undefined
       }
       update_stream_heartbeat: {

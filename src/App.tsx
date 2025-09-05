@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
 import Stream from "./pages/Stream";
 import NotFound from "./pages/NotFound";
 import BackgroundV2 from "@/components/background/BackgroundV2";
@@ -27,8 +26,7 @@ import Verification from "@/pages/Verification";
 import DocsPage from "@/pages/Docs";
 import Admin from "@/pages/Admin";
 import "@/styles/global-extras.css";
-import { AuthProvider } from "@/context/AuthContext";
-import { SecureWalletProvider } from "@/context/SecureWalletContext";
+import { WalletProvider } from "@/context/WalletContext";
 import { BrowserStreamingProvider } from "@/context/BrowserStreamingContext";
 
 const queryClient = new QueryClient();
@@ -36,44 +34,41 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <AuthProvider>
-        <SecureWalletProvider>
-          <BrowserStreamingProvider>
-            <HelmetProvider>
-              <TooltipProvider>
-                <BackgroundV2 />
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <SiteHeader />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/app" element={<AppDirectory />} />
-                  <Route path="/watch/:streamId" element={<Watch />} />
-                  <Route path="/go-live" element={<GoLive />} />
-                  <Route path="/verification" element={<Verification />} />
-                  <Route path="/clips" element={<ClipsPage />} />
-                  <Route path="/stream/:streamId" element={<Stream />} />
-                  {/* Recordings removed to save storage costs */}
-                  <Route path="/vod/:id" element={<Vod />} />
-                  <Route path="/clip/:id" element={<Clip />} />
-                  <Route path="/following" element={<Following />} />
-                  <Route path="/profile/:id" element={<Profile />} />
-                  <Route path="/channel/:username" element={<Channel />} />
-                  <Route path="/channel/settings" element={<ChannelSettings />} />
-                  <Route path="/docs" element={<DocsPage />} />
-                  <Route path="/admin" element={<Admin />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <SiteFooter />
-              </BrowserRouter>
-            </TooltipProvider>
-          </HelmetProvider>
-        </BrowserStreamingProvider>
-      </SecureWalletProvider>
-    </AuthProvider>
+      <WalletProvider>
+        <BrowserStreamingProvider>
+          <HelmetProvider>
+            <TooltipProvider>
+              <BackgroundV2 />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <SiteHeader />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/app" element={<AppDirectory />} />
+                <Route path="/watch/:streamId" element={<Watch />} />
+                <Route path="/go-live" element={<GoLive />} />
+                <Route path="/verification" element={<Verification />} />
+                <Route path="/clips" element={<ClipsPage />} />
+                <Route path="/stream/:streamId" element={<Stream />} />
+                {/* Recordings removed to save storage costs */}
+                <Route path="/vod/:id" element={<Vod />} />
+                <Route path="/clip/:id" element={<Clip />} />
+                <Route path="/following" element={<Following />} />
+                <Route path="/profile/:id" element={<Profile />} />
+                <Route path="/channel/:username" element={<Channel />} />
+                <Route path="/channel/settings" element={<ChannelSettings />} />
+                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/admin" element={<Admin />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <SiteFooter />
+            </BrowserRouter>
+          </TooltipProvider>
+        </HelmetProvider>
+      </BrowserStreamingProvider>
+    </WalletProvider>
   </ThemeProvider>
 </QueryClientProvider>
 );
