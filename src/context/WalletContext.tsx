@@ -7,6 +7,7 @@ import { getEncryptedUserId } from '@/lib/walletEncryption';
 const LS_KEYS = {
   PROFILE_BY_ID: "vivoor.profile.byId", // map of id -> { username, avatarUrl, lastUsernameChange }
   LAST_PROVIDER: "vivoor.wallet.provider", // 'kasware' | 'kastle'
+  SESSION_TOKEN: "vivoor.wallet.sessionToken", // JWT session token
 } as const;
 
 type WalletProviderName = "kasware";
@@ -41,6 +42,7 @@ export type WalletState = {
   identity: WalletIdentity | null;
   profile: ProfileRecord | null;
   connecting: boolean;
+  sessionToken: string | null;
   // Actions
   connectKasware: () => Promise<void>;
   disconnect: () => Promise<void>;
@@ -56,11 +58,15 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [identity, setIdentity] = useState<WalletIdentity | null>(null);
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   // Restore last session (best-effort)
   useEffect(() => {
     const last = localStorage.getItem(LS_KEYS.LAST_PROVIDER) as WalletProviderName | null;
-    if (!last) return;
+    const storedToken = localStorage.getItem(LS_KEYS.SESSION_TOKEN);
+    
+    if (!last || !storedToken) return;
+    
     // Only re-check passive session without prompting
     if (last === "kasware" && typeof window !== "undefined" && (window as any).kasware) {
       (window as any).kasware
@@ -69,8 +75,20 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (Array.isArray(acc) && acc[0]) {
             const addr = acc[0];
             
-            // Get the encrypted user ID using the new secure system
-            const encryptedUserId = await getEncryptedUserId(addr);
+            // Verify the stored JWT token is still valid
+            const { data: authResult, error: authError } = await supabase.rpc('verify_wallet_jwt', {
+              session_token_param: storedToken,
+              wallet_address_param: addr
+            });
+            
+            if (authError || !authResult?.[0]?.is_valid) {
+              console.error('Invalid session token, clearing session');
+              localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+              localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
+              return;
+            }
+            
+            const encryptedUserId = authResult[0].encrypted_user_id;
             
             // Verify the user exists in the database with this encrypted ID
             const { data: dbProfile, error } = await supabase
@@ -83,10 +101,12 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             if (error || !dbProfile) {
               console.error('Failed to restore wallet session:', error);
               localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+              localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
               return;
             }
 
             setIdentity({ provider: "kasware", id: encryptedUserId, address: addr });
+            setSessionToken(storedToken);
             
             if (dbProfile) {
               const profileRecord: ProfileRecord = {
@@ -110,6 +130,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .catch(() => {
           // Clear invalid session
           localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+          localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
         });
     }
   }, []);
@@ -144,10 +165,23 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw upsertError;
       }
 
-      // Set identity with the encrypted user ID
+      // Generate secure JWT session token
+      const { data: jwtToken, error: jwtError } = await supabase.rpc('generate_wallet_jwt', {
+        wallet_address_param: addr,
+        encrypted_user_id_param: encryptedUserId
+      });
+
+      if (jwtError || !jwtToken) {
+        console.error('Failed to generate JWT token:', jwtError);
+        throw new Error('Failed to generate secure session');
+      }
+
+      // Set identity with the encrypted user ID and store session token
       const ident: WalletIdentity = { provider: "kasware", id: encryptedUserId, address: addr };
       setIdentity(ident);
+      setSessionToken(jwtToken);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
+      localStorage.setItem(LS_KEYS.SESSION_TOKEN, jwtToken);
       
       // Load profile from database to sync with local storage
       const { data: dbProfile } = await supabase
@@ -181,6 +215,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const disconnect = useCallback(async () => {
     try {
+      // Invalidate the JWT session if we have one
+      if (sessionToken) {
+        await supabase.rpc('invalidate_wallet_session', {
+          session_token_param: sessionToken
+        });
+      }
+      
       // Try to disconnect from Kasware if available
       if (window.kasware && window.kasware.disconnect) {
         await window.kasware.disconnect(window.location.origin);
@@ -191,8 +232,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     setIdentity(null);
     setProfile(null);
+    setSessionToken(null);
     localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
-  }, []);
+    localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
+  }, [sessionToken]);
 
   const ensureUsername = useCallback(() => {
     if (!identity) return { needsUsername: false as const };
@@ -209,12 +252,15 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const saveUsername = useCallback(
     async (username: string) => {
-      if (!identity) return;
+      if (!identity || !sessionToken) {
+        throw new Error('Authentication required');
+      }
       
       try {
-        // Use the database function that enforces cooldown
-        const { error } = await supabase.rpc('update_username', {
-          user_id_param: identity.id,
+        // Use the secure database function that enforces JWT verification
+        const { error } = await supabase.rpc('update_username_secure', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
           new_username: username
         });
         
@@ -240,17 +286,20 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
     },
-    [identity]
+    [identity, sessionToken]
   );
 
 const saveAvatarUrl = useCallback(
     async (url: string) => {
-      if (!identity) return;
+      if (!identity || !sessionToken) {
+        throw new Error('Authentication required');
+      }
       
       try {
-        // Use the database function that enforces cooldown
-        const { error } = await supabase.rpc('update_avatar', {
-          user_id_param: identity.id,
+        // Use the secure database function that enforces JWT verification
+        const { error } = await supabase.rpc('update_avatar_secure', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
           new_avatar_url: url
         });
         
@@ -276,19 +325,22 @@ const saveAvatarUrl = useCallback(
         throw error;
       }
     },
-    [identity, profile?.username]
+    [identity, sessionToken, profile?.username]
   );
 
   const saveProfile = useCallback(
     async (updates: { handle?: string; display_name?: string; bio?: string; banner_url?: string }) => {
-      if (!identity) return;
+      if (!identity || !sessionToken) {
+        throw new Error('Authentication required');
+      }
       
       // Check if handle is already taken (if updating handle)
       if (updates.handle) {
         try {
-          // Use the database function that enforces cooldown for username changes
-          const { error } = await supabase.rpc('update_username', {
-            user_id_param: identity.id,
+          // Use the secure database function that enforces cooldown for username changes
+          const { error } = await supabase.rpc('update_username_secure', {
+            session_token_param: sessionToken,
+            wallet_address_param: identity.address,
             new_username: updates.handle
           });
           
@@ -300,18 +352,42 @@ const saveAvatarUrl = useCallback(
           console.error('Failed to update profile:', error);
           throw error;
         }
-      } else {
-        // Update Supabase database for non-username changes
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            ...updates,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', identity.id);
-        
-        if (error) {
-          console.error('Failed to update profile in database:', error);
+      }
+      
+      // Handle bio updates
+      if (updates.bio !== undefined) {
+        try {
+          const { error } = await supabase.rpc('update_bio_secure', {
+            session_token_param: sessionToken,
+            wallet_address_param: identity.address,
+            new_bio: updates.bio
+          });
+          
+          if (error) {
+            console.error('Failed to update bio:', error);
+            throw new Error(error.message);
+          }
+        } catch (error) {
+          console.error('Failed to update bio:', error);
+          throw error;
+        }
+      }
+      
+      // Handle banner updates
+      if (updates.banner_url !== undefined) {
+        try {
+          const { error } = await supabase.rpc('update_banner_secure', {
+            session_token_param: sessionToken,
+            wallet_address_param: identity.address,
+            new_banner_url: updates.banner_url
+          });
+          
+          if (error) {
+            console.error('Failed to update banner:', error);
+            throw new Error(error.message);
+          }
+        } catch (error) {
+          console.error('Failed to update banner:', error);
           throw error;
         }
       }
@@ -331,12 +407,12 @@ const saveAvatarUrl = useCallback(
         setProfile(rec);
       }
     },
-    [identity]
+    [identity, sessionToken]
   );
 
   const value = useMemo<WalletState>(
-    () => ({ identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile }),
-    [identity, profile, connecting, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile]
+    () => ({ identity, profile, connecting, sessionToken, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile }),
+    [identity, profile, connecting, sessionToken, connectKasware, disconnect, ensureUsername, saveUsername, saveAvatarUrl, saveProfile]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

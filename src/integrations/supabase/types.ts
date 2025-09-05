@@ -222,6 +222,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           banned: boolean | null
           banner_url: string | null
@@ -236,6 +237,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           banned?: boolean | null
           banner_url?: string | null
@@ -250,6 +252,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           banned?: boolean | null
           banner_url?: string | null
@@ -545,6 +548,69 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_auth_sessions: {
+        Row: {
+          created_at: string
+          encrypted_user_id: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_used_at: string
+          session_token: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_user_id: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string
+          session_token: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_user_id?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string
+          session_token?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      wallet_connections: {
+        Row: {
+          connected_at: string
+          encrypted_user_id: string
+          id: string
+          is_primary: boolean
+          last_used_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          connected_at?: string
+          encrypted_user_id: string
+          id?: string
+          is_primary?: boolean
+          last_used_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          connected_at?: string
+          encrypted_user_id?: string
+          id?: string
+          is_primary?: boolean
+          last_used_at?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -654,6 +720,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      connect_wallet_to_user: {
+        Args: { wallet_address: string }
+        Returns: string
+      }
       decrement_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
@@ -665,6 +735,10 @@ export type Database = {
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number
+      }
+      generate_wallet_jwt: {
+        Args: { encrypted_user_id_param: string; wallet_address_param: string }
+        Returns: string
       }
       get_clip_like_count: {
         Args: { clip_id_param: string }
@@ -899,6 +973,10 @@ export type Database = {
         Args: { stream_id: string }
         Returns: undefined
       }
+      invalidate_wallet_session: {
+        Args: { session_token_param: string }
+        Returns: undefined
+      }
       is_admin_context: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -927,6 +1005,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      refresh_wallet_session: {
+        Args: { session_token_param: string }
+        Returns: undefined
+      }
       stream_auto_end: {
         Args: { _stream_id: string; _threshold_seconds?: number }
         Returns: boolean
@@ -939,12 +1021,40 @@ export type Database = {
         Args: { new_avatar_url: string; user_id_param: string }
         Returns: undefined
       }
+      update_avatar_secure: {
+        Args: {
+          new_avatar_url: string
+          session_token_param: string
+          wallet_address_param: string
+        }
+        Returns: undefined
+      }
       update_banner: {
         Args: { new_banner_url: string; user_id_param: string }
         Returns: undefined
       }
+      update_banner_secure: {
+        Args:
+          | { encrypted_user_id: string; new_banner_url: string }
+          | {
+              new_banner_url: string
+              session_token_param: string
+              wallet_address_param: string
+            }
+        Returns: undefined
+      }
       update_bio: {
         Args: { new_bio: string; user_id_param: string }
+        Returns: undefined
+      }
+      update_bio_secure: {
+        Args:
+          | { encrypted_user_id: string; new_bio: string }
+          | {
+              new_bio: string
+              session_token_param: string
+              wallet_address_param: string
+            }
         Returns: undefined
       }
       update_stream_heartbeat: {
@@ -953,6 +1063,14 @@ export type Database = {
       }
       update_username: {
         Args: { new_username: string; user_id_param: string }
+        Returns: undefined
+      }
+      update_username_secure: {
+        Args: {
+          new_username: string
+          session_token_param: string
+          wallet_address_param: string
+        }
         Returns: undefined
       }
       update_viewer_heartbeat: {
@@ -1010,6 +1128,14 @@ export type Database = {
       verify_profile_ownership: {
         Args: { user_id_param: string }
         Returns: boolean
+      }
+      verify_wallet_jwt: {
+        Args: { session_token_param: string; wallet_address_param: string }
+        Returns: {
+          encrypted_user_id: string
+          expires_at: string
+          is_valid: boolean
+        }[]
       }
       viewer_heartbeat: {
         Args: { stream_id: string }
