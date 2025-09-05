@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from '@/integrations/supabase/client';
+import { getEncryptedUserId } from '@/lib/walletEncryption';
 
 
 // Simple local storage helpers
@@ -68,27 +69,24 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (Array.isArray(acc) && acc[0]) {
             const addr = acc[0];
             
-            // Get the correct user ID from database
-            const { data: userId, error } = await supabase.rpc('authenticate_wallet_user', {
-              wallet_address: addr,
-              user_handle: null,
-              user_display_name: null
-            });
+            // Get the encrypted user ID using the new secure system
+            const encryptedUserId = await getEncryptedUserId(addr);
+            
+            // Verify the user exists in the database with this encrypted ID
+            const { data: dbProfile, error } = await supabase
+              .from('profiles')
+              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address')
+              .eq('id', encryptedUserId)
+              .eq('kaspa_address', addr)
+              .maybeSingle();
 
-            if (error) {
+            if (error || !dbProfile) {
               console.error('Failed to restore wallet session:', error);
               localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
               return;
             }
 
-            setIdentity({ provider: "kasware", id: userId, address: addr });
-            
-            // Load profile from database to ensure consistency
-            const { data: dbProfile } = await supabase
-              .from('profiles')
-              .select('handle, display_name, avatar_url, last_avatar_change, last_username_change')
-              .eq('id', userId)
-              .maybeSingle();
+            setIdentity({ provider: "kasware", id: encryptedUserId, address: addr });
             
             if (dbProfile) {
               const profileRecord: ProfileRecord = {
@@ -101,11 +99,11 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               
               // Update local storage to match database
               const map = readProfiles();
-              map[userId] = profileRecord;
+              map[encryptedUserId] = profileRecord;
               writeProfiles(map);
             } else {
               const map = readProfiles();
-              setProfile(map[userId] || null);
+              setProfile(map[encryptedUserId] || null);
             }
           }
         })
@@ -125,8 +123,11 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const addr = accounts?.[0];
       if (!addr) throw new Error("No Kasware account returned");
       
-      // Create/update profile in Supabase and get user ID
-      const { data: userId, error } = await supabase.rpc('authenticate_wallet_user', {
+      // Get the encrypted user ID using the new secure system
+      const encryptedUserId = await getEncryptedUserId(addr);
+      
+      // Use the new secure authentication function that creates/updates the profile
+      const { data: authResult, error } = await supabase.rpc('authenticate_wallet_user_secure', {
         wallet_address: addr,
         user_handle: null,
         user_display_name: null
@@ -137,8 +138,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw error;
       }
 
-      // The function now returns the wallet address as the user ID
-      const ident: WalletIdentity = { provider: "kasware", id: userId, address: addr };
+      // Set identity with the encrypted user ID
+      const ident: WalletIdentity = { provider: "kasware", id: encryptedUserId, address: addr };
       setIdentity(ident);
       localStorage.setItem(LS_KEYS.LAST_PROVIDER, "kasware");
       
@@ -146,7 +147,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const { data: dbProfile } = await supabase
         .from('profiles')
         .select('handle, display_name, avatar_url, last_avatar_change, last_username_change')
-        .eq('id', userId)
+        .eq('id', encryptedUserId)
         .maybeSingle();
       
       if (dbProfile) {
@@ -160,11 +161,11 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         
         // Update local storage to match database
         const map = readProfiles();
-        map[ident.id] = profileRecord;
+        map[encryptedUserId] = profileRecord;
         writeProfiles(map);
       } else {
         const map = readProfiles();
-        setProfile(map[ident.id] || null);
+        setProfile(map[encryptedUserId] || null);
       }
     } finally {
       setConnecting(false);
