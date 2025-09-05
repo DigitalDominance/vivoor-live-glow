@@ -46,8 +46,8 @@ export function useSecureViewerCount(streamId: string | null) {
     // Initial fetch
     fetchViewerCount();
 
-    // Update every 30 seconds
-    const interval = setInterval(fetchViewerCount, 30000);
+    // Update every 10 seconds for more responsive viewer count
+    const interval = setInterval(fetchViewerCount, 10000);
 
     return () => {
       isMounted = false;
