@@ -30,7 +30,7 @@ const ProfileModal: React.FC<{
   onGoToChannel?: () => void;
 }> = ({ open, onOpenChange, profile, isLoggedIn, onRequireLogin, onGoToChannel }) => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const [following, setFollowing] = React.useState(false);
   const { data: verificationData } = useUserVerification(profile?.id);
 
@@ -56,7 +56,7 @@ const ProfileModal: React.FC<{
   }, [open, profile, identity?.id]);
 
   const handleFollow = async () => {
-    if (!isLoggedIn || !identity?.id) {
+    if (!isLoggedIn || !identity?.id || !sessionToken) {
       onRequireLogin?.();
       return;
     }
@@ -64,23 +64,18 @@ const ProfileModal: React.FC<{
     if (!profile) return;
 
     try {
-      if (following) {
-        await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', identity.id)
-          .eq('following_id', profile.id);
-        setFollowing(false);
-        toast({ title: "Unfollowed" });
-      } else {
-        await supabase
-          .from('follows')
-          .insert({
-            follower_id: identity.id,
-            following_id: profile.id
-          });
-        setFollowing(true);
-        toast({ title: "Following!" });
+      const { data, error } = await supabase.rpc('toggle_follow_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        following_id_param: profile.id
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setFollowing(result.action === 'followed');
+        toast({ title: result.action === 'followed' ? "Followed" : "Unfollowed" });
       }
     } catch (error) {
       console.error('Error toggling follow:', error);

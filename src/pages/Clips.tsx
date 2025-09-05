@@ -46,7 +46,7 @@ type UserProfile = {
 
 const ClipsPage = () => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const [searchQuery, setSearchQuery] = useState("");
   const [orderBy, setOrderBy] = useState("views");
   const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
@@ -111,41 +111,35 @@ const ClipsPage = () => {
   }, [identity?.id, clips]);
 
   const handleLike = async (clipId: string, isLiked: boolean) => {
-    if (!identity?.id) {
+    if (!identity?.id || !sessionToken) {
       setShowWalletModal(true);
       return;
     }
 
     try {
-      // First authenticate the wallet user with Supabase
-      const { data: authData } = await supabase.rpc('authenticate_wallet_user', {
-        wallet_address: identity.id
+      const { data, error } = await supabase.rpc('toggle_clip_like_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        clip_id_param: clipId
       });
 
-      if (isLiked) {
-        await supabase
-          .from('clip_likes')
-          .delete()
-          .match({ user_id: identity.id, clip_id: clipId });
-        setLikedClips(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(clipId);
-          return newSet;
-        });
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        if (result.action === 'liked') {
+          setLikedClips(prev => new Set([...prev, clipId]));
+        } else {
+          setLikedClips(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(clipId);
+            return newSet;
+          });
+        }
         // Update local like count
         setLikeCounts(prev => ({
           ...prev,
-          [clipId]: Math.max(0, (prev[clipId] || 0) - 1)
-        }));
-      } else {
-        await supabase
-          .from('clip_likes')
-          .insert({ user_id: identity.id, clip_id: clipId });
-        setLikedClips(prev => new Set([...prev, clipId]));
-        // Update local like count
-        setLikeCounts(prev => ({
-          ...prev,
-          [clipId]: (prev[clipId] || 0) + 1
+          [clipId]: result.new_count
         }));
       }
       

@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 
 const ChannelEdit: React.FC = () => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const queryClient = useQueryClient();
   const [bio, setBio] = React.useState("");
   const [saving, setSaving] = React.useState(false);
@@ -48,22 +48,19 @@ const ChannelEdit: React.FC = () => {
   }, [identity, navigate]);
 
   const handleSave = async () => {
-    if (!identity?.id) {
+    if (!identity?.id || !sessionToken) {
       toast({ title: "Connect your wallet first", variant: "destructive" });
       return;
     }
     
     setSaving(true);
     try {
-      // The profile update is secured by RLS policies that ensure
-      // only the authenticated user can update their own profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          bio: bio,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', identity.id);
+      // Use the secure bio update function that enforces JWT verification
+      const { error } = await supabase.rpc('update_bio_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        new_bio: bio
+      });
 
       if (error) {
         throw error;
@@ -113,9 +110,10 @@ const ChannelEdit: React.FC = () => {
         .from('avatars')
         .getPublicUrl(fileName);
 
-      // Use the database function that enforces cooldown
-      const { error: updateError } = await supabase.rpc('update_avatar', {
-        user_id_param: identity.id,
+      // Use the secure avatar update function that enforces JWT verification
+      const { error: updateError } = await supabase.rpc('update_avatar_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
         new_avatar_url: publicUrl
       });
 

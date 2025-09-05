@@ -13,7 +13,7 @@ import { Users, Calendar, Video } from "lucide-react";
 const Profile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const [following, setFollowing] = React.useState(false);
 
   // Fetch profile data
@@ -77,20 +77,21 @@ const Profile: React.FC = () => {
   }, [identity?.id, id]);
 
   const handleFollow = async () => {
-    if (!identity?.id || !id) return;
+    if (!identity?.id || !id || !sessionToken) return;
     
     try {
-      if (following) {
-        await supabase
-          .from('follows')
-          .delete()
-          .match({ follower_id: identity.id, following_id: id });
-      } else {
-        await supabase
-          .from('follows')
-          .insert({ follower_id: identity.id, following_id: id });
+      const { data, error } = await supabase.rpc('toggle_follow_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        following_id_param: id
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setFollowing(result.action === 'followed');
       }
-      setFollowing(!following);
     } catch (error) {
       console.error('Error toggling follow:', error);
     }

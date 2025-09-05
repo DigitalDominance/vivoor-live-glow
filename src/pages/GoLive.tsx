@@ -15,7 +15,7 @@ import { Upload, Image as ImageIcon, Monitor, Camera } from "lucide-react";
 
 const GoLive = () => {
   const navigate = useNavigate();
-  const { identity, profile: walletProfile } = useWallet();
+  const { identity, profile: walletProfile, sessionToken } = useWallet();
   const { preserveStream, isPreviewing } = useBrowserStreaming();
   const kaspaAddress = identity?.id; // The kaspa address from wallet identity
   
@@ -334,33 +334,41 @@ const GoLive = () => {
         console.log('Using category thumbnail:', thumbnailUrl);
       }
 
-      // Save stream to Supabase with treasury transaction info
+      // Save stream to Supabase with treasury transaction info using JWT
       console.log('Creating stream in database...');
       try {
-        const { data: streamData, error } = await supabase
+        const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
+          title_param: title || 'Live Stream',
+          category_param: category,
+          livepeer_stream_id_param: currentLivepeerStreamId || null,
+          livepeer_playback_id_param: currentLivepeerPlaybackId || null,
+          streaming_mode_param: streamingMode,
+          is_live_param: streamingMode === 'browser' ? true : false
+        });
+
+        if (error || !streamId) {
+          console.error('Failed to create stream in database:', error);
+          throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
+        }
+
+        // Need to also update additional fields that aren't in the secure function
+        const { error: updateError } = await supabase
           .from('streams')
-          .insert({
-            user_id: kaspaAddress,
-            title: title || 'Live Stream',
-            category: category,
+          .update({
             playback_url: currentPlaybackUrl,
             thumbnail_url: thumbnailUrl,
             treasury_txid: treasuryTxid,
-            treasury_block_time: Date.now(), // Approximate block time
-            livepeer_stream_id: currentLivepeerStreamId || null, // Save the Livepeer stream ID from API response
-            livepeer_playback_id: currentLivepeerPlaybackId || null, // Save the playback ID
-            streaming_mode: streamingMode, // Save the streaming mode
-            is_live: streamingMode === 'browser' ? true : false // For browser streams, set live immediately
+            treasury_block_time: Date.now() // Approximate block time
           })
-          .select()
-          .single();
+          .eq('id', streamId);
 
-        if (error) {
-          console.error('Failed to create stream in database:', error);
-          throw new Error(`Database error: ${error.message}`);
+        if (updateError) {
+          console.error('Failed to update stream details:', updateError);
+          // Don't throw here since the stream was created successfully
         }
 
-        const streamId = streamData.id;
         console.log('Stream created successfully with ID:', streamId);
         
         // Store stream data in localStorage for persistence

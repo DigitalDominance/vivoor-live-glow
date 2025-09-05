@@ -32,7 +32,7 @@ export type StreamCardProps = {
 
 export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOpenProfile, onRequireLogin }) => {
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const [liked, setLiked] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(stream.likeCount || 0);
 
@@ -64,25 +64,25 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!identity?.id) {
+    if (!identity?.id || !sessionToken) {
       onRequireLogin?.();
       return;
     }
 
     try {
-      if (liked) {
-        await supabase
-          .from('likes')
-          .delete()
-          .match({ user_id: identity.id, stream_id: stream.id });
-        setLikeCount(prev => Math.max(0, prev - 1));
-      } else {
-        await supabase
-          .from('likes')
-          .insert({ user_id: identity.id, stream_id: stream.id });
-        setLikeCount(prev => prev + 1);
+      const { data, error } = await supabase.rpc('toggle_stream_like_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        stream_id_param: stream.id
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setLiked(result.action === 'liked');
+        setLikeCount(result.new_count);
       }
-      setLiked(!liked);
     } catch (error) {
       console.error('Error toggling like:', error);
     }

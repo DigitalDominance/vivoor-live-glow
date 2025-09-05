@@ -728,6 +728,19 @@ export type Database = {
         Args: { wallet_address: string }
         Returns: string
       }
+      create_stream_secure: {
+        Args: {
+          category_param?: string
+          is_live_param?: boolean
+          livepeer_playback_id_param?: string
+          livepeer_stream_id_param?: string
+          session_token_param: string
+          streaming_mode_param?: string
+          title_param: string
+          wallet_address_param: string
+        }
+        Returns: string
+      }
       decrement_stream_viewers: {
         Args: { stream_id: string }
         Returns: undefined
@@ -1020,6 +1033,39 @@ export type Database = {
       stream_heartbeat: {
         Args: { _stream_id: string }
         Returns: undefined
+      }
+      toggle_clip_like_secure: {
+        Args: {
+          clip_id_param: string
+          session_token_param: string
+          wallet_address_param: string
+        }
+        Returns: {
+          action: string
+          new_count: number
+        }[]
+      }
+      toggle_follow_secure: {
+        Args: {
+          following_id_param: string
+          session_token_param: string
+          wallet_address_param: string
+        }
+        Returns: {
+          action: string
+          new_count: number
+        }[]
+      }
+      toggle_stream_like_secure: {
+        Args: {
+          session_token_param: string
+          stream_id_param: string
+          wallet_address_param: string
+        }
+        Returns: {
+          action: string
+          new_count: number
+        }[]
       }
       update_avatar: {
         Args: { new_avatar_url: string; user_id_param: string }

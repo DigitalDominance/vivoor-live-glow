@@ -31,7 +31,7 @@ import ReportModal from "@/components/modals/ReportModal";
 const Watch = () => {
   const { streamId } = useParams();
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const [elapsed, setElapsed] = React.useState(0);
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
@@ -416,25 +416,25 @@ const Watch = () => {
   };
 
   const handleLike = async () => {
-    if (!identity?.id || !streamData?.id) {
+    if (!identity?.id || !streamData?.id || !sessionToken) {
       onRequireLogin();
       return;
     }
 
     try {
-      if (liked) {
-        await supabase
-          .from('likes')
-          .delete()
-          .match({ user_id: identity.id, stream_id: streamData.id });
-        setLikeCount(prev => Math.max(0, prev - 1));
-      } else {
-        await supabase
-          .from('likes')
-          .insert({ user_id: identity.id, stream_id: streamData.id });
-        setLikeCount(prev => prev + 1);
+      const { data, error } = await supabase.rpc('toggle_stream_like_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        stream_id_param: streamData.id
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setLiked(result.action === 'liked');
+        setLikeCount(result.new_count);
       }
-      setLiked(!liked);
     } catch (error) {
       console.error('Like error:', error);
       toast.error('Failed to update like status');

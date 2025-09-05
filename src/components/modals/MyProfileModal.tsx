@@ -11,7 +11,7 @@ const MyProfileModal: React.FC<{
   onOpenChange: (v: boolean) => void;
   onEditUsername: () => void;
 }> = ({ open, onOpenChange, onEditUsername }) => {
-  const { profile, identity, saveAvatarUrl } = useWallet();
+  const { profile, identity, sessionToken, saveAvatarUrl } = useWallet();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -44,7 +44,7 @@ const MyProfileModal: React.FC<{
   };
 
   const handleCroppedUpload = async (blob: Blob) => {
-    if (!identity) return;
+    if (!identity || !sessionToken) return;
     try {
       setUploading(true);
       const key = `${identity?.id || "anon"}/${Date.now()}-avatar.png`;

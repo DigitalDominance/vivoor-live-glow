@@ -23,7 +23,7 @@ const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
 const Channel: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
 
   // Fetch profile data by username (handle)
   const { data: profile, isLoading, error } = useQuery({
@@ -121,29 +121,24 @@ const Channel: React.FC = () => {
   }, [profile?.id, identity?.id]);
 
   const handleFollow = async () => {
-    if (!identity?.id || !profile?.id) {
+    if (!identity?.id || !profile?.id || !sessionToken) {
       toast({ title: "Please connect your wallet first" });
       return;
     }
 
     try {
-      if (following) {
-        await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', identity.id)
-          .eq('following_id', profile.id);
-        setFollowing(false);
-        toast({ title: "Unfollowed" });
-      } else {
-        await supabase
-          .from('follows')
-          .insert({
-            follower_id: identity.id,
-            following_id: profile.id
-          });
-        setFollowing(true);
-        toast({ title: "Following!" });
+      const { data, error } = await supabase.rpc('toggle_follow_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        following_id_param: profile.id
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setFollowing(result.action === 'followed');
+        toast({ title: result.action === 'followed' ? "Followed" : "Unfollowed" });
       }
     } catch (error) {
       console.error('Error toggling follow:', error);

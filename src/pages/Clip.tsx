@@ -14,7 +14,7 @@ import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 const ClipPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet();
   const queryClient = useQueryClient();
   const [clip, setClip] = React.useState<any | null>(null);
   const [vod, setVod] = React.useState<any | null>(null);
@@ -84,29 +84,25 @@ const ClipPage: React.FC = () => {
   }, [id]);
 
   const handleLike = async () => {
-    if (!identity?.id) {
+    if (!identity?.id || !sessionToken) {
       toast({ title: "Connect Wallet", description: "Please connect your wallet to like clips" });
       return;
     }
 
     try {
-      // First authenticate the wallet user with Supabase
-      const { data: authData } = await supabase.rpc('authenticate_wallet_user', {
-        wallet_address: identity.id
+      const { data, error } = await supabase.rpc('toggle_clip_like_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        clip_id_param: id
       });
 
-      if (liked) {
-        await supabase
-          .from('clip_likes')
-          .delete()
-          .match({ user_id: identity.id, clip_id: id });
-      } else {
-        await supabase
-          .from('clip_likes')
-          .insert({ user_id: identity.id, clip_id: id });
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result) {
+        setLiked(result.action === 'liked');
+        queryClient.invalidateQueries({ queryKey: ['clip-like-count', id] });
       }
-      setLiked(!liked);
-      queryClient.invalidateQueries({ queryKey: ['clip-like-count', id] });
     } catch (error) {
       console.error('Error toggling like:', error);
       toast({ title: "Error", description: "Failed to update like status", variant: "destructive" });
