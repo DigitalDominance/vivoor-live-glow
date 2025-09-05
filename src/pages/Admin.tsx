@@ -79,6 +79,8 @@ export default function Admin() {
 
     setLoading(true);
     try {
+      console.log('Attempting admin authentication with password length:', password.length);
+      
       const { data, error } = await supabase.functions.invoke('admin-actions', {
         body: {
           action: 'verify_password',
@@ -86,7 +88,12 @@ export default function Admin() {
         }
       });
 
-      if (error) throw error;
+      console.log('Authentication response:', { data, error });
+
+      if (error) {
+        console.error('Authentication error:', error);
+        throw error;
+      }
 
       if (data?.verified) {
         setIsAuthenticated(true);

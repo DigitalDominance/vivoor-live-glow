@@ -3,12 +3,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Secure password verification using constant-time comparison
 async function verifyPasswordSecure(provided: string, expected: string): Promise<boolean> {
+  console.log('Password verification - provided length:', provided.length, 'expected length:', expected.length);
+  console.log('Provided (first 5 chars):', provided.substring(0, 5));
+  console.log('Expected (first 5 chars):', expected.substring(0, 5));
+  
   const encoder = new TextEncoder();
   const providedBytes = encoder.encode(provided);
   const expectedBytes = encoder.encode(expected);
   
   // Ensure same length comparison to prevent timing attacks
   if (providedBytes.length !== expectedBytes.length) {
+    console.log('Length mismatch - verification failed');
     return false;
   }
   
@@ -17,7 +22,9 @@ async function verifyPasswordSecure(provided: string, expected: string): Promise
     result |= providedBytes[i] ^ expectedBytes[i];
   }
   
-  return result === 0;
+  const isValid = result === 0;
+  console.log('Password verification result:', isValid);
+  return isValid;
 }
 
 // Validate UUID format
@@ -152,7 +159,6 @@ serve(async (req) => {
 
     // Verify admin password for all actions using constant-time comparison
     const isValidPassword = await verifyPasswordSecure(password, adminPassword);
-    console.log('Password verification result:', isValidPassword);
     
     if (!isValidPassword) {
       // Add delay to prevent timing attacks
