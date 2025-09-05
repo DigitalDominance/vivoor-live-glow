@@ -279,16 +279,31 @@ if (!finalUrl) {
       console.log('Clip exceeds size limit, compressing via watermark proxy...');
       
       try {
-        // Use the watermark proxy to compress the video
+        // Use the watermark proxy to compress the video with FFmpeg compression parameters
         const watermarkProxyUrl = getWatermarkProxyUrl(req);
+        
+        // Create a compressed video URL by appending compression parameters
+        const compressedVideoUrl = `${finalUrl}?compress=true&quality=23&scale=720:-1&crf=28`;
+        
         const compressForm = new FormData();
-        compressForm.set('videoUrl', finalUrl);
+        compressForm.set('videoUrl', compressedVideoUrl);
         compressForm.set('position', 'br');
-        compressForm.set('margin', String(24));
-        compressForm.set('wmWidth', String(120)); // Smaller watermark
+        compressForm.set('margin', String(16)); // Smaller margin
+        compressForm.set('wmWidth', String(100)); // Smaller watermark
         compressForm.set('filename', `${sanitizedTitle}_compressed.mp4`);
-        compressForm.set('quality', '23'); // Lower quality for smaller size
-        compressForm.set('scale', '720:-1'); // Scale down to 720p height
+        
+        // Add FFmpeg compression parameters as form fields
+        compressForm.set('videoCodec', 'libx264');
+        compressForm.set('audioBitrate', '64k');
+        compressForm.set('videoBitrate', '1000k'); // 1Mbps max
+        compressForm.set('maxFileSize', '40MB'); // Target under 40MB
+        
+        console.log('Requesting compression with parameters:', {
+          quality: '23',
+          scale: '720:-1',
+          videoBitrate: '1000k',
+          audioBitrate: '64k'
+        });
         
         const compressRes = await fetch(watermarkProxyUrl, {
           method: 'POST',
@@ -301,6 +316,39 @@ if (!finalUrl) {
         if (compressRes.ok && compressRes.body) {
           finalBlob = await compressRes.blob();
           console.log(`Compressed clip size: ${(finalBlob.size / 1024 / 1024).toFixed(2)}MB`);
+          
+          // If still too large, try more aggressive compression
+          if (finalBlob.size > MAX_SIZE_BYTES) {
+            console.log('Still too large, trying more aggressive compression...');
+            
+            const ultraCompressForm = new FormData();
+            ultraCompressForm.set('videoUrl', finalUrl);
+            ultraCompressForm.set('position', 'br');
+            ultraCompressForm.set('margin', String(12));
+            ultraCompressForm.set('wmWidth', String(80));
+            ultraCompressForm.set('filename', `${sanitizedTitle}_ultra_compressed.mp4`);
+            ultraCompressForm.set('videoCodec', 'libx264');
+            ultraCompressForm.set('audioBitrate', '32k');
+            ultraCompressForm.set('videoBitrate', '500k'); // 500kbps
+            ultraCompressForm.set('scale', '480:-1'); // Scale to 480p
+            ultraCompressForm.set('crf', '28'); // Higher compression
+            
+            const ultraRes = await fetch(watermarkProxyUrl, {
+              method: 'POST',
+              body: ultraCompressForm,
+              headers: {
+                'Authorization': req.headers.get('Authorization') || '',
+              }
+            });
+            
+            if (ultraRes.ok && ultraRes.body) {
+              const ultraBlob = await ultraRes.blob();
+              if (ultraBlob.size < finalBlob.size) {
+                finalBlob = ultraBlob;
+                console.log(`Ultra compressed clip size: ${(finalBlob.size / 1024 / 1024).toFixed(2)}MB`);
+              }
+            }
+          }
         } else {
           console.warn('Compression failed, using original size');
         }
