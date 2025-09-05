@@ -127,17 +127,43 @@ serve(async (req) => {
         break;
 
       case 'get_live_streams':
-        // Use RPC function to get streams with profile data
-        const { data: streams, error: streamsError } = await supabaseClient.rpc('get_streams_with_profiles_and_likes', {
-          _limit: limit,
-          _offset: offset
-        });
+        // Get only live streams with profile information
+        const { data: streams, error: streamsError } = await supabaseClient
+          .from('streams')
+          .select(`
+            id,
+            title,
+            user_id,
+            viewers,
+            created_at,
+            stream_type,
+            is_live
+          `)
+          .eq('is_live', true)
+          .order('created_at', { ascending: false })
+          .limit(limit)
+          .range(offset, offset + limit - 1);
         
         if (streamsError) throw streamsError;
         
-        // Filter only live streams from the result
-        const liveStreams = streams?.filter(stream => stream.is_live) || [];
-        result = { streams: liveStreams };
+        // Get profile information for each stream
+        const streamsWithProfiles = [];
+        for (const stream of streams || []) {
+          const { data: profile } = await supabaseClient.rpc('get_public_profile_secure', {
+            _id: stream.user_id
+          });
+          
+          if (profile && profile.length > 0) {
+            streamsWithProfiles.push({
+              ...stream,
+              profile_handle: profile[0].handle,
+              profile_display_name: profile[0].display_name,
+              profile_avatar_url: profile[0].avatar_url
+            });
+          }
+        }
+        
+        result = { streams: streamsWithProfiles };
         break;
 
       case 'get_reports':
