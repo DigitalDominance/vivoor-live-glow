@@ -675,7 +675,13 @@ export type Database = {
         Returns: undefined
       }
       authenticate_wallet_secure: {
-        Args: { wallet_address_param: string }
+        Args:
+          | {
+              message_param: string
+              signature_param: string
+              wallet_address_param: string
+            }
+          | { wallet_address_param: string }
         Returns: string
       }
       authenticate_wallet_user: {
@@ -1186,6 +1192,14 @@ export type Database = {
           expires_at: string
           is_valid: boolean
         }[]
+      }
+      verify_wallet_signature: {
+        Args: {
+          message_param: string
+          signature_param: string
+          wallet_address_param: string
+        }
+        Returns: boolean
       }
       viewer_heartbeat: {
         Args: { stream_id: string }

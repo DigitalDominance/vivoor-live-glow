@@ -144,9 +144,28 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const addr = accounts?.[0];
       if (!addr) throw new Error("No Kasware account returned");
       
-      // Use the secure authentication function that bypasses RLS
+      // Generate a unique message for the user to sign
+      const timestamp = Date.now();
+      const message = `VIVOOR_AUTH_${timestamp}_${addr.slice(-8)}`;
+      
+      // Request signature to prove wallet ownership
+      let signature: string;
+      try {
+        signature = await w.signMessage(message, "ecdsa");
+      } catch (signError) {
+        console.error('Failed to sign authentication message:', signError);
+        throw new Error('Message signing is required to verify wallet ownership');
+      }
+      
+      if (!signature || signature.length < 50) {
+        throw new Error('Invalid signature - unable to verify wallet ownership');
+      }
+      
+      // Use the secure authentication function with signature verification
       const { data: encryptedUserId, error: authError } = await supabase.rpc('authenticate_wallet_secure', {
-        wallet_address_param: addr
+        wallet_address_param: addr,
+        message_param: message,
+        signature_param: signature
       });
 
       if (authError || !encryptedUserId) {

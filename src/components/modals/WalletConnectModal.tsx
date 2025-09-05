@@ -2,6 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/context/WalletContext";
+import { WalletSecurityNotification } from "@/components/WalletSecurityNotification";
 
 const WalletConnectModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
   const { connectKasware, connecting } = useWallet();
@@ -22,6 +23,7 @@ const WalletConnectModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) =
         <DialogHeader>
           <DialogTitle>Connect a Kaspa wallet</DialogTitle>
         </DialogHeader>
+        <WalletSecurityNotification />
         <div className="grid gap-3">
           <Button variant="gradientOutline" disabled={connecting} onClick={() => handle(connectKasware)} className="h-12">
             <img src="/lovable-uploads/d505d6b1-b6d9-41cd-9c6d-a953c2587cde.png" alt="Kasware wallet logo" className="h-6 w-auto mx-auto" loading="lazy" />
