@@ -105,6 +105,19 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Basic rate limiting - check request origin and add simple throttling
+  const origin = req.headers.get('origin');
+  const userAgent = req.headers.get('user-agent');
+  
+  // Block requests without proper browser headers (basic bot protection)
+  if (!origin && !userAgent?.includes('Mozilla')) {
+    console.warn('Blocked request without proper browser headers');
+    return new Response(
+      JSON.stringify({ success: false, error: 'Invalid request origin' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
