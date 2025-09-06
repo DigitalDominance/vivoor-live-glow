@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { secp256k1 } from 'https://esm.sh/@noble/secp256k1@2.1.0';
+import * as secp256k1 from 'https://esm.sh/@noble/secp256k1@2.1.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,7 +80,8 @@ async function verifyECDSASignature(
     
     // Validate public key is valid secp256k1 point
     try {
-      secp256k1.ProjectivePoint.fromHex(publicKey);
+      const point = secp256k1.Point.fromHex(publicKey);
+      if (!point) throw new Error('Invalid point');
     } catch (e) {
       console.error('Invalid public key - not a valid secp256k1 point');
       return false;
@@ -98,7 +99,7 @@ async function verifyECDSASignature(
     console.log('Message hash:', Array.from(messageHashBytes, b => b.toString(16).padStart(2, '0')).join(''));
     
     // Perform full ECDSA verification using noble-secp256k1
-    const isValid = secp256k1.verify(signatureBytes, messageHashBytes, publicKeyBytes);
+    const isValid = secp256k1.verify(signatureBytes, messageHashBytes, publicKey);
     
     if (!isValid) {
       console.error('ECDSA signature verification failed');

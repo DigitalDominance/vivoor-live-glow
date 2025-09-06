@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import ProfileModal from "@/components/modals/ProfileModal";
 import { useWallet } from "@/context/WalletContext";
-import WalletConnectModal from "@/components/modals/WalletConnectModal";
+import { WalletConnectModal } from "@/components/modals/WalletConnectModal";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";

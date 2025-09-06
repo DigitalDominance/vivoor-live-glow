@@ -1,40 +1,72 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/context/WalletContext";
-import { WalletSecurityNotification } from "@/components/WalletSecurityNotification";
+import { toast } from "sonner";
+import KaspaIcon from "@/components/KaspaIcon";
 
-const WalletConnectModal: React.FC<{ open: boolean; onOpenChange: (v: boolean) => void }> = ({ open, onOpenChange }) => {
+interface WalletConnectModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+export const WalletConnectModal: React.FC<WalletConnectModalProps> = ({
+  open,
+  onOpenChange,
+  onSuccess,
+}) => {
   const { connectKasware, connecting } = useWallet();
+  const [connecting2, setConnecting2] = useState(false);
 
-  const handle = async (fn: () => Promise<void>) => {
+  const handleConnect = async () => {
+    setConnecting2(true);
     try {
-      await fn();
+      await connectKasware();
+      toast.success("Wallet connected successfully!");
+      onSuccess?.();
       onOpenChange(false);
-    } catch (e: any) {
-      console.error(e);
-      alert(e?.message || "Failed to connect wallet");
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to connect wallet");
+    } finally {
+      setConnecting2(false);
     }
   };
 
+  const isConnecting = connecting || connecting2;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect a Kaspa wallet</DialogTitle>
+          <DialogTitle className="text-center">Connect Your Wallet</DialogTitle>
         </DialogHeader>
-        <WalletSecurityNotification />
-        <div className="grid gap-3">
-          <Button variant="gradientOutline" disabled={connecting} onClick={() => handle(connectKasware)} className="h-12">
-            <img src="/lovable-uploads/d505d6b1-b6d9-41cd-9c6d-a953c2587cde.png" alt="Kasware wallet logo" className="h-6 w-auto mx-auto" loading="lazy" />
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            We’ll never custody funds. You’ll approve actions in your wallet.
+        
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Connect your Kaspa wallet to continue. You'll need to sign a message to verify ownership.
           </p>
+
+          <div className="space-y-3">
+            <Button
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="w-full h-12 text-base font-medium"
+              variant="hero"
+            >
+              <KaspaIcon className="w-5 h-5 mr-2" />
+              {isConnecting ? "Connecting..." : "Connect Kasware"}
+            </Button>
+          </div>
+
+          <div className="text-xs text-muted-foreground text-center space-y-1">
+            <p>• Kasware wallet required</p>
+            <p>• Message signing for secure authentication</p>
+            <p>• Your private keys never leave your wallet</p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default WalletConnectModal;

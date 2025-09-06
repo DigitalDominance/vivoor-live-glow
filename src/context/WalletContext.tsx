@@ -152,14 +152,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('');
       const message = `VIVOOR_AUTH_${timestamp}_${nonce}`;
       
-      // Get the public key from Kasware for signature verification
-      let publicKey: string | undefined;
+      // Get the public key from Kasware for signature verification - REQUIRED
+      let publicKey: string;
       try {
         publicKey = await w.getPublicKey();
         console.log('Retrieved public key from Kasware:', publicKey);
+        if (!publicKey) {
+          throw new Error('Public key is required for authentication');
+        }
       } catch (pubKeyError) {
-        console.warn('Failed to get public key from Kasware:', pubKeyError);
-        // Continue without public key - the backend will handle validation
+        console.error('Failed to get public key from Kasware:', pubKeyError);
+        throw new Error('Public key retrieval is required for secure authentication');
       }
       
       // Request signature to prove wallet ownership

@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import WalletConnectModal from "@/components/modals/WalletConnectModal";
+import { WalletConnectModal } from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
