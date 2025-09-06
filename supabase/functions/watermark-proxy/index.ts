@@ -179,7 +179,7 @@ serve(async (req: Request) => {
     }
 
     // Stream the mp4 straight back to the browser with proper CORS
-    const responseContentType = upstream.headers.get("Content-Type") || "video/mp4";
+    const contentType = upstream.headers.get("Content-Type") || "video/mp4";
     const contentDisposition = upstream.headers.get("Content-Disposition") || 
       `attachment; filename="${filename.replace(/[^a-zA-Z0-9_.-]/g, "_")}"`;
 
@@ -189,7 +189,7 @@ serve(async (req: Request) => {
       status: 200,
       headers: {
         ...baseCors,
-        "Content-Type": responseContentType,
+        "Content-Type": contentType,
         "Content-Disposition": contentDisposition,
         "Cache-Control": "no-store, no-cache, must-revalidate",
         "Pragma": "no-cache",
