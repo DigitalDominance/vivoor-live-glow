@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import * as secp from 'https://esm.sh/@noble/secp256k1@2.1.0';
+import { Verifier } from 'https://esm.sh/bip322-js@0.6.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,10 +28,10 @@ const KASPA_ADDRESS_REGEX = /^kaspa:[a-z0-9]{61}$/;
 const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
- * Production-ready ECDSA signature verification for Kaspa using secp256k1
+ * Production-ready BIP322-simple signature verification for Kaspa
  * No fallbacks - strict cryptographic verification required
  */
-async function verifyECDSASignature(
+async function verifyBIP322Signature(
   message: string, 
   signature: string, 
   publicKey: string
@@ -49,79 +49,24 @@ async function verifyECDSASignature(
       return false;
     }
     
-    // Validate signature format and parse based on Kasware documentation
-    let signatureBytes: Uint8Array;
-    
-    if (/^[0-9a-fA-F]{128}$/.test(signature)) {
-      // Hex format (128 chars = 64 bytes r+s)
-      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-    } else {
-      // Base64 format (as shown in Kasware docs)
-      try {
-        const binaryString = atob(signature);
-        const fullSig = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          fullSig[i] = binaryString.charCodeAt(i);
-        }
-        
-        // Kasware signatures might be 65 bytes (recovery + r + s) or DER encoded
-        if (fullSig.length === 65) {
-          // Skip first byte (recovery ID) and take next 64 bytes (r+s)
-          signatureBytes = fullSig.slice(1);
-          console.log('Detected 65-byte signature, extracted r+s components');
-        } else if (fullSig.length === 64) {
-          // Already just r+s
-          signatureBytes = fullSig;
-        } else {
-          // Try to parse as DER and extract r,s
-          console.log('Signature length:', fullSig.length, 'attempting DER parsing');
-          signatureBytes = fullSig; // Use as-is for now
-        }
-      } catch (e) {
-        console.error('Invalid signature format - must be hex or base64');
-        return false;
-      }
-    }
-    
-    console.log('Final signature bytes length:', signatureBytes.length);
-    
-    // Validate signature length (should be 64 bytes for secp256k1 signature)
-    if (signatureBytes.length !== 64) {
-      console.error('Invalid signature length - must be 64 bytes, got:', signatureBytes.length);
-      return false;
-    }
-    
-    // Convert public key to bytes for verification
-    const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-    
-    // Basic validation - must be 33 bytes (compressed) and start with 02 or 03
-    if (publicKeyBytes.length !== 33 || (publicKeyBytes[0] !== 0x02 && publicKeyBytes[0] !== 0x03)) {
-      console.error('Invalid public key format - must be 33-byte compressed secp256k1 key');
-      return false;
-    }
-    
-    console.log('Public key format validation passed');
-    
-    console.log('Verifying signature with secp256k1...');
+    console.log('Verifying signature with BIP322-simple...');
     console.log('Message:', message);
     console.log('Public key:', publicKey);
-    console.log('Signature (hex):', Array.from(signatureBytes, b => b.toString(16).padStart(2, '0')).join(''));
+    console.log('Signature:', signature);
     
-    // Perform ECDSA verification using noble-secp256k1
-    // noble-secp256k1 automatically hashes the message with SHA-256
-    // We pass the message string directly, not pre-hashed
-    const isValid = secp.verify(signatureBytes, message, publicKey);
+    // Perform BIP322-simple verification
+    const isValid = Verifier.verifySignature(publicKey, message, signature);
     
     if (!isValid) {
-      console.error('ECDSA signature verification failed');
+      console.error('BIP322-simple signature verification failed');
       return false;
     }
     
-    console.log('ECDSA signature verification succeeded');
+    console.log('BIP322-simple signature verification succeeded');
     return true;
     
   } catch (error) {
-    console.error('Error during ECDSA verification:', error);
+    console.error('Error during BIP322-simple verification:', error);
     return false;
   }
 }
@@ -230,7 +175,7 @@ serve(async (req) => {
     }
 
     // Verify the cryptographic signature - strict verification, no fallbacks
-    const isValidSignature = await verifyECDSASignature(message, signature, publicKey);
+    const isValidSignature = await verifyBIP322Signature(message, signature, publicKey);
     if (!isValidSignature) {
       return new Response(
         JSON.stringify({ 

@@ -168,7 +168,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Request signature to prove wallet ownership
       let signature: string;
       try {
-        signature = await w.signMessage(message, "ecdsa");
+        signature = await w.signMessage(message, "bip322-simple");
       } catch (signError) {
         console.error('Failed to sign authentication message:', signError);
         throw new Error('Message signing is required to verify wallet ownership');
