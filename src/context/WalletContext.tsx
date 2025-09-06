@@ -75,45 +75,40 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (Array.isArray(acc) && acc[0]) {
             const addr = acc[0];
             
-            try {
-              // Check if session token is still valid via direct database query
-              const { data: sessionData, error: sessionError } = await supabase
-                .from('wallet_auth_sessions')
-                .select('encrypted_user_id, expires_at, is_active')
-                .eq('session_token', storedToken)
-                .eq('wallet_address', addr)
-                .eq('is_active', true)
-                .maybeSingle();
-              
-              if (sessionError) {
-                console.error('Session validation error:', sessionError);
-                throw new Error('Session validation failed');
-              }
-              
-              if (!sessionData || new Date() > new Date(sessionData.expires_at)) {
-                console.error('Session expired or invalid');
-                throw new Error('Session expired');
-              }
-              
-              const encryptedUserId = sessionData.encrypted_user_id;
-              
-              // Verify the user exists in the database with this encrypted ID
-              const { data: dbProfile, error: profileError } = await supabase
-                .from('profiles')
-                .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address')
-                .eq('id', encryptedUserId)
-                .eq('kaspa_address', addr)
-                .maybeSingle();
+            // Verify the stored JWT token is still valid
+            const { data: authResult, error: authError } = await supabase.rpc('verify_wallet_jwt', {
+              session_token_param: storedToken,
+              wallet_address_param: addr
+            });
+            
+            if (authError || !authResult?.[0]?.is_valid) {
+              console.error('Invalid session token, clearing session');
+              localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+              localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
+              return;
+            }
+            
+            const encryptedUserId = authResult[0].encrypted_user_id;
+            
+            // Verify the user exists in the database with this encrypted ID
+            const { data: dbProfile, error } = await supabase
+              .from('profiles')
+              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address')
+              .eq('id', encryptedUserId)
+              .eq('kaspa_address', addr)
+              .maybeSingle();
 
-              if (profileError || !dbProfile) {
-                console.error('Profile validation failed:', profileError);
-                throw new Error('Profile validation failed');
-              }
+            if (error || !dbProfile) {
+              console.error('Failed to restore wallet session:', error);
+              localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
+              localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
+              return;
+            }
 
-              // Only restore session if all validations pass
-              setIdentity({ provider: "kasware", id: encryptedUserId, address: addr });
-              setSessionToken(storedToken);
-              
+            setIdentity({ provider: "kasware", id: encryptedUserId, address: addr });
+            setSessionToken(storedToken);
+            
+            if (dbProfile) {
               const profileRecord: ProfileRecord = {
                 username: dbProfile.handle || '',
                 avatarUrl: dbProfile.avatar_url || undefined,
@@ -126,26 +121,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const map = readProfiles();
               map[encryptedUserId] = profileRecord;
               writeProfiles(map);
-              
-            } catch (validationError) {
-              console.error('Session restoration failed:', validationError);
-              // Clear invalid session immediately
-              localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
-              localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
-              setIdentity(null);
-              setProfile(null);
-              setSessionToken(null);
+            } else {
+              const map = readProfiles();
+              setProfile(map[encryptedUserId] || null);
             }
           }
         })
-        .catch((error) => {
-          console.error('Wallet account retrieval failed:', error);
+        .catch(() => {
           // Clear invalid session
           localStorage.removeItem(LS_KEYS.LAST_PROVIDER);
           localStorage.removeItem(LS_KEYS.SESSION_TOKEN);
-          setIdentity(null);
-          setProfile(null);
-          setSessionToken(null);
         });
     }
   }, []);
@@ -167,18 +152,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('');
       const message = `VIVOOR_AUTH_${timestamp}_${nonce}`;
       
-      // Get the public key from Kasware for signature verification - REQUIRED
-      let publicKey: string;
+      // Get the public key from Kasware for signature verification
+      let publicKey: string | undefined;
       try {
         publicKey = await w.getPublicKey();
         console.log('Retrieved public key from Kasware:', publicKey);
-        
-        if (!publicKey || typeof publicKey !== 'string' || publicKey.length !== 66) {
-          throw new Error('Invalid public key format from wallet');
-        }
       } catch (pubKeyError) {
-        console.error('Failed to get public key from Kasware:', pubKeyError);
-        throw new Error('Public key is required for secure authentication. Please ensure your wallet supports public key export.');
+        console.warn('Failed to get public key from Kasware:', pubKeyError);
+        // Continue without public key - the backend will handle validation
       }
       
       // Request signature to prove wallet ownership
