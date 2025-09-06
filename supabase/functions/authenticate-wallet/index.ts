@@ -75,20 +75,16 @@ async function verifyECDSASignature(
       return false;
     }
     
-    // Convert public key to bytes
+    // Convert public key to bytes for verification
     const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     
-    // Validate public key using built-in validation
-    try {
-      if (!secp.utils.isValidPublicKey(publicKey)) {
-        console.error('Invalid public key - not a valid secp256k1 public key');
-        return false;
-      }
-      console.log('Public key validation passed');
-    } catch (e) {
-      console.error('Error validating public key:', e);
+    // Basic validation - must be 33 bytes (compressed) and start with 02 or 03
+    if (publicKeyBytes.length !== 33 || (publicKeyBytes[0] !== 0x02 && publicKeyBytes[0] !== 0x03)) {
+      console.error('Invalid public key format - must be 33-byte compressed secp256k1 key');
       return false;
     }
+    
+    console.log('Public key format validation passed');
     
     // Hash the message using SHA-256 (Kaspa standard)
     const encoder = new TextEncoder();
