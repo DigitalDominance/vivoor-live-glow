@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { Verifier } from 'https://esm.sh/bip322-js@3.0.0';
+import { Verifier } from 'https://esm.sh/bip322-js@0.6.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,14 +28,13 @@ const KASPA_ADDRESS_REGEX = /^kaspa:[a-z0-9]{61}$/;
 const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
- * Simple BIP322-simple signature verification by extracting public key
- * Use BIP322 library to properly parse the signature and extract the public key
+ * Production-ready BIP322-simple signature verification for Kaspa
+ * No fallbacks - strict cryptographic verification required
  */
 async function verifyBIP322Signature(
   message: string, 
   signature: string, 
-  publicKey: string,
-  walletAddress: string
+  publicKey: string
 ): Promise<boolean> {
   try {
     // Strict validation - no fallbacks allowed
@@ -50,32 +49,21 @@ async function verifyBIP322Signature(
       return false;
     }
     
-    console.log('Verifying BIP322-simple signature...');
+    console.log('Verifying signature with BIP322-simple...');
     console.log('Message:', message);
-    console.log('Expected public key:', publicKey);
+    console.log('Public key:', publicKey);
     console.log('Signature:', signature);
     
-    // Try to extract the public key from the BIP322-simple signature
-    let extractedPublicKey: string;
-    try {
-      // Use the BIP322 library to extract public key from signature
-      extractedPublicKey = Verifier.extractPublicKey(signature);
-      console.log('Extracted public key from BIP322 signature:', extractedPublicKey);
-    } catch (extractError) {
-      console.error('Failed to extract public key from BIP322 signature:', extractError);
+    // Perform BIP322-simple verification
+    const isValid = Verifier.verifySignature(publicKey, message, signature);
+    
+    if (!isValid) {
+      console.error('BIP322-simple signature verification failed');
       return false;
     }
     
-    // Compare the extracted public key with the provided public key
-    if (extractedPublicKey.toLowerCase() === publicKey.toLowerCase()) {
-      console.log('BIP322-simple public key verification succeeded');
-      return true;
-    } else {
-      console.error('BIP322-simple public key verification failed');
-      console.error('Expected:', publicKey.toLowerCase());
-      console.error('Extracted from signature:', extractedPublicKey.toLowerCase());
-      return false;
-    }
+    console.log('BIP322-simple signature verification succeeded');
+    return true;
     
   } catch (error) {
     console.error('Error during BIP322-simple verification:', error);
@@ -187,7 +175,7 @@ serve(async (req) => {
     }
 
     // Verify the cryptographic signature - strict verification, no fallbacks
-    const isValidSignature = await verifyBIP322Signature(message, signature, publicKey, walletAddress);
+    const isValidSignature = await verifyBIP322Signature(message, signature, publicKey);
     if (!isValidSignature) {
       return new Response(
         JSON.stringify({ 
