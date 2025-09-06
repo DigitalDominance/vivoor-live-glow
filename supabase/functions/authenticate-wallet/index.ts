@@ -86,20 +86,15 @@ async function verifyECDSASignature(
     
     console.log('Public key format validation passed');
     
-    // Hash the message using SHA-256 - direct message signing (Kasware standard)
-    const encoder = new TextEncoder();
-    const messageBytes = encoder.encode(message);
-    const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
-    const messageHashBytes = new Uint8Array(messageHash);
-    
     console.log('Verifying signature with secp256k1...');
     console.log('Message:', message);
     console.log('Public key:', publicKey);
-    console.log('Message hash:', Array.from(messageHashBytes, b => b.toString(16).padStart(2, '0')).join(''));
+    console.log('Signature (hex):', Array.from(signatureBytes, b => b.toString(16).padStart(2, '0')).join(''));
     
     // Perform ECDSA verification using noble-secp256k1
-    // Kasware uses standard ECDSA signing (no Bitcoin message prefix)
-    const isValid = secp.verify(signatureBytes, messageHashBytes, publicKeyBytes);
+    // noble-secp256k1 automatically hashes the message with SHA-256
+    // We pass the message string directly, not pre-hashed
+    const isValid = secp.verify(signatureBytes, message, publicKey);
     
     if (!isValid) {
       console.error('ECDSA signature verification failed');
