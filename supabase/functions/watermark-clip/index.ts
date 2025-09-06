@@ -269,8 +269,8 @@ if (!finalUrl) {
     // Upload the watermarked clip to Supabase Storage and update DB row
     const wmBlob = await (new Response(rRes.body)).blob();
     
-    // Check blob size and compress if too large (>45MB for safety margin under 50MB limit)
-    const MAX_SIZE_BYTES = 45 * 1024 * 1024; // 45MB
+    // Check blob size and compress if too large (>190MB for safety margin under 200MB limit)
+    const MAX_SIZE_BYTES = 190 * 1024 * 1024; // 190MB
     let finalBlob = wmBlob;
     
     console.log(`Original watermarked clip size: ${(wmBlob.size / 1024 / 1024).toFixed(2)}MB`);
@@ -296,7 +296,7 @@ if (!finalUrl) {
         compressForm.set('videoCodec', 'libx264');
         compressForm.set('audioBitrate', '64k');
         compressForm.set('videoBitrate', '1000k'); // 1Mbps max
-        compressForm.set('maxFileSize', '40MB'); // Target under 40MB
+        compressForm.set('maxFileSize', '180MB'); // Target under 180MB
         
         console.log('Requesting compression with parameters:', {
           quality: '23',
