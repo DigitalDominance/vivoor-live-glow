@@ -29,7 +29,7 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
- * Tries multiple message signing formats to handle Kasware's specific implementation
+ * Handles Kasware's base64 signature format with Bitcoin message signing standard
  */
 async function verifyECDSASignature(
   message: string, 
@@ -54,43 +54,44 @@ async function verifyECDSASignature(
     console.log('Public key:', publicKey);
     console.log('Signature (raw):', signature);
     
-    // Try to decode signature - handle both hex and base64 formats
+    // Decode signature - Kasware should return base64 according to docs
     let signatureBytes: Uint8Array;
     
-    // First try hex format (128 characters = 64 bytes)
-    if (/^[0-9a-fA-F]{128}$/.test(signature)) {
-      console.log('Hex signature format detected');
-      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-      console.log('Signature decoded from hex, length:', signatureBytes.length);
-    } else {
-      // Try base64 format
+    // Check if it's base64 (Kasware format according to docs)
+    if (!/^[0-9a-fA-F]+$/.test(signature)) {
+      console.log('Base64 signature format detected (expected from Kasware)');
       try {
-        console.log('Attempting base64 decode...');
         const binaryString = atob(signature);
         signatureBytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           signatureBytes[i] = binaryString.charCodeAt(i);
         }
         console.log('Signature decoded from base64, length:', signatureBytes.length);
-        
-        // If it's 65 bytes (Bitcoin recoverable format), extract r+s components
-        if (signatureBytes.length === 65) {
-          console.log('Bitcoin recoverable format detected, extracting r+s');
-          const r = signatureBytes.slice(1, 33);
-          const s = signatureBytes.slice(33, 65);
-          signatureBytes = new Uint8Array(64);
-          signatureBytes.set(r);
-          signatureBytes.set(s, 32);
-        }
       } catch (e) {
-        console.error('Failed to decode signature as base64:', e);
+        console.error('Failed to decode base64 signature:', e);
         return false;
       }
+    } else if (/^[0-9a-fA-F]{128}$/.test(signature)) {
+      // Fallback to hex format
+      console.log('Hex signature format detected (fallback)');
+      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+      console.log('Signature decoded from hex, length:', signatureBytes.length);
+    } else {
+      console.error('Unrecognized signature format');
+      return false;
     }
     
-    // Validate signature length (should be 64 bytes for r+s)
-    if (signatureBytes.length !== 64) {
-      console.error('Invalid signature length:', signatureBytes.length, 'expected 64 bytes');
+    // Handle different signature lengths
+    if (signatureBytes.length === 65) {
+      // Bitcoin recoverable signature format - extract r+s (skip recovery ID)
+      console.log('Bitcoin recoverable format detected, extracting r+s');
+      const r = signatureBytes.slice(1, 33);
+      const s = signatureBytes.slice(33, 65);
+      signatureBytes = new Uint8Array(64);
+      signatureBytes.set(r);
+      signatureBytes.set(s, 32);
+    } else if (signatureBytes.length !== 64) {
+      console.error('Invalid signature length:', signatureBytes.length, 'expected 64 or 65 bytes');
       return false;
     }
     
@@ -98,70 +99,62 @@ async function verifyECDSASignature(
     const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     console.log('Public key bytes length:', publicKeyBytes.length);
     
-    // Try multiple message signing approaches
-    const approaches = [
-      {
-        name: 'Raw message SHA-256',
-        getHash: async () => {
-          const encoder = new TextEncoder();
-          const messageBytes = encoder.encode(message);
-          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
-        }
-      },
-      {
-        name: 'Bitcoin message format with double SHA-256',
-        getHash: async () => {
-          const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
-          const encoder = new TextEncoder();
-          const messageBytes = encoder.encode(bitcoinMessage);
-          const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
-          return new Uint8Array(await crypto.subtle.digest('SHA-256', firstHash));
-        }
-      },
-      {
-        name: 'Bitcoin message format with single SHA-256',
-        getHash: async () => {
-          const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
-          const encoder = new TextEncoder();
-          const messageBytes = encoder.encode(bitcoinMessage);
-          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
-        }
-      },
-      {
-        name: 'Kaspa message format',
-        getHash: async () => {
-          const kaspaMessage = `\x17Kaspa Signed Message:\n${message.length}${message}`;
-          const encoder = new TextEncoder();
-          const messageBytes = encoder.encode(kaspaMessage);
-          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
-        }
+    // Try Bitcoin message signing format (most likely for Kasware)
+    try {
+      console.log('Trying Bitcoin message signing format...');
+      const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
+      const encoder = new TextEncoder();
+      const messageBytes = encoder.encode(bitcoinMessage);
+      
+      // Try double SHA-256 first (Bitcoin standard)
+      const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
+      const doubleHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', firstHash));
+      const doubleHashHex = Array.from(doubleHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+      console.log('Bitcoin double SHA-256 hash:', doubleHashHex);
+      
+      const isValidDouble = secp256k1.verify(signatureBytes, doubleHashArray, publicKeyBytes);
+      if (isValidDouble) {
+        console.log('✅ Signature verification PASSED with Bitcoin double SHA-256');
+        return true;
       }
-    ];
-    
-    // Try each approach
-    for (const approach of approaches) {
-      try {
-        const messageHashArray = await approach.getHash();
-        const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
-        console.log(`${approach.name} hash:`, messageHashHex);
-        
-        // Verify the signature using noble-secp256k1
-        const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
-        
-        if (isValid) {
-          console.log(`✅ Signature verification PASSED with ${approach.name}`);
-          return true;
-        } else {
-          console.log(`❌ Signature verification FAILED with ${approach.name}`);
-        }
-        
-      } catch (cryptoError) {
-        console.error(`Cryptographic verification error for ${approach.name}:`, cryptoError);
-        continue;
+      
+      // Try single SHA-256
+      const singleHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+      const singleHashHex = Array.from(singleHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+      console.log('Bitcoin single SHA-256 hash:', singleHashHex);
+      
+      const isValidSingle = secp256k1.verify(signatureBytes, singleHashArray, publicKeyBytes);
+      if (isValidSingle) {
+        console.log('✅ Signature verification PASSED with Bitcoin single SHA-256');
+        return true;
       }
+      
+      console.log('❌ Bitcoin message format failed');
+    } catch (e) {
+      console.error('Bitcoin message format error:', e);
     }
     
-    console.error('All signature verification approaches failed');
+    // Try raw message SHA-256
+    try {
+      console.log('Trying raw message SHA-256...');
+      const encoder = new TextEncoder();
+      const messageBytes = encoder.encode(message);
+      const messageHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+      const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+      console.log('Raw message SHA-256 hash:', messageHashHex);
+      
+      const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
+      if (isValid) {
+        console.log('✅ Signature verification PASSED with raw message SHA-256');
+        return true;
+      }
+      
+      console.log('❌ Raw message format failed');
+    } catch (e) {
+      console.error('Raw message format error:', e);
+    }
+    
+    console.error('All signature verification methods failed');
     return false;
     
   } catch (error) {
