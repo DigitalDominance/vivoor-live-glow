@@ -78,13 +78,15 @@ async function verifyECDSASignature(
     // Convert public key to bytes
     const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     
-    // Validate public key is valid secp256k1 point
+    // Validate public key using built-in validation
     try {
-      // Use the Point.fromHex method to validate the public key
-      secp.Point.fromHex(publicKey);
+      if (!secp.utils.isValidPublicKey(publicKey)) {
+        console.error('Invalid public key - not a valid secp256k1 public key');
+        return false;
+      }
       console.log('Public key validation passed');
     } catch (e) {
-      console.error('Invalid public key - not a valid secp256k1 point:', e);
+      console.error('Error validating public key:', e);
       return false;
     }
     
