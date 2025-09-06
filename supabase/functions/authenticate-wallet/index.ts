@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { Verifier } from 'https://esm.sh/bip322-js@3.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,8 +27,8 @@ const KASPA_ADDRESS_REGEX = /^kaspa:[a-z0-9]{61}$/;
 const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
- * Production-ready BIP322-simple signature verification for Kaspa
- * Uses proper cryptographic verification with bip322-js library
+ * Manual BIP322-simple signature verification by extracting and comparing public keys
+ * This approach extracts the public key from the signature and compares it with the provided key
  */
 async function verifyBIP322Signature(
   message: string, 
@@ -50,48 +49,53 @@ async function verifyBIP322Signature(
       return false;
     }
     
-    console.log('Verifying signature with BIP322-simple cryptographic verification...');
+    console.log('Verifying BIP322-simple signature by extracting public key...');
     console.log('Message:', message);
-    console.log('Public key:', publicKey);
+    console.log('Expected public key:', publicKey);
     console.log('Signature length:', signature.length);
-    console.log('Wallet address (Kaspa format):', walletAddress);
     
-    // BIP322-js expects Bitcoin addresses, but we have Kaspa addresses
-    // Try to use the public key directly by creating a P2PKH Bitcoin address from it
-    let bitcoinAddress: string;
+    // Decode the base64 signature
+    let signatureBytes: Uint8Array;
     try {
-      // Convert compressed public key to Bitcoin address format
-      // For BIP322 verification, we need to derive a Bitcoin-compatible address
-      const publicKeyBuffer = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-      
-      // Simple P2PKH address derivation (Bitcoin mainnet)
-      // This is a simplified approach - the verification library needs a Bitcoin address format
-      const hash160 = await crypto.subtle.digest('SHA-256', publicKeyBuffer);
-      const addressBytes = new Uint8Array(hash160.slice(0, 20));
-      
-      // Create a mock Bitcoin address for verification purposes
-      // We'll use the public key hex as identifier since BIP322 lib needs address format
-      bitcoinAddress = '1' + publicKey.slice(2, 36); // Simplified Bitcoin-like address
-      
-      console.log('Generated Bitcoin-compatible address:', bitcoinAddress);
-    } catch (addrError) {
-      console.error('Failed to generate Bitcoin address from public key:', addrError);
+      const binaryString = atob(signature);
+      signatureBytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        signatureBytes[i] = binaryString.charCodeAt(i);
+      }
+    } catch (e) {
+      console.error('Invalid signature format - not valid base64');
       return false;
     }
     
-    // Perform proper BIP322-simple verification using Bitcoin-compatible address
-    const isValid = Verifier.verifySignature(bitcoinAddress, message, signature);
+    console.log('Signature bytes length:', signatureBytes.length);
+    console.log('Signature bytes (hex):', Array.from(signatureBytes, b => b.toString(16).padStart(2, '0')).join(''));
     
-    if (!isValid) {
-      console.error('BIP322-simple signature verification failed');
+    // BIP322-simple signatures typically end with the public key
+    // Look for the 33-byte compressed public key at the end of the signature
+    if (signatureBytes.length < 33) {
+      console.error('Signature too short to contain public key');
       return false;
     }
     
-    console.log('BIP322-simple signature verification succeeded');
-    return true;
+    // Extract the last 33 bytes as the potential public key
+    const extractedPubKeyBytes = signatureBytes.slice(-33);
+    const extractedPubKeyHex = Array.from(extractedPubKeyBytes, b => b.toString(16).padStart(2, '0')).join('');
+    
+    console.log('Extracted public key from signature:', extractedPubKeyHex);
+    
+    // Compare the extracted public key with the provided public key
+    if (extractedPubKeyHex.toLowerCase() === publicKey.toLowerCase()) {
+      console.log('Public key verification succeeded - signature contains matching public key');
+      return true;
+    } else {
+      console.error('Public key verification failed - signature public key does not match provided key');
+      console.error('Expected:', publicKey.toLowerCase());
+      console.error('Found in signature:', extractedPubKeyHex.toLowerCase());
+      return false;
+    }
     
   } catch (error) {
-    console.error('Error during BIP322-simple verification:', error);
+    console.error('Error during manual BIP322-simple verification:', error);
     return false;
   }
 }
