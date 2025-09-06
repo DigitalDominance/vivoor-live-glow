@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,19 +49,44 @@ const LivePill = ({ label, delay }: { label: string; delay: number }) => (
   </motion.div>
 );
 
-const PlayerMock = () => (
-  <div className="relative rounded-2xl p-[1px] bg-grad-primary shadow-[0_10px_40px_-12px_hsl(var(--brand-iris)/0.5)]">
-    <div className="relative rounded-2xl bg-background/70 backdrop-blur-md border border-border overflow-hidden">
-      <div className="aspect-[16/9] flex items-center justify-center">
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)] bg-[length:200%_100%] animate-shimmer" />
-        <div className="w-4/5 h-24 rounded-md bg-gradient-to-r from-foreground/15 via-foreground/5 to-foreground/15 bg-[length:200%_100%] animate-shimmer" />
-        <Button variant="hero" size="lg" className="absolute bottom-4 right-4">
-          <Play /> Play demo
-        </Button>
+const PlayerMock = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePlayDemo = () => {
+    setIsPlaying(true);
+  };
+
+  if (isPlaying) {
+    return (
+      <div className="relative rounded-2xl p-[1px] bg-grad-primary shadow-[0_10px_40px_-12px_hsl(var(--brand-iris)/0.5)]">
+        <div className="relative rounded-2xl bg-background/70 backdrop-blur-md border border-border overflow-hidden">
+          <div className="aspect-[16/9]">
+            <video
+              src="https://qcowmxypihinteajhnjw.supabase.co/storage/v1/object/public/clips/vivoordemo.mp4"
+              controls
+              autoPlay
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative rounded-2xl p-[1px] bg-grad-primary shadow-[0_10px_40px_-12px_hsl(var(--brand-iris)/0.5)]">
+      <div className="relative rounded-2xl bg-background/70 backdrop-blur-md border border-border overflow-hidden">
+        <div className="aspect-[16/9] flex items-center justify-center">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)] bg-[length:200%_100%] animate-shimmer" />
+          <div className="w-4/5 h-24 rounded-md bg-gradient-to-r from-foreground/15 via-foreground/5 to-foreground/15 bg-[length:200%_100%] animate-shimmer" />
+          <Button variant="hero" size="lg" className="absolute bottom-4 right-4" onClick={handlePlayDemo}>
+            <Play /> Play demo
+          </Button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const FeatureCard = ({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) => (
   <motion.article
