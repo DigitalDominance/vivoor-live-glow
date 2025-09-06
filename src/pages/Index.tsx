@@ -32,7 +32,7 @@ import SwapWidget from "@/components/SwapWidget";
  *   other headings on the site.
  * - The FAQ accordion trigger no longer hides its text on hover. We do
  *   this by avoiding the gradient text class on hover and instead
- *   maintaining the regular foreground colour
+ *   maintaining the regular foreground colour.
  */
 
 const LivePill = ({ label, delay }: { label: string; delay: number }) => (
