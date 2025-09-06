@@ -267,13 +267,45 @@ if (!finalUrl) {
     }
 
     // Upload the watermarked clip to Supabase Storage and update DB row
-    const wmBlob = await (new Response(rRes.body)).blob();
+    // For large files, handle more efficiently to avoid memory issues
+    let finalDownloadUrl: string | null = null;
     
-    // Check blob size and compress if too large (>190MB for safety margin under 200MB limit)
-    const MAX_SIZE_BYTES = 190 * 1024 * 1024; // 190MB
-    let finalBlob = wmBlob;
-    
-    console.log(`Original watermarked clip size: ${(wmBlob.size / 1024 / 1024).toFixed(2)}MB`);
+    try {
+      // Check response size without loading entire content into memory
+      const contentLength = rRes.headers.get('content-length');
+      const fileSizeMB = contentLength ? parseInt(contentLength) / (1024 * 1024) : 0;
+      
+      console.log(`Watermarked clip size: ${fileSizeMB.toFixed(2)}MB`);
+      
+      // If file is too large for edge function memory, just use the original download URL
+      if (fileSizeMB > 150) {
+        console.log('File too large for edge function processing, using original download URL');
+        finalDownloadUrl = finalUrl;
+        
+        // Update database with original download URL
+        const { error: updateErr } = await supabaseClient
+          .from('clips')
+          .update({ download_url: finalDownloadUrl })
+          .eq('id', savedClip.id);
+        if (updateErr) console.error('Error updating clip with original URL:', updateErr);
+        
+        // Return the watermarked video file directly without storage upload
+        const responseHeaders = new Headers(corsHeaders);
+        responseHeaders.set('Content-Type', 'video/mp4');
+        responseHeaders.set('Content-Disposition', `attachment; filename="${sanitizedTitle}.mp4"`);
+        responseHeaders.set('X-Clip-Id', savedClip.id);
+        
+        return new Response(rRes.body, { headers: responseHeaders });
+      }
+      
+      // For smaller files, process normally
+      const wmBlob = await (new Response(rRes.body)).blob();
+      
+      // Check blob size and compress if too large (>190MB for safety margin under 200MB limit)
+      const MAX_SIZE_BYTES = 190 * 1024 * 1024; // 190MB
+      let finalBlob = wmBlob;
+      
+      console.log(`Original watermarked clip size: ${(wmBlob.size / 1024 / 1024).toFixed(2)}MB`);
     
     if (wmBlob.size > MAX_SIZE_BYTES) {
       console.log('Clip exceeds size limit, compressing via watermark proxy...');
@@ -357,7 +389,7 @@ if (!finalUrl) {
       }
     }
     
-    try {
+      // Upload to storage for smaller files
       const filePath = `${userId}/clips/${savedClip.id}-${sanitizedTitle}.mp4`;
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('clips')
@@ -365,17 +397,31 @@ if (!finalUrl) {
 
       if (uploadError) {
         console.error('Error uploading watermarked clip to storage:', uploadError);
+        // Fall back to original download URL
+        finalDownloadUrl = finalUrl;
       } else {
         const { data: pub } = supabaseClient.storage.from('clips').getPublicUrl(filePath);
-        const publicUrl = pub?.publicUrl || null;
-        if (publicUrl) {
-          const { error: updateErr } = await supabaseClient
-            .from('clips')
-            .update({ download_url: publicUrl })
-            .eq('id', savedClip.id);
-          if (updateErr) console.error('Error updating clip row with watermarked URL:', updateErr);
-        }
+        finalDownloadUrl = pub?.publicUrl || finalUrl;
       }
+      
+      // Update database with final download URL
+      if (finalDownloadUrl) {
+        const { error: updateErr } = await supabaseClient
+          .from('clips')
+          .update({ download_url: finalDownloadUrl })
+          .eq('id', savedClip.id);
+        if (updateErr) console.error('Error updating clip row with watermarked URL:', updateErr);
+      }
+      
+    } catch (processingErr) {
+      console.error('Failed processing watermarked clip:', processingErr);
+      // Fall back to original download URL
+      finalDownloadUrl = finalUrl;
+      const { error: updateErr } = await supabaseClient
+        .from('clips')
+        .update({ download_url: finalDownloadUrl })
+        .eq('id', savedClip.id);
+      if (updateErr) console.error('Error updating clip with fallback URL:', updateErr);
     } catch (uploadErr) {
       console.error('Failed uploading/updating watermarked clip:', uploadErr);
     }
