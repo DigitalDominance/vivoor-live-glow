@@ -49,19 +49,33 @@ async function verifyECDSASignature(
       return false;
     }
     
-    // Validate signature format based on Kasware documentation
+    // Validate signature format and parse based on Kasware documentation
     let signatureBytes: Uint8Array;
     
     if (/^[0-9a-fA-F]{128}$/.test(signature)) {
-      // Hex format (128 chars)
+      // Hex format (128 chars = 64 bytes r+s)
       signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     } else {
       // Base64 format (as shown in Kasware docs)
       try {
         const binaryString = atob(signature);
-        signatureBytes = new Uint8Array(binaryString.length);
+        const fullSig = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
-          signatureBytes[i] = binaryString.charCodeAt(i);
+          fullSig[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Kasware signatures might be 65 bytes (recovery + r + s) or DER encoded
+        if (fullSig.length === 65) {
+          // Skip first byte (recovery ID) and take next 64 bytes (r+s)
+          signatureBytes = fullSig.slice(1);
+          console.log('Detected 65-byte signature, extracted r+s components');
+        } else if (fullSig.length === 64) {
+          // Already just r+s
+          signatureBytes = fullSig;
+        } else {
+          // Try to parse as DER and extract r,s
+          console.log('Signature length:', fullSig.length, 'attempting DER parsing');
+          signatureBytes = fullSig; // Use as-is for now
         }
       } catch (e) {
         console.error('Invalid signature format - must be hex or base64');
@@ -69,9 +83,11 @@ async function verifyECDSASignature(
       }
     }
     
-    // Validate signature length (64 bytes for secp256k1 signature)
+    console.log('Final signature bytes length:', signatureBytes.length);
+    
+    // Validate signature length (should be 64 bytes for secp256k1 signature)
     if (signatureBytes.length !== 64) {
-      console.error('Invalid signature length - must be 64 bytes');
+      console.error('Invalid signature length - must be 64 bytes, got:', signatureBytes.length);
       return false;
     }
     
