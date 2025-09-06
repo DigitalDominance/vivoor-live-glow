@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { Verifier } from 'https://esm.sh/bip322-js@3.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,8 +28,8 @@ const KASPA_ADDRESS_REGEX = /^kaspa:[a-z0-9]{61}$/;
 const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
- * Proper BIP322-simple signature verification by decoding the signature structure
- * BIP322-simple signatures end with 0x21 (33) followed by the 33-byte public key
+ * Simple BIP322-simple signature verification by extracting public key
+ * Use BIP322 library to properly parse the signature and extract the public key
  */
 async function verifyBIP322Signature(
   message: string, 
@@ -49,64 +50,30 @@ async function verifyBIP322Signature(
       return false;
     }
     
-    console.log('Verifying BIP322-simple signature by decoding structure...');
+    console.log('Verifying BIP322-simple signature...');
     console.log('Message:', message);
     console.log('Expected public key:', publicKey);
     console.log('Signature:', signature);
     
-    // Decode the base64 signature properly
-    let signatureBytes: Uint8Array;
+    // Try to extract the public key from the BIP322-simple signature
+    let extractedPublicKey: string;
     try {
-      signatureBytes = new Uint8Array(
-        atob(signature)
-          .split('')
-          .map(char => char.charCodeAt(0))
-      );
-    } catch (e) {
-      console.error('Invalid signature format - not valid base64');
+      // Use the BIP322 library to extract public key from signature
+      extractedPublicKey = Verifier.extractPublicKey(signature);
+      console.log('Extracted public key from BIP322 signature:', extractedPublicKey);
+    } catch (extractError) {
+      console.error('Failed to extract public key from BIP322 signature:', extractError);
       return false;
     }
-    
-    console.log('Signature bytes length:', signatureBytes.length);
-    console.log('Signature bytes (hex):', Array.from(signatureBytes, b => b.toString(16).padStart(2, '0')).join(''));
-    
-    // BIP322-simple signature structure:
-    // ... other data ... + 0x21 + 33-byte public key
-    // Look for 0x21 (33 in decimal) which indicates the start of the public key section
-    let publicKeyStartIndex = -1;
-    for (let i = signatureBytes.length - 34; i >= 0; i--) {
-      if (signatureBytes[i] === 0x21) { // 0x21 = 33, indicates 33-byte public key follows
-        publicKeyStartIndex = i + 1;
-        break;
-      }
-    }
-    
-    if (publicKeyStartIndex === -1) {
-      console.error('Could not find public key marker (0x21) in BIP322-simple signature');
-      return false;
-    }
-    
-    // Extract the 33-byte public key
-    const extractedPubKeyBytes = signatureBytes.slice(publicKeyStartIndex, publicKeyStartIndex + 33);
-    
-    if (extractedPubKeyBytes.length !== 33) {
-      console.error('Extracted public key is not 33 bytes:', extractedPubKeyBytes.length);
-      return false;
-    }
-    
-    const extractedPubKeyHex = Array.from(extractedPubKeyBytes, b => b.toString(16).padStart(2, '0')).join('');
-    
-    console.log('Found public key marker at position:', publicKeyStartIndex - 1);
-    console.log('Extracted public key from BIP322 signature:', extractedPubKeyHex);
     
     // Compare the extracted public key with the provided public key
-    if (extractedPubKeyHex.toLowerCase() === publicKey.toLowerCase()) {
+    if (extractedPublicKey.toLowerCase() === publicKey.toLowerCase()) {
       console.log('BIP322-simple public key verification succeeded');
       return true;
     } else {
       console.error('BIP322-simple public key verification failed');
       console.error('Expected:', publicKey.toLowerCase());
-      console.error('Found in signature:', extractedPubKeyHex.toLowerCase());
+      console.error('Extracted from signature:', extractedPublicKey.toLowerCase());
       return false;
     }
     
