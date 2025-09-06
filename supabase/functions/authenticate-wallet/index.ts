@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { secp256k1 } from 'https://esm.sh/@noble/secp256k1@2.1.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +11,7 @@ interface AuthRequest {
   walletAddress: string;
   message: string;
   signature: string;
-  publicKey?: string;
+  publicKey: string; // Required - no fallback allowed
 }
 
 interface AuthResponse {
@@ -27,123 +28,88 @@ const KASPA_ADDRESS_REGEX = /^kaspa:[a-z0-9]{61}$/;
 const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
- * Production-ready ECDSA signature verification for Kaspa/Kasware
+ * Production-ready ECDSA signature verification for Kaspa using secp256k1
+ * No fallbacks - strict cryptographic verification required
  */
 async function verifyECDSASignature(
   message: string, 
   signature: string, 
-  publicKey?: string
+  publicKey: string
 ): Promise<boolean> {
   try {
-    // Validate required inputs
-    if (!message || !signature) {
-      console.error('Missing message or signature');
+    // Strict validation - no fallbacks allowed
+    if (!message || !signature || !publicKey) {
+      console.error('Missing required parameters: message, signature, and publicKey are all required');
       return false;
     }
     
-    if (!publicKey) {
-      console.error('Public key is required for signature verification');
-      return false;
-    }
-    
-    // Validate public key format (should be hex string, 66 chars for compressed key)
+    // Validate public key format (66 chars for compressed secp256k1 key)
     if (!/^[0-9a-fA-F]{66}$/.test(publicKey)) {
-      console.error('Invalid public key format - expected 66 character hex string');
+      console.error('Invalid public key format - must be 66 character hex string');
       return false;
     }
     
-    // Validate signature format - Kasware returns hex string (128 chars for r+s components)
-    if (!/^[0-9a-fA-F]{128}$/.test(signature)) {
-      console.error('Invalid signature format - expected 128 character hex string');
+    // Validate signature format based on Kasware documentation
+    let signatureBytes: Uint8Array;
+    
+    if (/^[0-9a-fA-F]{128}$/.test(signature)) {
+      // Hex format (128 chars)
+      signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+    } else {
+      // Base64 format (as shown in Kasware docs)
+      try {
+        const binaryString = atob(signature);
+        signatureBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          signatureBytes[i] = binaryString.charCodeAt(i);
+        }
+      } catch (e) {
+        console.error('Invalid signature format - must be hex or base64');
+        return false;
+      }
+    }
+    
+    // Validate signature length (64 bytes for secp256k1 signature)
+    if (signatureBytes.length !== 64) {
+      console.error('Invalid signature length - must be 64 bytes');
       return false;
     }
     
-    console.log('Signature format validation passed');
-    console.log('Public key:', publicKey);
-    console.log('Signature:', signature);
-    console.log('Message:', message);
+    // Convert public key to bytes
+    const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     
-    // For Kasware signatures, we need to verify using secp256k1
-    // Since Web Crypto API doesn't support secp256k1, we'll do mathematical validation
-    
-    // Parse signature components (r and s, each 32 bytes = 64 hex chars)
-    const r = signature.slice(0, 64);
-    const s = signature.slice(64, 128);
-    
-    console.log('Signature r component:', r);
-    console.log('Signature s component:', s);
-    
-    // Convert hex strings to BigInt for validation
-    const rBigInt = BigInt('0x' + r);
-    const sBigInt = BigInt('0x' + s);
-    
-    // secp256k1 curve order
-    const curveOrder = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
-    
-    // Validate signature components are within valid range
-    if (rBigInt <= 0n || rBigInt >= curveOrder) {
-      console.error('Invalid signature: r component out of range');
+    // Validate public key is valid secp256k1 point
+    try {
+      secp256k1.ProjectivePoint.fromHex(publicKey);
+    } catch (e) {
+      console.error('Invalid public key - not a valid secp256k1 point');
       return false;
     }
     
-    if (sBigInt <= 0n || sBigInt >= curveOrder) {
-      console.error('Invalid signature: s component out of range');
-      return false;
-    }
-    
-    // Validate public key is on the secp256k1 curve
-    const pubKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-    
-    // Check if it's a valid compressed public key (starts with 02 or 03)
-    if (pubKeyBytes[0] !== 0x02 && pubKeyBytes[0] !== 0x03) {
-      console.error('Invalid public key: not a valid compressed key');
-      return false;
-    }
-    
-    // Extract x coordinate
-    const xBytes = pubKeyBytes.slice(1);
-    const x = BigInt('0x' + Array.from(xBytes, byte => byte.toString(16).padStart(2, '0')).join(''));
-    
-    // secp256k1 field prime
-    const p = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F');
-    
-    // Validate x coordinate is within field
-    if (x <= 0n || x >= p) {
-      console.error('Invalid public key: x coordinate out of range');
-      return false;
-    }
-    
-    // Additional validation: check if the signature was created for this message
-    // We'll hash the message using SHA-256 (same as Bitcoin/Kaspa message signing)
+    // Hash the message using SHA-256 (Kaspa standard)
     const encoder = new TextEncoder();
     const messageBytes = encoder.encode(message);
     const messageHash = await crypto.subtle.digest('SHA-256', messageBytes);
-    const messageHashArray = new Uint8Array(messageHash);
-    const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+    const messageHashBytes = new Uint8Array(messageHash);
     
-    console.log('Message hash (SHA-256):', messageHashHex);
+    console.log('Verifying signature with secp256k1...');
+    console.log('Message:', message);
+    console.log('Public key:', publicKey);
+    console.log('Message hash:', Array.from(messageHashBytes, b => b.toString(16).padStart(2, '0')).join(''));
     
-    // For production verification, we would need to implement full ECDSA verification
-    // For now, we'll validate that the signature components are mathematically valid
-    // and the public key corresponds to the expected format
+    // Perform full ECDSA verification using noble-secp256k1
+    const isValid = secp256k1.verify(signatureBytes, messageHashBytes, publicKeyBytes);
     
-    // Additional security check: ensure signature is not a known weak signature
-    // (all zeros, all ones, etc.)
-    if (rBigInt === 1n || sBigInt === 1n || rBigInt === curveOrder - 1n || sBigInt === curveOrder - 1n) {
-      console.error('Invalid signature: weak signature detected');
+    if (!isValid) {
+      console.error('ECDSA signature verification failed');
       return false;
     }
     
-    console.log('Signature passed all mathematical validation checks');
-    
-    // For production systems, you would implement the full ECDSA verification algorithm
-    // or use a crypto library that supports secp256k1
-    // For now, we'll accept signatures that pass the mathematical validation
-    
+    console.log('ECDSA signature verification succeeded');
     return true;
     
   } catch (error) {
-    console.error('Error verifying signature:', error);
+    console.error('Error during ECDSA verification:', error);
     return false;
   }
 }
@@ -218,12 +184,12 @@ serve(async (req) => {
       hasPublicKey: !!publicKey
     });
 
-    // Validate inputs
-    if (!walletAddress || !message || !signature) {
+    // Validate inputs - all fields required, no fallbacks
+    if (!walletAddress || !message || !signature || !publicKey) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Missing required fields: walletAddress, message, signature' 
+          error: 'Missing required fields: walletAddress, message, signature, and publicKey are all required' 
         } as AuthResponse),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -251,13 +217,13 @@ serve(async (req) => {
       );
     }
 
-    // Verify the cryptographic signature
+    // Verify the cryptographic signature - strict verification, no fallbacks
     const isValidSignature = await verifyECDSASignature(message, signature, publicKey);
     if (!isValidSignature) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Invalid signature - could not verify wallet ownership' 
+          error: 'Invalid signature - cryptographic verification failed' 
         } as AuthResponse),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -272,9 +238,6 @@ serve(async (req) => {
       .eq('wallet_address', walletAddress)
       .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Last 5 minutes
       .limit(1);
-
-    // For additional security, we could store used message hashes and check against them
-    // For now, we'll rely on timestamp validation
 
     // Authenticate the wallet using the secure database function
     const { data: encryptedUserId, error: authError } = await supabaseClient
@@ -295,7 +258,7 @@ serve(async (req) => {
       );
     }
 
-    // Create a secure session token using crypto.randomUUID and timestamp
+    // Create a secure session token
     const { data: sessionToken, error: sessionError } = await supabaseClient
       .rpc('create_wallet_session', {
         encrypted_user_id: encryptedUserId,
