@@ -29,7 +29,7 @@ const MESSAGE_FORMAT_REGEX = /^VIVOOR_AUTH_\d{13}_[a-f0-9]{32}$/;
 
 /**
  * Production-ready ECDSA signature verification for Kaspa/Kasware
- * Handles Kasware's base64 signature format with Bitcoin message signing standard
+ * Uses Kaspa's specific message signing format
  */
 async function verifyECDSASignature(
   message: string, 
@@ -49,17 +49,17 @@ async function verifyECDSASignature(
       return false;
     }
     
-    console.log('Starting signature verification...');
+    console.log('Starting Kaspa signature verification...');
     console.log('Message:', message);
     console.log('Public key:', publicKey);
     console.log('Signature (raw):', signature);
     
-    // Decode signature - Kasware should return base64 according to docs
+    // Decode signature - handle both hex and base64 formats
     let signatureBytes: Uint8Array;
     
-    // Check if it's base64 (Kasware format according to docs)
+    // Check if it's base64 first (according to Kasware docs)
     if (!/^[0-9a-fA-F]+$/.test(signature)) {
-      console.log('Base64 signature format detected (expected from Kasware)');
+      console.log('Base64 signature format detected');
       try {
         const binaryString = atob(signature);
         signatureBytes = new Uint8Array(binaryString.length);
@@ -72,8 +72,8 @@ async function verifyECDSASignature(
         return false;
       }
     } else if (/^[0-9a-fA-F]{128}$/.test(signature)) {
-      // Fallback to hex format
-      console.log('Hex signature format detected (fallback)');
+      // Hex format
+      console.log('Hex signature format detected');
       signatureBytes = new Uint8Array(signature.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
       console.log('Signature decoded from hex, length:', signatureBytes.length);
     } else {
@@ -81,10 +81,9 @@ async function verifyECDSASignature(
       return false;
     }
     
-    // Handle different signature lengths
+    // Handle Bitcoin recoverable format if present
     if (signatureBytes.length === 65) {
-      // Bitcoin recoverable signature format - extract r+s (skip recovery ID)
-      console.log('Bitcoin recoverable format detected, extracting r+s');
+      console.log('Recoverable signature format detected, extracting r+s');
       const r = signatureBytes.slice(1, 33);
       const s = signatureBytes.slice(33, 65);
       signatureBytes = new Uint8Array(64);
@@ -99,66 +98,77 @@ async function verifyECDSASignature(
     const publicKeyBytes = new Uint8Array(publicKey.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
     console.log('Public key bytes length:', publicKeyBytes.length);
     
-    // Try Bitcoin message signing format (most likely for Kasware)
-    try {
-      console.log('Trying Bitcoin message signing format...');
-      const bitcoinMessage = `\x18Bitcoin Signed Message:\n${message.length}${message}`;
-      const encoder = new TextEncoder();
-      const messageBytes = encoder.encode(bitcoinMessage);
-      
-      // Try double SHA-256 first (Bitcoin standard)
-      const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
-      const doubleHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', firstHash));
-      const doubleHashHex = Array.from(doubleHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
-      console.log('Bitcoin double SHA-256 hash:', doubleHashHex);
-      
-      const isValidDouble = secp256k1.verify(signatureBytes, doubleHashArray, publicKeyBytes);
-      if (isValidDouble) {
-        console.log('✅ Signature verification PASSED with Bitcoin double SHA-256');
-        return true;
+    // Try Kaspa message signing approaches
+    const kaspaApproaches = [
+      {
+        name: 'Kaspa message format',
+        getHash: async () => {
+          // Try Kaspa-specific message format
+          const kaspaMessage = `\x19Kaspa Signed Message:\n${message.length}${message}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(kaspaMessage);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
+      },
+      {
+        name: 'Kaspa raw message SHA-256',
+        getHash: async () => {
+          // Direct SHA-256 of the message (Kaspa standard)
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(message);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
+      },
+      {
+        name: 'Kaspa message with length prefix',
+        getHash: async () => {
+          // Try with length prefix like Bitcoin but for Kaspa
+          const kaspaMessage = `Kaspa Signed Message:\n${message.length}${message}`;
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(kaspaMessage);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
+        }
+      },
+      {
+        name: 'Kaspa double SHA-256',
+        getHash: async () => {
+          // Try double SHA-256 for Kaspa
+          const encoder = new TextEncoder();
+          const messageBytes = encoder.encode(message);
+          const firstHash = await crypto.subtle.digest('SHA-256', messageBytes);
+          return new Uint8Array(await crypto.subtle.digest('SHA-256', firstHash));
+        }
       }
-      
-      // Try single SHA-256
-      const singleHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
-      const singleHashHex = Array.from(singleHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
-      console.log('Bitcoin single SHA-256 hash:', singleHashHex);
-      
-      const isValidSingle = secp256k1.verify(signatureBytes, singleHashArray, publicKeyBytes);
-      if (isValidSingle) {
-        console.log('✅ Signature verification PASSED with Bitcoin single SHA-256');
-        return true;
+    ];
+    
+    // Try each Kaspa approach
+    for (const approach of kaspaApproaches) {
+      try {
+        const messageHashArray = await approach.getHash();
+        const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
+        console.log(`${approach.name} hash:`, messageHashHex);
+        
+        // Verify the signature using noble-secp256k1
+        const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
+        
+        if (isValid) {
+          console.log(`✅ Kaspa signature verification PASSED with ${approach.name}`);
+          return true;
+        } else {
+          console.log(`❌ Kaspa signature verification FAILED with ${approach.name}`);
+        }
+        
+      } catch (cryptoError) {
+        console.error(`Cryptographic verification error for ${approach.name}:`, cryptoError);
+        continue;
       }
-      
-      console.log('❌ Bitcoin message format failed');
-    } catch (e) {
-      console.error('Bitcoin message format error:', e);
     }
     
-    // Try raw message SHA-256
-    try {
-      console.log('Trying raw message SHA-256...');
-      const encoder = new TextEncoder();
-      const messageBytes = encoder.encode(message);
-      const messageHashArray = new Uint8Array(await crypto.subtle.digest('SHA-256', messageBytes));
-      const messageHashHex = Array.from(messageHashArray, byte => byte.toString(16).padStart(2, '0')).join('');
-      console.log('Raw message SHA-256 hash:', messageHashHex);
-      
-      const isValid = secp256k1.verify(signatureBytes, messageHashArray, publicKeyBytes);
-      if (isValid) {
-        console.log('✅ Signature verification PASSED with raw message SHA-256');
-        return true;
-      }
-      
-      console.log('❌ Raw message format failed');
-    } catch (e) {
-      console.error('Raw message format error:', e);
-    }
-    
-    console.error('All signature verification methods failed');
+    console.error('All Kaspa signature verification methods failed');
     return false;
     
   } catch (error) {
-    console.error('Error verifying signature:', error);
+    console.error('Error verifying Kaspa signature:', error);
     return false;
   }
 }
