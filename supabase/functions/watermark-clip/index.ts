@@ -266,105 +266,58 @@ if (!finalUrl) {
       return new Response(JSON.stringify({ error: 'Failed to download watermarked MP4' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Upload the watermarked clip to Supabase Storage and update DB row
-    const wmBlob = await (new Response(rRes.body)).blob();
+    // Check content-length to avoid loading huge files into memory
+    const contentLength = rRes.headers.get('content-length');
+    const fileSizeMB = contentLength ? parseInt(contentLength) / (1024 * 1024) : 0;
     
-    // Check blob size and compress if too large (>45MB for safety margin under 50MB limit)
-    const MAX_SIZE_BYTES = 45 * 1024 * 1024; // 45MB
-    let finalBlob = wmBlob;
+    console.log(`Watermarked clip size: ${fileSizeMB.toFixed(2)}MB`);
     
-    console.log(`Original watermarked clip size: ${(wmBlob.size / 1024 / 1024).toFixed(2)}MB`);
-    
-    if (wmBlob.size > MAX_SIZE_BYTES) {
-      console.log('Clip exceeds size limit, compressing via watermark proxy...');
+    // For very large files (>100MB), skip upload and stream directly
+    if (fileSizeMB > 100) {
+      console.log('Large file detected, streaming directly without storage upload');
       
-      try {
-        // Use the watermark proxy to compress the video with FFmpeg compression parameters
-        const watermarkProxyUrl = getWatermarkProxyUrl(req);
-        
-        // Create a compressed video URL by appending compression parameters
-        const compressedVideoUrl = `${finalUrl}?compress=true&quality=23&scale=720:-1&crf=28`;
-        
-        const compressForm = new FormData();
-        compressForm.set('videoUrl', compressedVideoUrl);
-        compressForm.set('position', 'br');
-        compressForm.set('margin', String(16)); // Smaller margin
-        compressForm.set('wmWidth', String(100)); // Smaller watermark
-        compressForm.set('filename', `${sanitizedTitle}_compressed.mp4`);
-        
-        // Add FFmpeg compression parameters as form fields
-        compressForm.set('videoCodec', 'libx264');
-        compressForm.set('audioBitrate', '64k');
-        compressForm.set('videoBitrate', '1000k'); // 1Mbps max
-        compressForm.set('maxFileSize', '40MB'); // Target under 40MB
-        
-        console.log('Requesting compression with parameters:', {
-          quality: '23',
-          scale: '720:-1',
-          videoBitrate: '1000k',
-          audioBitrate: '64k'
-        });
-        
-        const compressRes = await fetch(watermarkProxyUrl, {
-          method: 'POST',
-          body: compressForm,
-          headers: {
-            'Authorization': req.headers.get('Authorization') || '',
-          }
-        });
-        
-        if (compressRes.ok && compressRes.body) {
-          finalBlob = await compressRes.blob();
-          console.log(`Compressed clip size: ${(finalBlob.size / 1024 / 1024).toFixed(2)}MB`);
-          
-          // If still too large, try more aggressive compression
-          if (finalBlob.size > MAX_SIZE_BYTES) {
-            console.log('Still too large, trying more aggressive compression...');
-            
-            const ultraCompressForm = new FormData();
-            ultraCompressForm.set('videoUrl', finalUrl);
-            ultraCompressForm.set('position', 'br');
-            ultraCompressForm.set('margin', String(12));
-            ultraCompressForm.set('wmWidth', String(80));
-            ultraCompressForm.set('filename', `${sanitizedTitle}_ultra_compressed.mp4`);
-            ultraCompressForm.set('videoCodec', 'libx264');
-            ultraCompressForm.set('audioBitrate', '32k');
-            ultraCompressForm.set('videoBitrate', '500k'); // 500kbps
-            ultraCompressForm.set('scale', '480:-1'); // Scale to 480p
-            ultraCompressForm.set('crf', '28'); // Higher compression
-            
-            const ultraRes = await fetch(watermarkProxyUrl, {
-              method: 'POST',
-              body: ultraCompressForm,
-              headers: {
-                'Authorization': req.headers.get('Authorization') || '',
-              }
-            });
-            
-            if (ultraRes.ok && ultraRes.body) {
-              const ultraBlob = await ultraRes.blob();
-              if (ultraBlob.size < finalBlob.size) {
-                finalBlob = ultraBlob;
-                console.log(`Ultra compressed clip size: ${(finalBlob.size / 1024 / 1024).toFixed(2)}MB`);
-              }
-            }
-          }
-        } else {
-          console.warn('Compression failed, using original size');
-        }
-      } catch (compressErr) {
-        console.error('Compression error, using original:', compressErr);
+      // Update database with the external watermarked URL
+      const { error: updateErr } = await supabaseClient
+        .from('clips')
+        .update({ download_url: finalUrl })
+        .eq('id', savedClip.id);
+      
+      if (updateErr) {
+        console.error('Error updating clip with watermarked URL:', updateErr);
       }
+      
+      // Stream the response directly without loading into memory
+      return new Response(rRes.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'video/mp4',
+          'Content-Disposition': `attachment; filename="${sanitizedTitle}.mp4"`,
+          'X-Clip-Id': String(savedClip.id),
+          'X-Watermarked': 'true',
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache',
+        },
+      });
     }
+    
+    // For smaller files, upload to storage as before
+    const wmBlob = await rRes.blob();
     
     try {
       const filePath = `${userId}/clips/${savedClip.id}-${sanitizedTitle}.mp4`;
       const { data: uploadData, error: uploadError } = await supabaseClient.storage
         .from('clips')
-        .upload(filePath, finalBlob, { contentType: 'video/mp4', upsert: true });
+        .upload(filePath, wmBlob, { contentType: 'video/mp4', upsert: true });
 
       if (uploadError) {
         console.error('Error uploading watermarked clip to storage:', uploadError);
+        // Fall back to external URL
+        const { error: updateErr } = await supabaseClient
+          .from('clips')
+          .update({ download_url: finalUrl })
+          .eq('id', savedClip.id);
+        if (updateErr) console.error('Error updating clip with fallback URL:', updateErr);
       } else {
         const { data: pub } = supabaseClient.storage.from('clips').getPublicUrl(filePath);
         const publicUrl = pub?.publicUrl || null;
@@ -377,10 +330,10 @@ if (!finalUrl) {
         }
       }
     } catch (uploadErr) {
-      console.error('Failed uploading/updating watermarked clip:', uploadErr);
+      console.error('Failed uploading watermarked clip:', uploadErr);
     }
 
-    // Return the watermarked MP4 to the caller (no streaming until finished)
+    // Return the watermarked MP4 to the caller
     const buf = await wmBlob.arrayBuffer();
     return new Response(buf, {
       status: 200,
