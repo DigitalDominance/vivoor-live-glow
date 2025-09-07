@@ -230,15 +230,19 @@ serve(async (req) => {
       );
     }
 
-    // Verify transaction came from the user's address (check sender)
-    const senderAddress = tx.inputs[0]?.utxo?.address;
-    if (senderAddress !== userAddress) {
-      return new Response(
-        JSON.stringify({ 
-          error: `Transaction must be sent from your wallet address. Expected: ${userAddress}, Found: ${senderAddress}` 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // For encrypted user IDs (usr_*), we skip sender address verification
+    // since the userAddress is encrypted and not the actual wallet address
+    if (!userAddress.startsWith('usr_')) {
+      // Verify transaction came from the user's address (check sender) only for actual wallet addresses
+      const senderAddress = tx.inputs[0]?.utxo?.address;
+      if (senderAddress !== userAddress) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Transaction must be sent from your wallet address. Expected: ${userAddress}, Found: ${senderAddress}` 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Calculate expiry date for verification types
