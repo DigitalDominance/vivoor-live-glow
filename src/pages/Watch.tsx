@@ -80,7 +80,7 @@ const Watch = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
-  // Fetch Livepeer playback source
+  // Fetch Livepeer playback source (HLS only, no WebRTC to avoid B-frames)
   const { data: playbackSrc } = useQuery({
     queryKey: ['playback-src', streamData?.livepeer_playback_id],
     queryFn: async () => {
@@ -94,7 +94,17 @@ const Watch = () => {
         if (!response.ok) return null;
         
         const playbackInfo = await response.json();
-        return getSrc(playbackInfo);
+        const src = getSrc(playbackInfo);
+        
+        // Filter out WebRTC sources to avoid B-frames issue
+        // Only use HLS for reliable playback
+        if (src && Array.isArray(src)) {
+          const hlsOnly = src.filter(s => s.type === 'hls');
+          console.log('[Watch] Filtered to HLS only sources:', hlsOnly);
+          return hlsOnly.length > 0 ? hlsOnly : null;
+        }
+        
+        return src;
       } catch (error) {
         console.error('Error fetching playback source:', error);
         return null;
