@@ -79,8 +79,22 @@ const Watch = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
-  // Use playback_url directly like GoLive and Stream pages
-  const playbackUrl = streamData?.playback_url;
+  // For browser streams, use WebRTC playback for instant, low-latency viewing
+  // For RTMP streams, use HLS playback
+  const playbackUrl = React.useMemo(() => {
+    if (!streamData?.playback_url) return null;
+    
+    // Extract playback ID from the HLS URL
+    const playbackId = streamData.livepeer_playback_id || streamData.playback_url.split('/').slice(-2, -1)[0];
+    
+    // For browser streams, use WebRTC WHEP for instant playback
+    if (streamData.streaming_mode === 'browser' || streamData.stream_type === 'browser') {
+      return `https://livepeercdn.studio/webrtc/${playbackId}`;
+    }
+    
+    // For RTMP streams, use HLS
+    return streamData.playback_url;
+  }, [streamData?.playback_url, streamData?.streaming_mode, streamData?.stream_type, streamData?.livepeer_playback_id]);
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
