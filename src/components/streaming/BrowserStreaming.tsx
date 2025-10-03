@@ -133,24 +133,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   }, [isPreviewMode]);
 
   return (
-    <div className="space-y-4">
-      <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
-        <iframe
-          src={`https://lvpr.tv/broadcast/${streamKey}`}
-          className="w-full aspect-video"
-          allowFullScreen
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture; display-capture; camera; microphone"
-          style={{ border: 'none' }}
-        />
-      </div>
-
-      {/* Help Text */}
-      <div className="text-xs text-gray-400 space-y-1 px-2">
-        <p>• Click the broadcast controls to select your camera or screen to share</p>
-        <p>• The player will handle all browser permissions and streaming controls</p>
-        <p>• Your browser stream will be available on your channel page</p>
-        {isPreviewMode && <p>• This is preview mode - complete setup to go live</p>}
-      </div>
+    <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
+      <iframe
+        src={`https://lvpr.tv/broadcast/${streamKey}`}
+        className="w-full aspect-video"
+        allowFullScreen
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; display-capture; camera; microphone"
+        style={{ border: 'none' }}
+      />
     </div>
   );
 };
