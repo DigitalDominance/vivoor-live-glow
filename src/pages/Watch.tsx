@@ -89,6 +89,19 @@ const Watch = () => {
     !!playbackUrl && !!streamData?.is_live
   );
 
+  // Log stream readiness for debugging
+  React.useEffect(() => {
+    if (streamData?.streaming_mode === 'browser') {
+      console.log('🎬 Browser stream readiness:', { 
+        streamReady, 
+        status: streamReadinessStatus, 
+        error: streamReadinessError,
+        playbackUrl,
+        isLive: streamData?.is_live
+      });
+    }
+  }, [streamReady, streamReadinessStatus, streamReadinessError, playbackUrl, streamData?.streaming_mode, streamData?.is_live]);
+
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
     queryKey: ['streamer-profile', streamData?.user_id],
