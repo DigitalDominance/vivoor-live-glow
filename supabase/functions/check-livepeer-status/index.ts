@@ -42,12 +42,60 @@ serve(async (req) => {
       }
 
       const livepeerStream = await response.json();
+      console.log(`Livepeer stream data:`, JSON.stringify(livepeerStream, null, 2));
+      
+      // For browser/WebRTC streams, also check for active sessions
+      let hasActiveSessions = false;
+      if (livepeerStream.parentId) {
+        // This is a session, check if it's active
+        const now = Date.now();
+        const lastSeenTime = livepeerStream.lastSeen || 0;
+        const timeSinceLastSeen = now - lastSeenTime;
+        const maxIdleTime = 60 * 1000; // 60 seconds for sessions
+        hasActiveSessions = timeSinceLastSeen < maxIdleTime;
+        console.log(`Session check: lastSeen=${lastSeenTime}, timeSince=${timeSinceLastSeen}ms, hasActiveSessions=${hasActiveSessions}`);
+      } else {
+        // This is a parent stream, check for active sessions
+        try {
+          const sessionsResponse = await fetch(`https://livepeer.studio/api/stream/${singleStreamId}/sessions`, {
+            headers: {
+              'Authorization': `Bearer ${livepeerApiKey}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (sessionsResponse.ok) {
+            const sessions = await sessionsResponse.json();
+            console.log(`Found ${sessions.length} sessions for stream ${singleStreamId}`);
+            
+            // Check if any session is active (has recent lastSeen)
+            const now = Date.now();
+            const maxIdleTime = 60 * 1000; // 60 seconds
+            hasActiveSessions = sessions.some((session: any) => {
+              const timeSinceLastSeen = now - (session.lastSeen || 0);
+              return timeSinceLastSeen < maxIdleTime;
+            });
+            console.log(`Has active sessions: ${hasActiveSessions}`);
+          }
+        } catch (error) {
+          console.error(`Error checking sessions:`, error);
+        }
+      }
+      
       const now = Date.now();
       const lastSeenTime = livepeerStream.lastSeen || 0;
       const timeSinceLastSeen = now - lastSeenTime;
-      const maxIdleTime = 30 * 1000; // 30 seconds for browser streams
+      const maxIdleTime = 60 * 1000; // 60 seconds for browser streams
       
-      const isActuallyLive = livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime;
+      // Browser stream is live if:
+      // 1. It has active sessions OR
+      // 2. isActive is true and lastSeen is recent OR
+      // 3. lastSeen is very recent (within 60 seconds)
+      const isActuallyLive = hasActiveSessions || 
+                            (livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime) ||
+                            timeSinceLastSeen < maxIdleTime;
+      
+      console.log(`Final status: isActive=${livepeerStream.isActive}, timeSince=${timeSinceLastSeen}ms, hasActiveSessions=${hasActiveSessions}, isActuallyLive=${isActuallyLive}`);
       
       return new Response(
         JSON.stringify({ isActive: isActuallyLive, lastSeen: livepeerStream.lastSeen }),
