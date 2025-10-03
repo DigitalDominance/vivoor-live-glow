@@ -115,30 +115,40 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   }, [isEnabled, isPreviewMode, sessionToken, identity, onStreamStart, onStreamEnd]);
 
   return (
-    <Broadcast.Root ingestUrl={getIngest(streamKey)}>
-      <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video relative">
+    <Broadcast.Root 
+      ingestUrl={getIngest(streamKey)}
+      aspectRatio={16 / 9}
+      video={{
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      }}
+      audio={true}
+      hotkeys={true}
+      timeout={15000}
+    >
+      <Broadcast.Container className="w-full glass rounded-xl overflow-hidden border border-white/20 aspect-video relative shadow-2xl">
         <Broadcast.Video 
           title="Browser Stream Preview" 
-          className="w-full h-full bg-black"
+          className="w-full h-full bg-gradient-to-br from-black/90 via-black/80 to-black/90"
         />
         
-        {/* Status Indicator */}
+        {/* Status Indicator - Glass effect */}
         <Broadcast.LoadingIndicator asChild matcher={false}>
-          <div className="absolute overflow-hidden py-1 px-2 rounded-full top-2 left-2 bg-black/70 flex items-center backdrop-blur z-10">
+          <div className="absolute overflow-hidden py-1.5 px-3 rounded-full top-3 left-3 glass flex items-center backdrop-blur-md z-10 border border-white/20">
             <Broadcast.StatusIndicator
               matcher="live"
               className="flex gap-2 items-center"
             >
-              <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full" />
-              <span className="text-xs select-none text-white font-medium">LIVE</span>
+              <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full shadow-lg shadow-red-500/50" />
+              <span className="text-xs select-none text-white font-semibold tracking-wide">LIVE</span>
             </Broadcast.StatusIndicator>
 
             <Broadcast.StatusIndicator
               className="flex gap-2 items-center"
               matcher="pending"
             >
-              <div className="bg-yellow-500 h-2 w-2 rounded-full animate-pulse" />
-              <span className="text-xs select-none text-white font-medium">CONNECTING</span>
+              <div className="bg-yellow-400 h-2 w-2 rounded-full animate-pulse shadow-lg shadow-yellow-400/50" />
+              <span className="text-xs select-none text-white font-semibold tracking-wide">CONNECTING</span>
             </Broadcast.StatusIndicator>
 
             <Broadcast.StatusIndicator
@@ -146,15 +156,15 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               matcher="idle"
             >
               <div className="bg-gray-400 h-2 w-2 rounded-full" />
-              <span className="text-xs select-none text-white font-medium">READY</span>
+              <span className="text-xs select-none text-white font-semibold tracking-wide">READY</span>
             </Broadcast.StatusIndicator>
           </div>
         </Broadcast.LoadingIndicator>
 
-        {/* Controls */}
-        <Broadcast.Controls className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 z-10">
+        {/* Controls - Glass effect with gradient */}
+        <Broadcast.Controls className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 z-10">
           <Broadcast.EnabledTrigger
-            className="px-6 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-all font-medium"
+            className="px-8 py-3 rounded-xl glass border border-white/20 hover:border-white/40 backdrop-blur-md transition-all font-semibold text-white shadow-xl hover:shadow-2xl hover:scale-105 bg-grad-primary"
             onClick={() => {
               setIsEnabled(prev => !prev);
               if (isEnabled) {
