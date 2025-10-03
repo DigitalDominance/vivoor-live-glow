@@ -11,6 +11,7 @@ interface BrowserStreamingProps {
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   isPreviewMode?: boolean;
+  videoSource?: 'camera' | 'screen';
 }
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
@@ -18,10 +19,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   playbackId,
   onStreamStart,
   onStreamEnd,
-  isPreviewMode = false
+  isPreviewMode = false,
+  videoSource = 'camera'
 }) => {
   const ingestUrl = getIngest(streamKey);
-  const [streamSource, setStreamSource] = useState<'camera' | 'screen'>('camera');
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -111,40 +112,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Source Selection */}
-      <div className="flex items-center gap-2 p-3 bg-black/30 backdrop-blur-sm rounded-lg border border-white/10">
-        <span className="text-sm text-white/70 mr-2">Stream Source:</span>
-        <Button
-          variant={streamSource === 'camera' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setStreamSource('camera')}
-          className="flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M23 7l-7 5 7 5V7z"></path>
-            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-          </svg>
-          Camera
-        </Button>
-        <Button
-          variant={streamSource === 'screen' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setStreamSource('screen')}
-          className="flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-          Screen Share
-        </Button>
-      </div>
-
       <Broadcast.Root 
-        key={streamSource} 
+        key={videoSource} 
         ingestUrl={ingestUrl}
-        video={streamSource === 'screen' ? { displaySurface: 'monitor' } as any : true}
+        video={videoSource === 'screen' ? { displaySurface: 'monitor' } as any : true}
       >
         <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
           {/* Video Element */}
@@ -275,7 +246,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       {/* Help Text */}
       <div className="text-xs text-gray-400 space-y-1 px-2">
-        <p>• Choose between Camera or Screen Share as your video source</p>
+        <p>• Using {videoSource === 'camera' ? 'camera' : 'screen share'} as video source</p>
         <p>• Click "Go Live" to start broadcasting</p>
         <p>• Use the video and audio toggles to control your stream</p>
         <p>• Your browser stream will be available on your channel page</p>

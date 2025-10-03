@@ -26,6 +26,7 @@ const GoLive = () => {
   
   // Streaming mode: 'rtmp' or 'browser'
   const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
+  const [browserSource, setBrowserSource] = React.useState<'camera' | 'screen'>('camera');
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -506,6 +507,48 @@ const GoLive = () => {
                   )}
                 </button>
               </div>
+              
+              {/* Browser Source Selection - Only show when browser streaming is selected */}
+              {streamingMode === 'browser' && (
+                <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <label className="block text-sm font-medium text-white mb-3">Choose Video Source</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setBrowserSource('camera')}
+                      className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+                        browserSource === 'camera'
+                          ? 'border-cyan-400 bg-cyan-500/20'
+                          : 'border-white/20 bg-white/5 hover:border-cyan-400/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <svg className="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M23 7l-7 5 7 5V7z"></path>
+                          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                        <span className="text-sm font-medium text-white">Camera</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setBrowserSource('screen')}
+                      className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+                        browserSource === 'screen'
+                          ? 'border-purple-400 bg-purple-500/20'
+                          : 'border-white/20 bg-white/5 hover:border-purple-400/50'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <svg className="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                          <line x1="8" y1="21" x2="16" y2="21"></line>
+                          <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span className="text-sm font-medium text-white">Screen Share</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
         
             {/* Stream Details Form */}
@@ -589,9 +632,11 @@ const GoLive = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">Browser Stream Setup</h3>
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
+                    key={browserSource} // Force re-mount when source changes to close previous connections
                     streamKey={streamKey}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
+                    videoSource={browserSource}
                     onStreamStart={() => {
                       console.log('Browser stream started');
                       toast.success('Browser stream is live!');
