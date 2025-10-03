@@ -1133,15 +1133,6 @@ export type Database = {
             }
         Returns: undefined
       }
-      update_browser_stream_heartbeat: {
-        Args: {
-          is_live_param: boolean
-          session_token_param: string
-          stream_id_param: string
-          wallet_address_param: string
-        }
-        Returns: undefined
-      }
       update_stream_heartbeat: {
         Args: { stream_id: string }
         Returns: undefined
