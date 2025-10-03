@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
-import BrowserSourceModal from "@/components/modals/BrowserSourceModal";
+
 import { useWallet } from "@/context/WalletContext";
 import { useBrowserStreaming } from "@/context/BrowserStreamingContext";
 import { toast } from "sonner";
@@ -27,8 +27,7 @@ const GoLive = () => {
   
   // Streaming mode: 'rtmp' or 'browser'
   const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
-  const [browserSource, setBrowserSource] = React.useState<'camera' | 'screen'>('camera');
-  const [showSourceModal, setShowSourceModal] = React.useState(false);
+  const [browserSource] = React.useState<'camera' | 'screen'>('camera');
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -436,31 +435,6 @@ const GoLive = () => {
 
       <h1 className="sr-only">Go Live</h1>
       
-      {/* Browser Source Selection Modal */}
-      <BrowserSourceModal
-        open={showSourceModal}
-        onClose={() => setShowSourceModal(false)}
-        onSelectSource={async (source) => {
-          // Clear any existing stream data to force new stream creation
-          setIngestUrl(null);
-          setStreamKey(null);
-          setPlaybackUrl(null);
-          setLivepeerStreamId(null);
-          setLivepeerPlaybackId(null);
-          setPreviewReady(false);
-          
-          // Set the new source
-          setBrowserSource(source);
-          
-          // Generate new stream details for this source
-          toast.info(`Setting up ${source} streaming...`);
-          try {
-            await generateStreamDetails();
-          } catch (error) {
-            console.error('Failed to generate stream details:', error);
-          }
-        }}
-      />
 
       <section className="max-w-4xl mx-auto">
         {/* Hero Header */}
@@ -514,7 +488,7 @@ const GoLive = () => {
                 </button>
                 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     // Clear existing stream data when switching modes
                     setIngestUrl(null);
                     setStreamKey(null);
@@ -523,9 +497,16 @@ const GoLive = () => {
                     setLivepeerPlaybackId(null);
                     setPreviewReady(false);
                     
-                    // Show source selection modal for browser streaming
+                    // Set browser streaming mode with camera as default
                     setStreamingMode('browser');
-                    setShowSourceModal(true);
+                    
+                    // Generate stream details for camera
+                    toast.info('Setting up camera streaming...');
+                    try {
+                      await generateStreamDetails();
+                    } catch (error) {
+                      console.error('Failed to generate stream details:', error);
+                    }
                   }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
                     streamingMode === 'browser' 
