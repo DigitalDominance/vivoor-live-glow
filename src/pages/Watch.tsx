@@ -731,9 +731,9 @@ const Watch = () => {
             className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 p-1"
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
-              {streamData.is_live && livepeerIsLive ? (
+              {streamData.is_live ? (
                 streamData.livepeer_playback_id ? (
-                  // Use Livepeer HLS URL for playback only if stream is actually live
+                  // Use Livepeer playback URL - will handle buffering/waiting internally
                   <>
                     <HlsPlayer 
                       src={`https://livepeer.studio/hls/${streamData.livepeer_playback_id}/index.m3u8`}
@@ -744,6 +744,9 @@ const Watch = () => {
                       videoRef={videoRef}
                       onQualityLevelsUpdate={setQualityLevels}
                       onQualityChange={qualityChangeRef}
+                      onStreamReady={() => {
+                        console.log('Stream is ready and playing');
+                      }}
                     />
                    {showControls && (
                      <CustomVideoControls
