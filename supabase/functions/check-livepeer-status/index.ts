@@ -45,16 +45,9 @@ serve(async (req) => {
       const now = Date.now();
       const lastSeenTime = livepeerStream.lastSeen || 0;
       const timeSinceLastSeen = now - lastSeenTime;
+      const maxIdleTime = 30 * 1000; // 30 seconds for browser streams
       
-      // For browser streams, be more lenient - WebRTC can take time to be detected as active
-      // If isActive is true, consider it live regardless of lastSeen for first 60 seconds
-      // After that, require recent lastSeen
-      const maxIdleTime = 60 * 1000; // 60 seconds for browser streams
-      
-      const isActuallyLive = livepeerStream.isActive === true && 
-                            (timeSinceLastSeen < maxIdleTime || lastSeenTime === 0);
-      
-      console.log(`Browser stream ${singleStreamId}: isActive=${livepeerStream.isActive}, lastSeen=${livepeerStream.lastSeen}, timeSince=${timeSinceLastSeen}ms, result=${isActuallyLive}`);
+      const isActuallyLive = livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime;
       
       return new Response(
         JSON.stringify({ isActive: isActuallyLive, lastSeen: livepeerStream.lastSeen }),
