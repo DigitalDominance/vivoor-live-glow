@@ -732,11 +732,11 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamData.playback_url ? (
-                  // Both RTMP and browser streams use HLS playback on watch page
+                streamData.livepeer_playback_id ? (
+                  // Use Livepeer HLS URL for playback
                   <>
                     <HlsPlayer 
-                      src={streamData.playback_url} 
+                      src={`https://livepeer.studio/hls/${streamData.livepeer_playback_id}/index.m3u8`}
                       autoPlay 
                       isLiveStream={true}
                       key={streamData.id}
