@@ -41,6 +41,17 @@ const Stream = () => {
     enabled: !!identity?.id
   });
 
+  // Get current user's Kaspa address for tip monitoring
+  const { data: currentUserKaspaAddress } = useQuery({
+    queryKey: ['current-user-kaspa-address', identity?.id],
+    queryFn: async () => {
+      if (!identity?.id) return null;
+      const { data } = await supabase.rpc('get_kaspa_address', { _id: identity.id });
+      return data;
+    },
+    enabled: !!identity?.id
+  });
+
   // Fetch stream data from Supabase
   const { data: streamData } = useQuery({
     queryKey: ['stream', streamId],
@@ -119,7 +130,7 @@ const Stream = () => {
   // Monitor tips for this stream (only if it's own stream)
   const { tips: allTips, totalAmountReceived } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: identity?.id,
+    kaspaAddress: currentUserKaspaAddress,
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
