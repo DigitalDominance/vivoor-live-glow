@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
+import WebRTCPlayer from "@/components/players/WebRTCPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
@@ -732,19 +733,36 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamData.stream_type === 'browser' ? (
-                  // For browser streams, show a live indicator
-                  <div className="relative w-full aspect-video bg-black rounded-lg flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <div className="size-16 bg-red-600 rounded-full mx-auto flex items-center justify-center">
-                        <div className="size-3 bg-white rounded-full animate-pulse"></div>
-                      </div>
-                      <div>
-                        <h3 className="text-white text-lg font-semibold">Live Browser Stream</h3>
-                        <p className="text-gray-400 text-sm">Stream is live from {streamData.title}</p>
-                      </div>
-                    </div>
-                  </div>
+                streamData.stream_type === 'browser' && streamData.livepeer_stream_id ? (
+                  // For browser streams, use WebRTC player
+                  <>
+                    <WebRTCPlayer 
+                      streamKey={streamData.livepeer_stream_id}
+                      autoPlay
+                      className="w-full h-full"
+                      videoRef={videoRef}
+                    />
+                    {showControls && (
+                      <CustomVideoControls
+                        isPlaying={isPlaying}
+                        onPlayPause={handlePlayPause}
+                        onFullscreen={handleFullscreen}
+                        onCreateClip={() => setClipModalOpen(true)}
+                        volume={volume}
+                        onVolumeChange={handleVolumeChange}
+                        isMuted={isMuted}
+                        onToggleMute={handleToggleMute}
+                        elapsed={elapsed}
+                        viewers={viewerCount}
+                        isLive={true}
+                        showClipping={true}
+                        qualityLevels={[]}
+                        currentQuality={-1}
+                        onQualityChange={() => {}}
+                        streamId={streamData?.id}
+                      />
+                    )}
+                  </>
                 ) : streamData.playback_url && livepeerIsLive ? (
                   <>
                     <HlsPlayer 
