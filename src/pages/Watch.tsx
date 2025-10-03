@@ -82,26 +82,6 @@ const Watch = () => {
   // Use playback_url directly like GoLive and Stream pages
   const playbackUrl = streamData?.playback_url;
 
-  // Check if stream is ready (important for browser streams with transcoding delay)
-  const { isReady: streamReady, status: streamReadinessStatus, error: streamReadinessError } = useStreamReadiness(
-    playbackUrl,
-    streamData?.streaming_mode,
-    !!playbackUrl && !!streamData?.is_live
-  );
-
-  // Log stream readiness for debugging
-  React.useEffect(() => {
-    if (streamData?.streaming_mode === 'browser') {
-      console.log('🎬 Browser stream readiness:', { 
-        streamReady, 
-        status: streamReadinessStatus, 
-        error: streamReadinessError,
-        playbackUrl,
-        isLive: streamData?.is_live
-      });
-    }
-  }, [streamReady, streamReadinessStatus, streamReadinessError, playbackUrl, streamData?.streaming_mode, streamData?.is_live]);
-
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
     queryKey: ['streamer-profile', streamData?.user_id],
@@ -757,70 +737,38 @@ const Watch = () => {
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
                 playbackUrl ? (
-                  // For browser streams, wait for HLS manifest to be ready
-                  streamData.streaming_mode === 'browser' && !streamReady ? (
-                    <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                      <div className="text-center space-y-4">
-                        <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                          {streamReadinessStatus === 'checking' ? 'Stream is transcoding...' : 
-                           streamReadinessStatus === 'timeout' ? 'Almost ready...' : 
-                           'Preparing stream...'}
-                        </div>
-                        <div className="text-gray-400">
-                          {streamReadinessStatus === 'checking' 
-                            ? 'Please wait while the stream processes (10-15 seconds)' 
-                            : streamReadinessError || 'This may take a moment...'}
-                        </div>
-                        <div className="animate-pulse text-brand-cyan flex items-center justify-center gap-2">
-                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
-                        {streamReadinessStatus === 'timeout' && (
-                          <Button 
-                            onClick={() => window.location.reload()}
-                            variant="hero"
-                            className="mt-4"
-                          >
-                            Refresh Page
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <HlsPlayer
-                        src={playbackUrl}
-                        autoPlay
-                        controls={false}
-                        poster={streamData.thumbnail_url || undefined}
-                        onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                        onQualityChange={qualityChangeRef}
-                        isLiveStream={true}
+                  <>
+                    <HlsPlayer
+                      src={playbackUrl}
+                      autoPlay
+                      controls={false}
+                      poster={streamData.thumbnail_url || undefined}
+                      onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                      onQualityChange={qualityChangeRef}
+                      isLiveStream={true}
+                    />
+                    
+                    {showControls && (
+                      <CustomVideoControls
+                        isPlaying={isPlaying}
+                        onPlayPause={handlePlayPause}
+                        onFullscreen={handleFullscreen}
+                        onCreateClip={() => setClipModalOpen(true)}
+                        volume={volume}
+                        onVolumeChange={handleVolumeChange}
+                        isMuted={isMuted}
+                        onToggleMute={handleToggleMute}
+                        elapsed={elapsed}
+                        viewers={viewerCount}
+                        isLive={true}
+                        showClipping={true}
+                        qualityLevels={qualityLevels}
+                        currentQuality={currentQuality}
+                        onQualityChange={handleQualityChange}
+                        streamId={streamData?.id}
                       />
-                      
-                      {showControls && (
-                        <CustomVideoControls
-                          isPlaying={isPlaying}
-                          onPlayPause={handlePlayPause}
-                          onFullscreen={handleFullscreen}
-                          onCreateClip={() => setClipModalOpen(true)}
-                          volume={volume}
-                          onVolumeChange={handleVolumeChange}
-                          isMuted={isMuted}
-                          onToggleMute={handleToggleMute}
-                          elapsed={elapsed}
-                          viewers={viewerCount}
-                          isLive={true}
-                          showClipping={true}
-                          qualityLevels={qualityLevels}
-                          currentQuality={currentQuality}
-                          onQualityChange={handleQualityChange}
-                          streamId={streamData?.id}
-                        />
-                      )}
-                    </>
-                  )
+                    )}
+                  </>
                 ) : (
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                     <div className="text-center space-y-4">
