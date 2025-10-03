@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
-import WebRTCPlayer from "@/components/players/WebRTCPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
@@ -733,42 +732,13 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamData.stream_type === 'browser' && streamData.livepeer_stream_id ? (
-                  // For browser streams, use WebRTC player
-                  <>
-                    <WebRTCPlayer 
-                      streamKey={streamData.livepeer_stream_id}
-                      autoPlay
-                      className="w-full h-full"
-                      videoRef={videoRef}
-                    />
-                    {showControls && (
-                      <CustomVideoControls
-                        isPlaying={isPlaying}
-                        onPlayPause={handlePlayPause}
-                        onFullscreen={handleFullscreen}
-                        onCreateClip={() => setClipModalOpen(true)}
-                        volume={volume}
-                        onVolumeChange={handleVolumeChange}
-                        isMuted={isMuted}
-                        onToggleMute={handleToggleMute}
-                        elapsed={elapsed}
-                        viewers={viewerCount}
-                        isLive={true}
-                        showClipping={true}
-                        qualityLevels={[]}
-                        currentQuality={-1}
-                        onQualityChange={() => {}}
-                        streamId={streamData?.id}
-                      />
-                    )}
-                  </>
-                ) : streamData.playback_url && livepeerIsLive ? (
+                streamData.playback_url && (livepeerIsLive || streamData.stream_type === 'browser') ? (
+                  // Both RTMP and browser streams use HLS playback
                   <>
                     <HlsPlayer 
                       src={streamData.playback_url} 
                       autoPlay 
-                      isLiveStream={livepeerIsLive}
+                      isLiveStream={livepeerIsLive || streamData.stream_type === 'browser'}
                       key={streamData.id}
                       className="w-full h-full"
                       videoRef={videoRef}
@@ -787,7 +757,7 @@ const Watch = () => {
                        onToggleMute={handleToggleMute}
                        elapsed={elapsed}
                        viewers={viewerCount}
-                       isLive={livepeerIsLive}
+                       isLive={livepeerIsLive || streamData.stream_type === 'browser'}
                        showClipping={true}
                        qualityLevels={qualityLevels}
                        currentQuality={currentQuality}
@@ -796,18 +766,18 @@ const Watch = () => {
                      />
                     )}
                  </>
-                ) : (
-                  <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                        Stream Offline
-                      </div>
-                      <div className="text-gray-400">
-                        This stream is not currently available
-                      </div>
-                    </div>
-                  </div>
-                )
+               ) : (
+                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                   <div className="text-center space-y-4">
+                     <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                       Stream Offline
+                     </div>
+                     <div className="text-gray-400">
+                       This stream is not currently available
+                     </div>
+                   </div>
+                 </div>
+               )
               ) : (
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                   <div className="text-center space-y-4">
