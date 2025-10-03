@@ -18,6 +18,7 @@ import { useStreamStatus } from "@/hooks/useStreamStatus";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
 import { useSecureViewerCount } from "@/hooks/useSecureViewerCount";
 import { useStreamChat } from "@/hooks/useStreamChat";
+import { useStreamReadiness } from "@/hooks/useStreamReadiness";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import DonationsHistoryModal from "@/components/modals/DonationsHistoryModal";
@@ -80,6 +81,13 @@ const Watch = () => {
 
   // Use playback_url directly like GoLive and Stream pages
   const playbackUrl = streamData?.playback_url;
+
+  // Check if stream is ready (important for browser streams with transcoding delay)
+  const { isReady: streamReady, status: streamReadinessStatus, error: streamReadinessError } = useStreamReadiness(
+    playbackUrl,
+    streamData?.streaming_mode,
+    !!playbackUrl && !!streamData?.is_live
+  );
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
@@ -736,19 +744,34 @@ const Watch = () => {
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
                 playbackUrl ? (
-                  // For browser streams, check livepeerIsLive since WebRTC needs time to start
-                  streamData.stream_type === 'browser' && !livepeerIsLive ? (
+                  // For browser streams, wait for HLS manifest to be ready
+                  streamData.streaming_mode === 'browser' && !streamReady ? (
                     <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                       <div className="text-center space-y-4">
                         <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                          Waiting for stream...
+                          {streamReadinessStatus === 'checking' ? 'Stream is transcoding...' : 
+                           streamReadinessStatus === 'timeout' ? 'Almost ready...' : 
+                           'Preparing stream...'}
                         </div>
                         <div className="text-gray-400">
-                          The broadcaster is setting up. Please wait a moment...
+                          {streamReadinessStatus === 'checking' 
+                            ? 'Please wait while the stream processes (10-15 seconds)' 
+                            : streamReadinessError || 'This may take a moment...'}
                         </div>
-                        <div className="animate-pulse text-brand-cyan">
-                          Connecting via WebRTC
+                        <div className="animate-pulse text-brand-cyan flex items-center justify-center gap-2">
+                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="h-2 w-2 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                         </div>
+                        {streamReadinessStatus === 'timeout' && (
+                          <Button 
+                            onClick={() => window.location.reload()}
+                            variant="hero"
+                            className="mt-4"
+                          >
+                            Refresh Page
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -760,6 +783,7 @@ const Watch = () => {
                         poster={streamData.thumbnail_url || undefined}
                         onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
                         onQualityChange={qualityChangeRef}
+                        isLiveStream={true}
                       />
                       
                       {showControls && (

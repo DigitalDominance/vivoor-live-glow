@@ -60,15 +60,15 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       console.error('🎬 Video error:', e, video.error);
       setLoading(false);
       
-      if (isLiveStream && retryCount < 10) {
-        setError('Connection Lost, Retrying...');
+      if (isLiveStream && retryCount < 20) { // Increased retry attempts
+        setError('Stream is transcoding, please wait...');
         setRetryCount(prev => prev + 1);
         retryTimeoutRef.current = setTimeout(() => {
           console.log('🎬 Retrying stream connection...');
           video.load();
         }, 5000);
       } else {
-        setError('Stream unavailable');
+        setError('Stream unavailable - please refresh the page');
       }
     };
     const onWaiting = () => {
@@ -116,18 +116,18 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
           }
         }
         
-        // Handle manifest parsing errors for browser streams
+        // Handle manifest parsing errors for browser streams - be more patient
         if (data.details === 'manifestParsingError' && isLiveStream) {
           console.log('🎬 Stream not ready yet, will retry...');
-          setError('Stream is starting up...');
+          setError('Stream is transcoding (this can take 10-15 seconds)...');
           setRetryCount(prev => prev + 1);
-          if (retryCount < 10) {
+          if (retryCount < 20) { // Increased from 10 to 20 attempts
             retryTimeoutRef.current = setTimeout(() => {
               console.log('🎬 Retrying stream connection...');
               hls?.loadSource(src);
-            }, 3000);
+            }, 5000); // Increased from 3 to 5 seconds
           } else {
-            setError('Stream unavailable');
+            setError('Stream unavailable - please refresh the page');
           }
           return;
         }
@@ -135,13 +135,13 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              if (isLiveStream && retryCount < 10) {
-                setError('Stream is starting...');
+              if (isLiveStream && retryCount < 20) { // Increased retry attempts
+                setError('Stream is starting (transcoding in progress)...');
                 setRetryCount(prev => prev + 1);
                 retryTimeoutRef.current = setTimeout(() => {
                   console.log('🎬 Retrying HLS connection...');
                   hls?.loadSource(src);
-                }, 3000);
+                }, 5000); // Increased retry interval
               } else {
                 setError('Stream Ended or Unavailable');
               }
