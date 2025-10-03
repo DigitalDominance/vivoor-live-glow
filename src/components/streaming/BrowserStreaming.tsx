@@ -10,6 +10,7 @@ interface BrowserStreamingProps {
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   isPreviewMode?: boolean;
+  videoSource?: 'camera' | 'screen';
 }
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
@@ -17,9 +18,15 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   playbackId,
   onStreamStart,
   onStreamEnd,
-  isPreviewMode = false
+  isPreviewMode = false,
+  videoSource = 'camera'
 }) => {
   const ingestUrl = getIngest(streamKey);
+  
+  // Configure video constraints based on source
+  const videoConstraints = videoSource === 'screen' 
+    ? { displaySurface: 'monitor' as const }
+    : undefined;
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -109,7 +116,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   return (
     <div className="space-y-4">
-      <Broadcast.Root ingestUrl={ingestUrl}>
+      <Broadcast.Root ingestUrl={ingestUrl} video={videoConstraints}>
         <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
           {/* Video Element */}
           <div className="relative aspect-video bg-black">
@@ -239,7 +246,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       {/* Help Text */}
       <div className="text-xs text-gray-400 space-y-1 px-2">
-        <p>• Click "Go Live" to start broadcasting from your camera/microphone</p>
+        <p>• Click "Go Live" to start broadcasting from your {videoSource === 'screen' ? 'screen' : 'camera/microphone'}</p>
         <p>• Use the video and audio toggles to control your stream</p>
         <p>• Your browser stream will be available on your channel page</p>
         {isPreviewMode && <p>• This is preview mode - complete setup to go live</p>}
