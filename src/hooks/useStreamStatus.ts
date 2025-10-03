@@ -141,46 +141,63 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
   useEffect(() => {
     if (!streamId) return;
     
-    // Fetch initial stream status
-    fetchInitialStatus();
-    
-    // For browser streams, poll more frequently (every 5 seconds) to detect when WebRTC starts
-    // For RTMP streams, poll less frequently (every 30 seconds)
-    const pollInterval = livepeerStreamId && streamId.includes('browser') ? 5000 : 30000;
-    
-    // Start polling Livepeer status
-    const statusInterval = setInterval(() => {
-      checkLivepeerStatus();
-    }, pollInterval);
-    
-    // Check immediately
-    const initialCheck = setTimeout(() => {
-      checkLivepeerStatus();
-    }, 1000);
-    
-    // Set up viewer count polling
-    heartbeatInterval.current = setInterval(() => {
-      fetchViewerCount();
-    }, 30000);
+    // Fetch initial stream status to get stream_type
+    const setupPolling = async () => {
+      const { data: streamData } = await supabase
+        .from('streams')
+        .select('is_live, viewers, last_heartbeat, stream_type')
+        .eq('id', streamId)
+        .single();
 
-    return () => {
-      // Cleanup intervals
-      if (statusInterval) {
-        clearInterval(statusInterval);
-      }
-      
-      if (initialCheck) {
-        clearTimeout(initialCheck);
-      }
-      
-      if (heartbeatInterval.current) {
-        clearInterval(heartbeatInterval.current);
-      }
-      
-      if (reconnectTimeout.current) {
-        clearTimeout(reconnectTimeout.current);
+      if (streamData) {
+        setStreamStatus({
+          isLive: streamData.is_live || false,
+          viewerCount: streamData.viewers || 0,
+          lastHeartbeat: streamData.last_heartbeat
+        });
+        
+        // For browser streams, poll more aggressively (every 3 seconds) to detect when WebRTC starts
+        // For RTMP streams, poll less frequently (every 30 seconds)
+        const pollInterval = streamData.stream_type === 'browser' ? 3000 : 30000;
+        
+        // Start polling Livepeer status
+        const statusInterval = setInterval(() => {
+          checkLivepeerStatus();
+        }, pollInterval);
+        
+        // For browser streams, wait a bit longer for WebRTC to establish before first check
+        // For RTMP streams, check immediately
+        const initialCheck = setTimeout(() => {
+          checkLivepeerStatus();
+        }, streamData.stream_type === 'browser' ? 5000 : 1000);
+        
+        // Set up viewer count polling
+        heartbeatInterval.current = setInterval(() => {
+          fetchViewerCount();
+        }, 30000);
+
+        return () => {
+          // Cleanup intervals
+          if (statusInterval) {
+            clearInterval(statusInterval);
+          }
+          
+          if (initialCheck) {
+            clearTimeout(initialCheck);
+          }
+          
+          if (heartbeatInterval.current) {
+            clearInterval(heartbeatInterval.current);
+          }
+          
+          if (reconnectTimeout.current) {
+            clearTimeout(reconnectTimeout.current);
+          }
+        };
       }
     };
+    
+    setupPolling();
   }, [streamId, livepeerStreamId]);
 
   return {
