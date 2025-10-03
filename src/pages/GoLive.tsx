@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
-import { BrowserSourceModal } from "@/components/modals/BrowserSourceModal";
 import { useWallet } from "@/context/WalletContext";
 import { useBrowserStreaming } from "@/context/BrowserStreamingContext";
 import { toast } from "sonner";
@@ -27,8 +26,6 @@ const GoLive = () => {
   
   // Streaming mode: 'rtmp' or 'browser'
   const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
-  const [browserSource, setBrowserSource] = React.useState<'camera' | 'screen'>('camera');
-  const [showSourceModal, setShowSourceModal] = React.useState(false);
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -151,30 +148,10 @@ const GoLive = () => {
     };
   }, [playbackUrl]);
 
-  // Clear previous stream data when starting fresh
-  const clearStreamData = () => {
-    setIngestUrl(null);
-    setStreamKey(null);
-    setPlaybackUrl(null);
-    setLivepeerStreamId(null);
-    setLivepeerPlaybackId(null);
-    setPreviewReady(false);
-    setPlayerKey(prev => prev + 1);
-    setDebugInfo('');
-  };
-
-  const generateStreamDetails = async (selectedSource?: 'camera' | 'screen') => {
+  const generateStreamDetails = async () => {
     if (!kaspaAddress) {
       toast.error('Please connect wallet first');
       return;
-    }
-    
-    // Clear previous stream data first
-    clearStreamData();
-    
-    // If browser streaming and source provided, set it
-    if (streamingMode === 'browser' && selectedSource) {
-      setBrowserSource(selectedSource);
     }
     
     console.log('Generating stream details...');
@@ -205,7 +182,7 @@ const GoLive = () => {
       });
       
       setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
-      toast.success(streamingMode === 'browser' ? 'Browser stream ready' : 'RTMP details ready');
+      toast.success('RTMP details ready');
       return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
       console.error('Stream generation error:', e);
@@ -213,11 +190,6 @@ const GoLive = () => {
       toast.error(e?.message || 'Failed to create stream');
       throw e;
     }
-  };
-
-  const handleBrowserSourceSelect = async (source: 'camera' | 'screen') => {
-    setBrowserSource(source);
-    await generateStreamDetails(source);
   };
 
   const sendTreasuryFee = async (): Promise<string | null> => {
@@ -511,12 +483,9 @@ const GoLive = () => {
                     </div>
                   )}
                 </button>
+                
                 <button
-                  onClick={() => {
-                    setStreamingMode('browser');
-                    // Clear any existing stream data when switching modes
-                    clearStreamData();
-                  }}
+                  onClick={() => setStreamingMode('browser')}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
                     streamingMode === 'browser' 
                       ? 'border-cyan-400 bg-cyan-500/20' 
@@ -620,11 +589,9 @@ const GoLive = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">Browser Stream Setup</h3>
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
-                    key={browserSource} // Force re-mount when source changes to close previous connections
                     streamKey={streamKey}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
-                    videoSource={browserSource}
                     onStreamStart={() => {
                       console.log('Browser stream started');
                       toast.success('Browser stream is live!');
@@ -642,24 +609,11 @@ const GoLive = () => {
               {!streamKey && (
                 <Button 
                   variant="outline" 
-                  onClick={() => {
-                    if (!title || !kaspaAddress) {
-                      toast.error(!kaspaAddress ? 'Connect wallet first' : 'Enter stream title first');
-                      return;
-                    }
-                    
-                    if (streamingMode === 'browser') {
-                      // Show source selection modal for browser streaming
-                      setShowSourceModal(true);
-                    } else {
-                      // Generate RTMP stream directly
-                      generateStreamDetails();
-                    }
-                  }}
+                  onClick={generateStreamDetails} 
                   disabled={!title || !kaspaAddress}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : !title ? 'Enter Title First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
+                  {!kaspaAddress ? 'Connect Wallet First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
                 </Button>
               )}
               
@@ -676,13 +630,6 @@ const GoLive = () => {
                 </Button>
               )}
             </div>
-
-            {/* Browser Source Modal */}
-            <BrowserSourceModal
-              open={showSourceModal}
-              onOpenChange={setShowSourceModal}
-              onSourceSelect={handleBrowserSourceSelect}
-            />
 
             
             {/* RTMP Details Section */}
