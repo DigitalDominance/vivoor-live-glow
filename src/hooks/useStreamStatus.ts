@@ -19,7 +19,7 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Poll Livepeer API for stream status (since WebSocket isn't available)
+  // Poll Livepeer API for stream status (including browser streams via WebRTC)
   const checkLivepeerStatus = async () => {
     if (!livepeerStreamId) {
       console.log('No Livepeer stream ID available for status check');
@@ -30,7 +30,9 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
       console.log('Polling Livepeer API for stream status:', livepeerStreamId);
       
       // Use our edge function to check Livepeer status (avoids CORS and API key exposure)
-      const { data, error } = await supabase.functions.invoke('check-livepeer-status');
+      const { data, error } = await supabase.functions.invoke('check-livepeer-status', {
+        body: { streamId: livepeerStreamId }
+      });
       
       if (error) {
         console.error('Error checking Livepeer status:', error);
@@ -39,7 +41,15 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
 
       console.log('Livepeer status check result:', data);
       
-      // Fetch updated stream status from database after check
+      // If the response contains stream status, update immediately
+      if (data && typeof data.isActive === 'boolean') {
+        setStreamStatus(prev => ({
+          ...prev,
+          isLive: data.isActive
+        }));
+      }
+      
+      // Also fetch updated stream status from database after check
       fetchInitialStatus();
       
     } catch (error) {
@@ -134,17 +144,21 @@ export const useStreamStatus = (streamId: string | null, livepeerStreamId?: stri
     // Fetch initial stream status
     fetchInitialStatus();
     
-    // Start polling Livepeer status every 60 seconds (less frequent to prevent glitching)
+    // For browser streams, poll more frequently (every 5 seconds) to detect when WebRTC starts
+    // For RTMP streams, poll less frequently (every 30 seconds)
+    const pollInterval = livepeerStreamId && streamId.includes('browser') ? 5000 : 30000;
+    
+    // Start polling Livepeer status
     const statusInterval = setInterval(() => {
       checkLivepeerStatus();
-    }, 60000);
+    }, pollInterval);
     
-    // Check immediately but delayed to avoid conflicts
+    // Check immediately
     const initialCheck = setTimeout(() => {
       checkLivepeerStatus();
-    }, 5000);
+    }, 1000);
     
-    // Set up viewer count polling every 30 seconds
+    // Set up viewer count polling
     heartbeatInterval.current = setInterval(() => {
       fetchViewerCount();
     }, 30000);

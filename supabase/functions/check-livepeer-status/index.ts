@@ -22,14 +22,47 @@ serve(async (req) => {
       throw new Error('LIVEPEER_API_KEY not configured');
     }
 
-    // Get all RTMP/Livepeer streams (exclude browser streams)
+    // Check if this is a single stream check (for browser streams)
+    const body = await req.json().catch(() => ({}));
+    const singleStreamId = body.streamId;
+
+    if (singleStreamId) {
+      // Single stream check for browser streams
+      console.log(`Checking single Livepeer stream: ${singleStreamId}`);
+      
+      const response = await fetch(`https://livepeer.studio/api/stream/${singleStreamId}`, {
+        headers: {
+          'Authorization': `Bearer ${livepeerApiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stream from Livepeer: ${response.status}`);
+      }
+
+      const livepeerStream = await response.json();
+      const now = Date.now();
+      const lastSeenTime = livepeerStream.lastSeen || 0;
+      const timeSinceLastSeen = now - lastSeenTime;
+      const maxIdleTime = 30 * 1000; // 30 seconds for browser streams
+      
+      const isActuallyLive = livepeerStream.isActive === true && timeSinceLastSeen < maxIdleTime;
+      
+      return new Response(
+        JSON.stringify({ isActive: isActuallyLive, lastSeen: livepeerStream.lastSeen }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Bulk check for all RTMP streams (original behavior)
     const { data: streams, error: streamsError } = await supabaseClient
       .from('streams')
       .select('id, livepeer_stream_id, user_id, title, is_live')
       .neq('livepeer_stream_id', null)
-      .neq('stream_type', 'browser'); // Exclude browser streams
+      .neq('stream_type', 'browser'); // Exclude browser streams from bulk check
 
-    console.log(`Found ${streams?.length || 0} streams with Livepeer IDs to check`);
+    console.log(`Found ${streams?.length || 0} RTMP streams with Livepeer IDs to check`);
 
     if (streamsError) {
       throw new Error(`Failed to fetch streams: ${streamsError.message}`);
@@ -37,7 +70,7 @@ serve(async (req) => {
 
     if (!streams || streams.length === 0) {
       return new Response(
-        JSON.stringify({ updated: 0, message: 'No streams with Livepeer IDs to check' }),
+        JSON.stringify({ updated: 0, message: 'No RTMP streams with Livepeer IDs to check' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
