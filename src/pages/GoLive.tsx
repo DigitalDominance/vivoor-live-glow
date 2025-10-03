@@ -634,7 +634,6 @@ const GoLive = () => {
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}
-                    streamId={livepeerStreamId || undefined}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
                     onStreamStart={() => {

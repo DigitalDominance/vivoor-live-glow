@@ -330,8 +330,7 @@ const Stream = () => {
               <div className="space-y-4">
                 <BrowserStreaming
                   streamKey={localStreamData.streamKey || ''}
-                  streamId={streamData?.livepeer_stream_id || undefined}
-                  playbackId={streamData?.livepeer_playback_id || undefined}
+                  playbackId={streamData.livepeer_playback_id || undefined}
                   onStreamStart={() => {
                     console.log('Browser stream started');
                   }}
