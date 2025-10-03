@@ -1,9 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { StreamChat } from "@/lib/streamChat";
 
+const CHAT_STORAGE_KEY = 'stream_chat_';
+const MAX_STORED_MESSAGES = 200;
+
 export function useStreamChat(streamId: string, token?: string) {
   const clientRef = useRef<StreamChat | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  
+  // Load messages from localStorage on init
+  const [messages, setMessages] = useState<any[]>(() => {
+    if (!streamId) return [];
+    try {
+      const stored = localStorage.getItem(CHAT_STORAGE_KEY + streamId);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -17,7 +31,16 @@ export function useStreamChat(streamId: string, token?: string) {
       if (msg.type === "hello") {
         setIsConnected(true);
       } else if (msg.type === "chat") {
-        setMessages((prev) => [...prev, msg].slice(-200)); // keep last 200
+        setMessages((prev) => {
+          const updated = [...prev, msg].slice(-MAX_STORED_MESSAGES);
+          // Store in localStorage
+          try {
+            localStorage.setItem(CHAT_STORAGE_KEY + streamId, JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Failed to save chat to localStorage:', e);
+          }
+          return updated;
+        });
       }
     });
 

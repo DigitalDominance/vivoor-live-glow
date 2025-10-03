@@ -9,10 +9,12 @@ import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
+import DonationsHistoryModal from "@/components/modals/DonationsHistoryModal";
 import TipDisplay from "@/components/TipDisplay";
 import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { toast } from "sonner";
+import { DollarSign } from "lucide-react";
 
 const Stream = () => {
   const { streamId } = useParams();
@@ -24,6 +26,7 @@ const Stream = () => {
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [donationsHistoryOpen, setDonationsHistoryOpen] = React.useState(false);
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
 
@@ -101,6 +104,18 @@ const Stream = () => {
 
   const isOwnStream = streamData?.user_id === identity?.id;
 
+  // Store donations in localStorage
+  const DONATIONS_STORAGE_KEY = `stream_donations_${streamData?.id}`;
+  const [allStoredDonations, setAllStoredDonations] = React.useState<any[]>(() => {
+    if (!streamData?.id) return [];
+    try {
+      const stored = localStorage.getItem(DONATIONS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Monitor tips for this stream (only if it's own stream)
   const { tips: allTips, totalAmountReceived } = useTipMonitoring({
     streamId: streamData?.id,
@@ -110,6 +125,26 @@ const Stream = () => {
       if (!shownTipIds.has(tip.id)) {
         setNewTips(prev => [...prev, tip]);
         toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
+        
+        // Store in localStorage for donations history
+        const donation = {
+          id: tip.id,
+          sender: tip.sender,
+          senderAvatar: undefined,
+          amount: tip.amount,
+          message: tip.message,
+          timestamp: tip.timestamp
+        };
+        
+        setAllStoredDonations(prev => {
+          const updated = [...prev, donation];
+          try {
+            localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Failed to save donation to localStorage:', e);
+          }
+          return updated;
+        });
       }
     }
   });
@@ -326,9 +361,19 @@ const Stream = () => {
               </span>
             )}
             {isOwnStream && (
-              <Button variant="destructive" size="sm" onClick={handleEndStream}>
-                End Stream
-              </Button>
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setDonationsHistoryOpen(true)}
+                  className="border border-white/10 hover:border-primary/50 hover:bg-primary/10"
+                >
+                  <DollarSign className="size-4" />
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleEndStream}>
+                  End Stream
+                </Button>
+              </>
             )}
           </div>
           
@@ -484,6 +529,13 @@ const Stream = () => {
         onRequireLogin={() => {}} 
         toAddress={streamerKaspaAddress}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
+      />
+
+      {/* Donations History Modal */}
+      <DonationsHistoryModal
+        open={donationsHistoryOpen}
+        onOpenChange={setDonationsHistoryOpen}
+        donations={allStoredDonations}
       />
       
     </main>

@@ -20,8 +20,9 @@ import { useSecureViewerCount } from "@/hooks/useSecureViewerCount";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
+import DonationsHistoryModal from "@/components/modals/DonationsHistoryModal";
 import { toast } from "sonner";
-import { Heart, Volume2, VolumeX, Flag } from "lucide-react";
+import { Heart, Volume2, VolumeX, Flag, DollarSign } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { containsBadWords, cleanText } from "@/lib/badWords";
@@ -36,6 +37,7 @@ const Watch = () => {
   const [tipOpen, setTipOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [reportOpen, setReportOpen] = React.useState(false);
+  const [donationsHistoryOpen, setDonationsHistoryOpen] = React.useState(false);
   const [liked, setLiked] = React.useState(false);
   const [followed, setFollowed] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(0);
@@ -229,6 +231,18 @@ const Watch = () => {
 
   const [watchStartTime, setWatchStartTime] = React.useState<number>(Date.now());
   
+  // Store donations in localStorage
+  const DONATIONS_STORAGE_KEY = `stream_donations_${streamData?.id}`;
+  const [allStoredDonations, setAllStoredDonations] = React.useState<any[]>(() => {
+    if (!streamData?.id) return [];
+    try {
+      const stored = localStorage.getItem(DONATIONS_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Monitor tips for this stream using real-time Supabase
   const { tips: allTips, totalAmountReceived, isConnected: tipConnected } = useRealtimeTips({
     streamId: streamData?.id,
@@ -236,6 +250,26 @@ const Watch = () => {
       // Only show tips that occurred after the user started watching
       if (tip.timestamp >= watchStartTime) {
         setNewTips(prev => [...prev, tip]);
+        
+        // Store in localStorage for donations history
+        const donation = {
+          id: tip.id,
+          sender: tip.sender,
+          senderAvatar: undefined,
+          amount: tip.amount,
+          message: tip.message,
+          timestamp: tip.timestamp
+        };
+        
+        setAllStoredDonations(prev => {
+          const updated = [...prev, donation];
+          try {
+            localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Failed to save donation to localStorage:', e);
+          }
+          return updated;
+        });
       }
     }
   });
@@ -849,6 +883,14 @@ const Watch = () => {
                   {followed ? 'Following' : 'Follow'}
                 </Button>
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDonationsHistoryOpen(true)}
+                  className="flex-1 sm:flex-none border border-white/10 hover:border-primary/50 hover:bg-primary/10"
+                >
+                  <DollarSign className="size-4" />
+                </Button>
+                <Button
                   ref={tipButtonRef}
                   variant="gradientOutline"
                   size="sm"
@@ -962,6 +1004,13 @@ const Watch = () => {
           reportedUserHandle={streamerProfile.handle || 'streamer'}
         />
       )}
+
+      {/* Donations History Modal */}
+      <DonationsHistoryModal
+        open={donationsHistoryOpen}
+        onOpenChange={setDonationsHistoryOpen}
+        donations={allStoredDonations}
+      />
     </main>
   );
 };
