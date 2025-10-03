@@ -22,11 +22,12 @@ serve(async (req) => {
       throw new Error('LIVEPEER_API_KEY not configured');
     }
 
-    // Get all streams that are marked as live in our database
+    // Get all RTMP/Livepeer streams (exclude browser streams)
     const { data: streams, error: streamsError } = await supabaseClient
       .from('streams')
       .select('id, livepeer_stream_id, user_id, title, is_live')
-      .neq('livepeer_stream_id', null);
+      .neq('livepeer_stream_id', null)
+      .neq('stream_type', 'browser'); // Exclude browser streams
 
     console.log(`Found ${streams?.length || 0} streams with Livepeer IDs to check`);
 

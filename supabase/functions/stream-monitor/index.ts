@@ -23,33 +23,20 @@ serve(async (req: Request) => {
     // Always check Livepeer API for accurate stream status
     if (livepeerApiKey) {
       try {
+        // Only get RTMP/Livepeer streams for Livepeer API check
         const { data: liveStreams } = await supabase
           .from('streams')
           .select('id, livepeer_stream_id, playback_url, stream_type, last_heartbeat')
-          .eq('is_live', true);
+          .eq('is_live', true)
+          .neq('stream_type', 'browser'); // Exclude browser streams from RTMP checks
 
         console.log(`Checking ${liveStreams?.length || 0} live streams against Livepeer API`);
 
-        // Check each live stream
+        // Check each live RTMP/Livepeer stream
         for (const stream of liveStreams || []) {
-          // Handle browser streams differently
+          // Skip browser streams (should already be filtered, but double-check)
           if (stream.stream_type === 'browser') {
-            // For browser streams, check heartbeat timing
-            const timeSinceHeartbeat = stream.last_heartbeat ? 
-              Date.now() - new Date(stream.last_heartbeat).getTime() : 
-              Infinity;
-            
-            // If no heartbeat for more than 30 seconds, mark as ended
-            if (timeSinceHeartbeat > 30000) {
-              console.log(`Browser stream ${stream.id} heartbeat too old (${timeSinceHeartbeat}ms), ending...`);
-              await supabase
-                .from('streams')
-                .update({ is_live: false, ended_at: new Date().toISOString() })
-                .eq('id', stream.id);
-              cleanedCount++;
-            } else {
-              console.log(`Browser stream ${stream.id} heartbeat recent (${timeSinceHeartbeat}ms), keeping live`);
-            }
+            console.log(`Skipping browser stream ${stream.id} from RTMP monitoring`);
             continue;
           }
           
