@@ -189,7 +189,7 @@ const Stream = () => {
 
   // Auto-end stream after 1 minute of disconnection and heartbeat monitoring
   React.useEffect(() => {
-    if (!streamData?.id || !isOwnStream) return;
+    if (!streamData?.id || !isOwnStream || streamingMode === 'browser') return; // Skip for browser streaming (has own heartbeat)
 
     let heartbeatInterval: number;
     let disconnectTimer: number;
@@ -241,7 +241,7 @@ const Stream = () => {
       clearInterval(heartbeatInterval);
       clearInterval(disconnectTimer);
     };
-  }, [streamData?.id, isOwnStream, navigate]);
+  }, [streamData?.id, isOwnStream, navigate, streamingMode]);
 
   React.useEffect(() => {
     const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
@@ -333,7 +333,7 @@ const Stream = () => {
               <div className="space-y-4">
                 <BrowserStreaming
                   streamKey={localStreamData.streamKey || ''}
-                  streamId={streamData?.livepeer_stream_id || undefined}
+                  streamId={streamData?.livepeer_stream_id || ''}
                   playbackId={streamData?.livepeer_playback_id || undefined}
                   onStreamStart={() => {
                     console.log('Browser stream started');
