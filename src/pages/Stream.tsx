@@ -87,6 +87,7 @@ const Stream = () => {
     playbackUrl: localStorage.getItem('currentPlaybackUrl'),
     streamingMode: localStorage.getItem('currentStreamingMode') as 'rtmp' | 'browser' | null,
     livepeerPlaybackId: localStorage.getItem('currentLivepeerPlaybackId'),
+    livepeerStreamId: localStorage.getItem('currentLivepeerStreamId'),
     startTime: localStorage.getItem('streamStartTime') ? new Date(localStorage.getItem('streamStartTime')!) : new Date()
   }), []);
 
@@ -329,7 +330,7 @@ const Stream = () => {
             {streamingMode === 'browser' && isOwnStream ? (
               <div className="space-y-4">
                 <BrowserStreaming
-                  streamKey={localStreamData.streamKey || ''}
+                  streamId={streamData?.livepeer_stream_id || localStreamData.livepeerStreamId || ''}
                   playbackId={streamData.livepeer_playback_id || undefined}
                   onStreamStart={() => {
                     console.log('Browser stream started');

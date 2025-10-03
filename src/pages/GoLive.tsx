@@ -375,6 +375,7 @@ const GoLive = () => {
         localStorage.setItem('currentStreamId', streamId);
         localStorage.setItem('currentStreamingMode', streamingMode);
         localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
+        localStorage.setItem('currentLivepeerStreamId', currentLivepeerStreamId || ''); // Livepeer stream ID for WebRTC
         
         if (streamingMode === 'browser') {
           toast.success('Browser stream created! You can now start broadcasting with your camera or screen.');
@@ -633,7 +634,7 @@ const GoLive = () => {
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
                     key={browserSource}
-                    streamKey={streamKey}
+                    streamId={livepeerStreamId || ''}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
                     onStreamStart={() => {
