@@ -777,20 +777,15 @@ const Watch = () => {
                     </div>
                   ) : (
                     <>
-                      <Player.Root src={playbackSrc} autoPlay>
-                        <Player.Container
-                          ref={videoRef as any}
-                          className="w-full aspect-video"
-                        >
-                          <Player.Video 
-                            title={streamData.title}
-                            className="w-full h-full"
-                            muted={isMuted}
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
-                          />
-                        </Player.Container>
-                      </Player.Root>
+                      <HlsPlayer
+                        src={streamData.playback_url}
+                        autoPlay
+                        isLiveStream={true}
+                        key={streamData.id}
+                        onStreamReady={() => {
+                          console.log('Stream ready for playback');
+                        }}
+                      />
                       
                       {showControls && (
                         <CustomVideoControls
