@@ -34,16 +34,12 @@ const WebRtcPlayer: React.FC<WebRtcPlayerProps> = ({
 
     const startWebRtcPlayback = async () => {
       try {
-        // Step 1: Get the WebRTC redirect URL
-        const redirectUrl = `https://livepeercdn.studio/webrtc/${playbackId}`;
-        console.log('🎬 WebRTC: Fetching redirect from:', redirectUrl);
-        
-        const redirectResponse = await fetch(redirectUrl, { method: 'HEAD' });
-        const finalUrl = redirectResponse.url || redirectUrl;
-        console.log('🎬 WebRTC: Final URL:', finalUrl);
+        // Step 1: Create the WHEP endpoint URL
+        const whepUrl = `https://livepeercdn.studio/webrtc/${playbackId}`;
+        console.log('🎬 WebRTC: Connecting to WHEP endpoint:', whepUrl);
 
-        // Step 2: Extract host for ICE servers
-        const host = new URL(finalUrl).host;
+        // Step 2: Extract host for ICE servers from the URL
+        const host = new URL(whepUrl).host;
         const iceServers = [
           { urls: `stun:${host}` },
           {
@@ -106,9 +102,9 @@ const WebRtcPlayer: React.FC<WebRtcPlayerProps> = ({
           throw new Error('Failed to gather ICE candidates');
         }
 
-        // Step 9: Send offer to Livepeer and get answer
-        console.log('🎬 WebRTC: Sending offer to:', finalUrl);
-        const sdpResponse = await fetch(finalUrl, {
+        // Step 9: Send offer to Livepeer WHEP endpoint
+        console.log('🎬 WebRTC: Sending offer to:', whepUrl);
+        const sdpResponse = await fetch(whepUrl, {
           method: 'POST',
           mode: 'cors',
           headers: {
