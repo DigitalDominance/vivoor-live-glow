@@ -775,17 +775,23 @@ const Watch = () => {
                         </div>
                       </div>
                     </div>
-                  ) : (
+                  ) : playbackSrc && playbackSrc.length > 0 ? (
                     <>
-                      <HlsPlayer
-                        src={streamData.playback_url}
+                      <Player.Root 
+                        src={playbackSrc} 
                         autoPlay
-                        isLiveStream={true}
-                        key={streamData.id}
-                        onStreamReady={() => {
-                          console.log('Stream ready for playback');
-                        }}
-                      />
+                      >
+                        <Player.Container
+                          ref={videoRef as any}
+                          className="w-full aspect-video"
+                        >
+                          <Player.Video 
+                            title={streamData.title}
+                            className="w-full h-full"
+                            muted={isMuted}
+                          />
+                        </Player.Container>
+                      </Player.Root>
                       
                       {showControls && (
                         <CustomVideoControls
@@ -808,6 +814,17 @@ const Watch = () => {
                         />
                       )}
                     </>
+                  ) : (
+                    <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                          Loading Stream...
+                        </div>
+                        <div className="text-gray-400">
+                          Fetching playback information...
+                        </div>
+                      </div>
+                    </div>
                   )
                 ) : (
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
