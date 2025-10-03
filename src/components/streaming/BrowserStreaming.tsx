@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Video, Monitor } from 'lucide-react';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
+import { useWallet } from '@/context/WalletContext';
 
 interface BrowserStreamingProps {
   streamKey: string;
@@ -30,15 +31,20 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     isStreamPreserved,
   } = useBrowserStreaming();
 
+  const { sessionToken, identity } = useWallet();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
-  // Send heartbeat to mark stream as live
+  // Send heartbeat to mark stream as live using secure function
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
-    const sendHeartbeat = async (status: 'live' | 'idle') => {
-      if (isPreviewMode) return;
+    const sendHeartbeat = async (isLive: boolean) => {
+      if (isPreviewMode || !sessionToken || !identity?.address) {
+        console.log('[BrowserStreaming] Skipping heartbeat:', { isPreviewMode, hasToken: !!sessionToken, hasAddress: !!identity?.address });
+        return;
+      }
 
       const streamId = localStorage.getItem('currentStreamId');
       if (!streamId) {
@@ -47,20 +53,18 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
 
       try {
-        console.log(`[BrowserStreaming] Sending heartbeat - status: ${status}, streamId: ${streamId}`);
-        const { error } = await supabase
-          .from('streams')
-          .update({ 
-            is_live: status === 'live',
-            last_heartbeat: new Date().toISOString(),
-            stream_type: 'browser'
-          })
-          .eq('id', streamId);
+        console.log(`[BrowserStreaming] Sending heartbeat via RPC - isLive: ${isLive}, streamId: ${streamId}`);
+        const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
+          stream_id_param: streamId,
+          is_live_param: isLive
+        });
 
         if (error) {
-          console.error('[BrowserStreaming] Heartbeat error:', error);
+          console.error('[BrowserStreaming] Heartbeat RPC error:', error);
         } else {
-          console.log('[BrowserStreaming] Heartbeat sent successfully');
+          console.log('[BrowserStreaming] Heartbeat sent successfully via RPC');
         }
       } catch (err) {
         console.error('[BrowserStreaming] Heartbeat failed:', err);
@@ -69,8 +73,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
     if (isStreaming) {
       console.log('[BrowserStreaming] Starting heartbeat interval');
-      sendHeartbeat('live');
-      heartbeatInterval = setInterval(() => sendHeartbeat('live'), 5000);
+      sendHeartbeat(true);
+      heartbeatInterval = setInterval(() => sendHeartbeat(true), 5000);
     }
 
     return () => {
@@ -79,7 +83,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         clearInterval(heartbeatInterval);
       }
     };
-  }, [isStreaming, isPreviewMode]);
+  }, [isStreaming, isPreviewMode, sessionToken, identity]);
 
   // Restore preserved stream on mount
   useEffect(() => {
@@ -213,25 +217,23 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       toast.success('Browser stream is now live!');
       onStreamStart?.();
 
-      // Mark stream as live in database
-      if (!isPreviewMode) {
+      // Mark stream as live in database using secure function
+      if (!isPreviewMode && sessionToken && identity?.address) {
         const streamId = localStorage.getItem('currentStreamId');
-        console.log('[BrowserStreaming] Marking stream as live, streamId:', streamId);
+        console.log('[BrowserStreaming] Marking stream as live via RPC, streamId:', streamId);
         
         if (streamId) {
-          const { error } = await supabase
-            .from('streams')
-            .update({ 
-              is_live: true,
-              last_heartbeat: new Date().toISOString(),
-              stream_type: 'browser'
-            })
-            .eq('id', streamId);
+          const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
+            session_token_param: sessionToken,
+            wallet_address_param: identity.address,
+            stream_id_param: streamId,
+            is_live_param: true
+          });
 
           if (error) {
             console.error('[BrowserStreaming] Failed to mark stream as live:', error);
           } else {
-            console.log('[BrowserStreaming] Stream marked as live successfully');
+            console.log('[BrowserStreaming] Stream marked as live successfully via RPC');
           }
         } else {
           console.error('[BrowserStreaming] No streamId found in localStorage');
@@ -282,18 +284,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     toast.info('Browser stream ended');
     onStreamEnd?.();
 
-    // Mark stream as ended
-    if (!isPreviewMode) {
+    // Mark stream as ended using secure function
+    if (!isPreviewMode && sessionToken && identity?.address) {
       const streamId = localStorage.getItem('currentStreamId');
       if (streamId) {
-        console.log('[BrowserStreaming] Marking stream as ended');
-        await supabase
-          .from('streams')
-          .update({ 
-            is_live: false,
-            ended_at: new Date().toISOString()
-          })
-          .eq('id', streamId);
+        console.log('[BrowserStreaming] Marking stream as ended via RPC');
+        await supabase.rpc('update_browser_stream_heartbeat', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
+          stream_id_param: streamId,
+          is_live_param: false
+        });
       }
     }
   };
