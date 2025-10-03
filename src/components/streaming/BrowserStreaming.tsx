@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Video, Monitor } from 'lucide-react';
+import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 
 interface BrowserStreamingProps {
   streamKey: string;
@@ -18,11 +19,19 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   onStreamEnd,
   isPreviewMode = false,
 }) => {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamSource, setStreamSource] = useState<'camera' | 'screen' | null>(null);
+  const {
+    mediaStreamRef,
+    isStreaming,
+    setIsStreaming,
+    isPreviewing,
+    setIsPreviewing,
+    streamingMode,
+    setStreamingMode,
+    isStreamPreserved,
+  } = useBrowserStreaming();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -32,9 +41,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       if (isPreviewMode) return;
 
       const streamId = localStorage.getItem('currentStreamId');
-      if (!streamId) return;
+      if (!streamId) {
+        console.log('[BrowserStreaming] No streamId in localStorage');
+        return;
+      }
 
       try {
+        console.log(`[BrowserStreaming] Sending heartbeat - status: ${status}, streamId: ${streamId}`);
         const { error } = await supabase
           .from('streams')
           .update({ 
@@ -45,28 +58,45 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           .eq('id', streamId);
 
         if (error) {
-          console.error('Heartbeat error:', error);
+          console.error('[BrowserStreaming] Heartbeat error:', error);
+        } else {
+          console.log('[BrowserStreaming] Heartbeat sent successfully');
         }
       } catch (err) {
-        console.error('Heartbeat failed:', err);
+        console.error('[BrowserStreaming] Heartbeat failed:', err);
       }
     };
 
     if (isStreaming) {
+      console.log('[BrowserStreaming] Starting heartbeat interval');
       sendHeartbeat('live');
       heartbeatInterval = setInterval(() => sendHeartbeat('live'), 5000);
     }
 
     return () => {
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (heartbeatInterval) {
+        console.log('[BrowserStreaming] Clearing heartbeat interval');
+        clearInterval(heartbeatInterval);
+      }
     };
   }, [isStreaming, isPreviewMode]);
 
+  // Restore preserved stream on mount
+  useEffect(() => {
+    if (isStreamPreserved && mediaStreamRef.current && videoRef.current) {
+      console.log('[BrowserStreaming] Restoring preserved stream');
+      videoRef.current.srcObject = mediaStreamRef.current;
+      setIsPreviewing(true);
+    }
+  }, [isStreamPreserved]);
+
   const startBroadcast = async (source: 'camera' | 'screen') => {
     try {
-      setStreamSource(source);
+      setStreamingMode(source);
+      console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       
       // Step 1: Get redirect URL
+      console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
       const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
         method: 'HEAD',
         redirect: 'manual'
@@ -75,6 +105,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const redirectUrl = redirectResponse.headers.get('Location') || 
                          `https://livepeer.studio/webrtc/${streamKey}`;
       
+      console.log('[BrowserStreaming] Redirect URL:', redirectUrl);
       const host = new URL(redirectUrl).host;
 
       // Step 2: Set up ICE servers
@@ -88,6 +119,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       ];
 
       // Step 3: Get user media
+      console.log(`[BrowserStreaming] Requesting ${source} media`);
       const mediaStream = source === 'screen' 
         ? await navigator.mediaDevices.getDisplayMedia({
             video: { width: 1920, height: 1080 },
@@ -98,14 +130,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             audio: true,
           });
 
+      console.log('[BrowserStreaming] Media stream obtained:', {
+        video: mediaStream.getVideoTracks().length,
+        audio: mediaStream.getAudioTracks().length
+      });
+
       mediaStreamRef.current = mediaStream;
 
       // Set video preview
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
+      setIsPreviewing(true);
 
       // Step 4: Create peer connection
+      console.log('[BrowserStreaming] Creating peer connection');
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
 
@@ -115,22 +154,28 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       if (videoTrack) {
         peerConnection.addTransceiver(videoTrack, { direction: 'sendonly' });
+        console.log('[BrowserStreaming] Added video track');
       }
       if (audioTrack) {
         peerConnection.addTransceiver(audioTrack, { direction: 'sendonly' });
+        console.log('[BrowserStreaming] Added audio track');
       }
 
       // Step 5: Create offer
+      console.log('[BrowserStreaming] Creating SDP offer');
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
       // Step 6: Wait for ICE gathering
+      console.log('[BrowserStreaming] Waiting for ICE gathering');
       const completeOffer = await new Promise<RTCSessionDescription>((resolve) => {
         setTimeout(() => {
+          console.log('[BrowserStreaming] ICE gathering timeout');
           resolve(peerConnection.localDescription!);
         }, 5000);
         
         peerConnection.onicegatheringstatechange = () => {
+          console.log('[BrowserStreaming] ICE gathering state:', peerConnection.iceGatheringState);
           if (peerConnection.iceGatheringState === 'complete') {
             resolve(peerConnection.localDescription!);
           }
@@ -142,6 +187,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
 
       // Step 7: Send offer to server
+      console.log('[BrowserStreaming] Sending offer to Livepeer');
       const sdpResponse = await fetch(redirectUrl, {
         method: 'POST',
         mode: 'cors',
@@ -152,24 +198,28 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       });
 
       if (!sdpResponse.ok) {
-        throw new Error('Failed to negotiate with server');
+        throw new Error(`Failed to negotiate with server: ${sdpResponse.status}`);
       }
 
       // Step 8: Set remote description
+      console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
       await peerConnection.setRemoteDescription(
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
 
+      console.log('[BrowserStreaming] WebRTC connection established');
       setIsStreaming(true);
       toast.success('Browser stream is now live!');
       onStreamStart?.();
 
-      // Mark stream as live
+      // Mark stream as live in database
       if (!isPreviewMode) {
         const streamId = localStorage.getItem('currentStreamId');
+        console.log('[BrowserStreaming] Marking stream as live, streamId:', streamId);
+        
         if (streamId) {
-          await supabase
+          const { error } = await supabase
             .from('streams')
             .update({ 
               is_live: true,
@@ -177,27 +227,41 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
               stream_type: 'browser'
             })
             .eq('id', streamId);
+
+          if (error) {
+            console.error('[BrowserStreaming] Failed to mark stream as live:', error);
+          } else {
+            console.log('[BrowserStreaming] Stream marked as live successfully');
+          }
+        } else {
+          console.error('[BrowserStreaming] No streamId found in localStorage');
         }
       }
 
       // Handle stream end when tracks end
       mediaStream.getTracks().forEach(track => {
         track.onended = () => {
+          console.log('[BrowserStreaming] Track ended:', track.kind);
           stopBroadcast();
         };
       });
 
     } catch (error) {
-      console.error('Error starting broadcast:', error);
+      console.error('[BrowserStreaming] Error starting broadcast:', error);
       toast.error('Failed to start broadcast');
       stopBroadcast();
     }
   };
 
   const stopBroadcast = async () => {
+    console.log('[BrowserStreaming] Stopping broadcast');
+    
     // Stop all tracks
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('[BrowserStreaming] Stopped track:', track.kind);
+      });
       mediaStreamRef.current = null;
     }
 
@@ -205,6 +269,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
+      console.log('[BrowserStreaming] Closed peer connection');
     }
 
     // Clear video preview
@@ -213,7 +278,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
 
     setIsStreaming(false);
-    setStreamSource(null);
+    setIsPreviewing(false);
     toast.info('Browser stream ended');
     onStreamEnd?.();
 
@@ -221,6 +286,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     if (!isPreviewMode) {
       const streamId = localStorage.getItem('currentStreamId');
       if (streamId) {
+        console.log('[BrowserStreaming] Marking stream as ended');
         await supabase
           .from('streams')
           .update({ 
@@ -265,7 +331,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       ) : (
         <div className="flex flex-col gap-2 items-center">
           <div className="text-sm text-green-500 font-medium">
-            🔴 Live - Broadcasting {streamSource === 'screen' ? 'Screen' : 'Camera'}
+            🔴 Live - Broadcasting {streamingMode === 'screen' ? 'Screen' : 'Camera'}
           </div>
           <Button onClick={stopBroadcast} variant="destructive">
             Stop Broadcast
