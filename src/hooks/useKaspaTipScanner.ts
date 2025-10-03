@@ -63,33 +63,48 @@ export function useKaspaTipScanner(params: {
     async function tick() {
       if (!address) return;
       try {
+        console.log(`Checking transactions for ${address} with minDaa: ${minDaa}`);
         const txs: KaspaTx[] = await fetchAddressFullTxs(address, 50);
+        console.log(`Found ${txs.length} transactions for address`);
         
         for (const tx of txs) {
           const daa = tx.accepting_block_blue_score || 0;
           
           // Check if transaction is too old
           if (daa <= minDaa) {
+            console.log(`Skipping old transaction ${tx.transaction_id} (daa: ${daa} <= ${minDaa})`);
             continue;
           }
 
           // Must be incoming (has output to our address)
           const amt = sumOutputsToAddress(tx, address);
           if (!amt) {
+            console.log(`No output to our address in tx ${tx.transaction_id}`);
             continue;
           }
+
+          console.log(`Processing transaction ${tx.transaction_id} with amount ${amt} and payload:`, tx.payload?.substring(0, 100));
 
           // Look for our prefix in the transaction payload (this is where tips are stored)
           const tipPayload = extractTipPayloadFromHex(tx.payload);
           if (!tipPayload) {
+            console.log(`No tip payload found in tx ${tx.transaction_id}`);
             continue;
           }
 
           if (seen.current.has(tx.transaction_id)) {
+            console.log(`Already processed tx ${tx.transaction_id}`);
             continue;
           }
           
           seen.current.add(tx.transaction_id);
+
+          console.log('🎉 Found NEW tip transaction:', {
+            txid: tx.transaction_id,
+            daa,
+            amount: amt,
+            payload: tipPayload.substring(0, 100) + '...'
+          });
 
           onTip?.({ txid: tx.transaction_id, daa, amountSompi: amt, message: tipPayload });
         }

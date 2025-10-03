@@ -523,9 +523,9 @@ const GoLive = () => {
                     setLivepeerPlaybackId(null);
                     setPreviewReady(false);
                     
-                    // Set browser mode with camera as default source (no modal)
+                    // Show source selection modal for browser streaming
                     setStreamingMode('browser');
-                    setBrowserSource('camera');
+                    setShowSourceModal(true);
                   }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
                     streamingMode === 'browser' 
@@ -634,7 +634,6 @@ const GoLive = () => {
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}
-                    streamId={livepeerStreamId || undefined}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
                     onStreamStart={() => {

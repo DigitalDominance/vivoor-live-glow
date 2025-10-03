@@ -98,11 +98,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 5,
         liveDurationInfinity: true,
-        highBufferWatchdogPeriod: 2,
-        // Add initial buffer configuration
-        maxBufferSize: 60 * 1000 * 1000, // 60 MB
-        maxBufferHole: 0.5,
-        startLevel: -1, // Auto quality selection
+        highBufferWatchdogPeriod: 2
       });
       
       // Store hls reference for quality control
@@ -110,20 +106,6 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
-        
-        // Handle manifest parsing errors for live streams (stream may not have started yet)
-        if (data.details === 'manifestParsingError' || data.details === 'manifestLoadError') {
-          console.log('🎬 Manifest error - stream may not have started yet');
-          if (isLiveStream && retryCount < 20) {
-            setError('Waiting for stream to start...');
-            setRetryCount(prev => prev + 1);
-            retryTimeoutRef.current = setTimeout(() => {
-              console.log('🎬 Retrying manifest load...');
-              hls?.loadSource(src);
-            }, 3000);
-            return;
-          }
-        }
         
         // Handle buffer stalled errors specifically
         if (data.details === 'bufferStalledError') {
@@ -137,7 +119,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              if (isLiveStream && retryCount < 10) {
+              if (isLiveStream && retryCount < 5) {
                 setError('Connection Lost, Retrying...');
                 setRetryCount(prev => prev + 1);
                 retryTimeoutRef.current = setTimeout(() => {

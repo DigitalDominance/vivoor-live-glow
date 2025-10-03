@@ -41,9 +41,6 @@ const Stream = () => {
     enabled: !!identity?.id
   });
 
-  // Get the actual Kaspa wallet address from identity for tip monitoring
-  const currentUserKaspaAddress = identity?.address;
-
   // Fetch stream data from Supabase
   const { data: streamData } = useQuery({
     queryKey: ['stream', streamId],
@@ -122,7 +119,7 @@ const Stream = () => {
   // Monitor tips for this stream (only if it's own stream)
   const { tips: allTips, totalAmountReceived } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: currentUserKaspaAddress,
+    kaspaAddress: identity?.id,
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
@@ -189,7 +186,7 @@ const Stream = () => {
 
   // Auto-end stream after 1 minute of disconnection and heartbeat monitoring
   React.useEffect(() => {
-    if (!streamData?.id || !isOwnStream || streamingMode === 'browser') return; // Skip for browser streaming (has own heartbeat)
+    if (!streamData?.id || !isOwnStream) return;
 
     let heartbeatInterval: number;
     let disconnectTimer: number;
@@ -241,7 +238,7 @@ const Stream = () => {
       clearInterval(heartbeatInterval);
       clearInterval(disconnectTimer);
     };
-  }, [streamData?.id, isOwnStream, navigate, streamingMode]);
+  }, [streamData?.id, isOwnStream, navigate]);
 
   React.useEffect(() => {
     const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
@@ -333,8 +330,7 @@ const Stream = () => {
               <div className="space-y-4">
                 <BrowserStreaming
                   streamKey={localStreamData.streamKey || ''}
-                  streamId={streamData?.livepeer_stream_id || ''}
-                  playbackId={streamData?.livepeer_playback_id || undefined}
+                  playbackId={streamData.livepeer_playback_id || undefined}
                   onStreamStart={() => {
                     console.log('Browser stream started');
                   }}

@@ -105,6 +105,12 @@ export function useTipMonitoring({
       });
     } else {
       setIsMonitoring(false);
+      console.log('Not monitoring tips:', {
+        hasAddress: !!kaspaAddress,
+        hasBlockTime: typeof streamStartBlockTime === 'number',
+        streamStartBlockTime,
+        streamId
+      });
     }
 
     return () => {
@@ -146,6 +152,7 @@ export function useTipMonitoring({
 
           setTips(processedTips);
           processedTips.forEach(tip => processedTxids.current.add(tip.txid));
+          console.log('Loaded existing tips:', processedTips.length);
         }
       } catch (error) {
         console.error('Failed to load existing tips:', error);
