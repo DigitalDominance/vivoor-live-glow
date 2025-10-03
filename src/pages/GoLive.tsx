@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
+import { BrowserSourceModal } from "@/components/modals/BrowserSourceModal";
 import { useWallet } from "@/context/WalletContext";
 import { useBrowserStreaming } from "@/context/BrowserStreamingContext";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ const GoLive = () => {
   // Streaming mode: 'rtmp' or 'browser'
   const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
   const [browserSource, setBrowserSource] = React.useState<'camera' | 'screen'>('camera');
+  const [showSourceModal, setShowSourceModal] = React.useState(false);
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -149,10 +151,30 @@ const GoLive = () => {
     };
   }, [playbackUrl]);
 
-  const generateStreamDetails = async () => {
+  // Clear previous stream data when starting fresh
+  const clearStreamData = () => {
+    setIngestUrl(null);
+    setStreamKey(null);
+    setPlaybackUrl(null);
+    setLivepeerStreamId(null);
+    setLivepeerPlaybackId(null);
+    setPreviewReady(false);
+    setPlayerKey(prev => prev + 1);
+    setDebugInfo('');
+  };
+
+  const generateStreamDetails = async (selectedSource?: 'camera' | 'screen') => {
     if (!kaspaAddress) {
       toast.error('Please connect wallet first');
       return;
+    }
+    
+    // Clear previous stream data first
+    clearStreamData();
+    
+    // If browser streaming and source provided, set it
+    if (streamingMode === 'browser' && selectedSource) {
+      setBrowserSource(selectedSource);
     }
     
     console.log('Generating stream details...');
@@ -183,7 +205,7 @@ const GoLive = () => {
       });
       
       setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
-      toast.success('RTMP details ready');
+      toast.success(streamingMode === 'browser' ? 'Browser stream ready' : 'RTMP details ready');
       return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
       console.error('Stream generation error:', e);
@@ -191,6 +213,11 @@ const GoLive = () => {
       toast.error(e?.message || 'Failed to create stream');
       throw e;
     }
+  };
+
+  const handleBrowserSourceSelect = async (source: 'camera' | 'screen') => {
+    setBrowserSource(source);
+    await generateStreamDetails(source);
   };
 
   const sendTreasuryFee = async (): Promise<string | null> => {
@@ -484,9 +511,12 @@ const GoLive = () => {
                     </div>
                   )}
                 </button>
-                
                 <button
-                  onClick={() => setStreamingMode('browser')}
+                  onClick={() => {
+                    setStreamingMode('browser');
+                    // Clear any existing stream data when switching modes
+                    clearStreamData();
+                  }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
                     streamingMode === 'browser' 
                       ? 'border-cyan-400 bg-cyan-500/20' 
@@ -507,48 +537,6 @@ const GoLive = () => {
                   )}
                 </button>
               </div>
-              
-              {/* Browser Source Selection - Only show when browser streaming is selected */}
-              {streamingMode === 'browser' && (
-                <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <label className="block text-sm font-medium text-white mb-3">Choose Video Source</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setBrowserSource('camera')}
-                      className={`p-4 rounded-lg border-2 transition-all duration-300 ${
-                        browserSource === 'camera'
-                          ? 'border-cyan-400 bg-cyan-500/20'
-                          : 'border-white/20 bg-white/5 hover:border-cyan-400/50'
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <svg className="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M23 7l-7 5 7 5V7z"></path>
-                          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                        </svg>
-                        <span className="text-sm font-medium text-white">Camera</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setBrowserSource('screen')}
-                      className={`p-4 rounded-lg border-2 transition-all duration-300 ${
-                        browserSource === 'screen'
-                          ? 'border-purple-400 bg-purple-500/20'
-                          : 'border-white/20 bg-white/5 hover:border-purple-400/50'
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <svg className="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                          <line x1="8" y1="21" x2="16" y2="21"></line>
-                          <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
-                        <span className="text-sm font-medium text-white">Screen Share</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
         
             {/* Stream Details Form */}
@@ -654,11 +642,24 @@ const GoLive = () => {
               {!streamKey && (
                 <Button 
                   variant="outline" 
-                  onClick={generateStreamDetails} 
+                  onClick={() => {
+                    if (!title || !kaspaAddress) {
+                      toast.error(!kaspaAddress ? 'Connect wallet first' : 'Enter stream title first');
+                      return;
+                    }
+                    
+                    if (streamingMode === 'browser') {
+                      // Show source selection modal for browser streaming
+                      setShowSourceModal(true);
+                    } else {
+                      // Generate RTMP stream directly
+                      generateStreamDetails();
+                    }
+                  }}
                   disabled={!title || !kaspaAddress}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
+                  {!kaspaAddress ? 'Connect Wallet First' : !title ? 'Enter Title First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
                 </Button>
               )}
               
@@ -675,6 +676,13 @@ const GoLive = () => {
                 </Button>
               )}
             </div>
+
+            {/* Browser Source Modal */}
+            <BrowserSourceModal
+              open={showSourceModal}
+              onOpenChange={setShowSourceModal}
+              onSourceSelect={handleBrowserSourceSelect}
+            />
 
             
             {/* RTMP Details Section */}
