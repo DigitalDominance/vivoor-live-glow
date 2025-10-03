@@ -41,16 +41,8 @@ const Stream = () => {
     enabled: !!identity?.id
   });
 
-  // Get current user's Kaspa address for tip monitoring
-  const { data: currentUserKaspaAddress } = useQuery({
-    queryKey: ['current-user-kaspa-address', identity?.id],
-    queryFn: async () => {
-      if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_kaspa_address', { _id: identity.id });
-      return data;
-    },
-    enabled: !!identity?.id
-  });
+  // Get the actual Kaspa wallet address from identity for tip monitoring
+  const currentUserKaspaAddress = identity?.address;
 
   // Fetch stream data from Supabase
   const { data: streamData } = useQuery({
