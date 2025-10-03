@@ -27,7 +27,7 @@ const GoLive = () => {
   
   // Streaming mode: 'rtmp' or 'browser'
   const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
-  const [browserSource, setBrowserSource] = React.useState<'camera' | 'screen'>('camera');
+  const [browserSource] = React.useState<'camera' | 'screen'>('camera');
   
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
@@ -604,48 +604,6 @@ const GoLive = () => {
                 </p>
               </div>
             </div>
-
-            {/* Browser Streaming Source Selection */}
-            {streamingMode === 'browser' && !streamKey && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-white mb-4">Choose Your Source</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setBrowserSource('camera')}
-                    className={`p-6 rounded-xl border-2 transition-all duration-300 ${
-                      browserSource === 'camera'
-                        ? 'border-cyan-400 bg-cyan-500/20'
-                        : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <Camera className="size-6 text-cyan-400" />
-                      <span className="font-semibold text-white">Camera & Mic</span>
-                    </div>
-                    <p className="text-sm text-gray-300 text-left">
-                      Stream using your webcam and microphone
-                    </p>
-                  </button>
-                  
-                  <button
-                    onClick={() => setBrowserSource('screen')}
-                    className={`p-6 rounded-xl border-2 transition-all duration-300 ${
-                      browserSource === 'screen'
-                        ? 'border-purple-400 bg-purple-500/20'
-                        : 'border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-purple-500/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <Monitor className="size-6 text-purple-400" />
-                      <span className="font-semibold text-white">Screen Share</span>
-                    </div>
-                    <p className="text-sm text-gray-300 text-left">
-                      Share your screen with audio
-                    </p>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Browser Streaming Setup Section - Show preview with actual stream key after creation */}
             {streamingMode === 'browser' && streamKey && (
