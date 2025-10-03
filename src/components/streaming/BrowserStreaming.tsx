@@ -1,13 +1,12 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Camera, Mic, MicOff, Video, VideoOff, Play, Square, Monitor, RefreshCw, AlertCircle, Volume2, VolumeX } from 'lucide-react';
+import React, { useEffect } from 'react';
+import * as Broadcast from "@livepeer/react/broadcast";
+import { getIngest } from "@livepeer/react/external";
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 
 interface BrowserStreamingProps {
   streamKey: string;
-  ingestUrl: string;
+  playbackId?: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   isPreviewMode?: boolean;
@@ -15,981 +14,235 @@ interface BrowserStreamingProps {
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
-  ingestUrl,
+  playbackId,
   onStreamStart,
   onStreamEnd,
   isPreviewMode = false
 }) => {
-  // Use browser streaming context
-  const {
-    mediaStreamRef,
-    isStreaming,
-    isPreviewing,
-    streamingMode,
-    videoEnabled,
-    audioEnabled,
-    audioLevel,
-    hasVideo,
-    hasAudio,
-    isPreviewMuted,
-    setIsStreaming,
-    setIsPreviewing,
-    setStreamingMode,
-    setVideoEnabled,
-    setAudioEnabled,
-    setAudioLevel,
-    setHasVideo,
-    setHasAudio,
-    setIsPreviewMuted,
-    isStreamPreserved,
-  } = useBrowserStreaming();
+  const ingestUrl = getIngest(streamKey);
 
-  // Refs
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Local state
-  const [isInitializing, setIsInitializing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
-
-  // Check if we should restore preserved stream state on mount
+  // Send heartbeat to mark stream as live
   useEffect(() => {
-    if (isStreamPreserved && mediaStreamRef.current && videoRef.current) {
-      console.log('[BrowserStreaming] Restoring preserved stream');
-      setupVideoElement(videoRef.current, mediaStreamRef.current, streamingMode);
-      if (mediaStreamRef.current.getAudioTracks().length > 0) {
-        setupAudioMonitoring(mediaStreamRef.current);
-      }
-      
-      // If we were streaming before navigation, continue streaming
-      const wasStreaming = localStorage.getItem('browserStreamingActive') === 'true';
-      if (wasStreaming) {
-        setIsStreaming(true);
-        startHeartbeat();
-        debug('Resumed streaming after navigation');
-      }
-    }
-  }, [isStreamPreserved, streamingMode]);
+    let heartbeatInterval: NodeJS.Timeout | null = null;
 
-  // Save streaming state to localStorage
-  useEffect(() => {
-    localStorage.setItem('browserStreamingActive', isStreaming.toString());
-  }, [isStreaming]);
+    const sendHeartbeat = async (status: 'live' | 'idle') => {
+      if (isPreviewMode) return;
 
-  // Setup video element helper function
-  const setupVideoElement = (video: HTMLVideoElement, stream: MediaStream, mode: string) => {
-    console.log(`${mode.toUpperCase()} VIDEO SETUP - Starting setup`, {video, stream});
-    
-    // Add event listeners for debugging
-    video.addEventListener('loadstart', () => console.log(`${mode.toUpperCase()} EVENT - loadstart`));
-    video.addEventListener('loadedmetadata', () => console.log(`${mode.toUpperCase()} EVENT - loadedmetadata`, {width: video.videoWidth, height: video.videoHeight}));
-    video.addEventListener('canplay', () => console.log(`${mode.toUpperCase()} EVENT - canplay`));
-    video.addEventListener('playing', () => console.log(`${mode.toUpperCase()} EVENT - playing`));
-    video.addEventListener('error', (e) => console.error(`${mode.toUpperCase()} EVENT - error`, e));
-    
-    // Clear existing source
-    video.srcObject = null;
-    video.load();
-    
-    // Set properties
-    video.muted = isPreviewMuted;
-    video.playsInline = true;
-    video.autoplay = true;
-    
-    // Set the stream
-    video.srcObject = stream;
-    console.log(`${mode.toUpperCase()} VIDEO SETUP - srcObject assigned`);
-    
-    // Force play
-    video.play()
-      .then(() => {
-        console.log(`${mode.toUpperCase()} VIDEO SETUP - Play successful`);
-        debug(`${mode} video playing successfully`);
-      })
-      .catch(error => {
-        console.error(`${mode.toUpperCase()} VIDEO SETUP - Play failed:`, error);
-        debug(`${mode} video play error: ${error}`);
-      });
-  };
-
-  // Debug logging
-  const debug = (message: string) => {
-    console.log(`[BrowserStreaming] ${message}`);
-    setDebugInfo(message);
-  };
-
-  // Initialize camera stream
-  const initializeCamera = useCallback(async () => {
-    try {
-      setIsInitializing(true);
-      setError(null);
-      debug('Requesting camera permissions...');
-
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('getUserMedia is not supported in this browser');
-      }
-
-      // Stop any existing stream first
-      if (mediaStreamRef.current) {
-        debug('Stopping existing stream');
-        mediaStreamRef.current.getTracks().forEach(track => {
-          track.stop();
-          debug(`Stopped track: ${track.kind} - ${track.label}`);
-        });
-        mediaStreamRef.current = null;
-      }
-
-      debug('Requesting camera and microphone access...');
-      const constraints = {
-        video: {
-          width: { ideal: 1280, min: 640, max: 1920 },
-          height: { ideal: 720, min: 480, max: 1080 },
-          frameRate: { ideal: 30, min: 15, max: 60 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: { ideal: 44100 }
-        }
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      debug(`Got media stream with ${stream.getTracks().length} tracks`);
-
-      // Log track details
-      stream.getTracks().forEach(track => {
-        debug(`Track: ${track.kind} - ${track.label} - enabled: ${track.enabled} - ready: ${track.readyState}`);
-      });
-
-      mediaStreamRef.current = stream;
-      setStreamingMode('camera');
-      
-      // Check what we actually got
-      const videoTracks = stream.getVideoTracks();
-      const audioTracks = stream.getAudioTracks();
-      
-      setHasVideo(videoTracks.length > 0);
-      setHasAudio(audioTracks.length > 0);
-      
-      debug(`Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
-
-      // Video setup will be handled after state update to ensure video element exists
-      debug('Camera stream setup complete, will setup video element after render');
-
-      setupAudioMonitoring(stream);
-      setIsPreviewing(true);
-      
-      // Ensure video element is ready after state update
-      setTimeout(() => {
-        if (videoRef.current && stream) {
-          setupVideoElement(videoRef.current, stream, 'camera');
-        }
-      }, 100);
-      
-      toast.success('Camera ready!');
-      debug('Camera initialization complete');
-
-    } catch (err: any) {
-      console.error('Camera initialization failed:', err);
-      const errorMessage = err.name === 'NotAllowedError' 
-        ? 'Camera permission denied. Please allow camera access and try again.'
-        : err.name === 'NotFoundError'
-        ? 'No camera found. Please connect a camera and try again.'
-        : err.name === 'NotReadableError'
-        ? 'Camera is already in use by another application.'
-        : `Camera error: ${err.message}`;
-      
-      setError(errorMessage);
-      toast.error(errorMessage);
-      debug(`Camera error: ${err.name} - ${err.message}`);
-    } finally {
-      setIsInitializing(false);
-    }
-  }, []);
-
-  // Initialize screen sharing
-  const initializeScreen = useCallback(async () => {
-    try {
-      setIsInitializing(true);
-      setError(null);
-      debug('Requesting screen share permissions...');
-
-      // Check if getDisplayMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        throw new Error('Screen sharing is not supported in this browser');
-      }
-
-      // Stop any existing stream first
-      if (mediaStreamRef.current) {
-        debug('Stopping existing stream');
-        mediaStreamRef.current.getTracks().forEach(track => {
-          track.stop();
-          debug(`Stopped track: ${track.kind} - ${track.label}`);
-        });
-        mediaStreamRef.current = null;
-      }
-
-      debug('Requesting display media access...');
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 },
-          frameRate: { ideal: 30, max: 60 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-
-      debug(`Got display stream with ${displayStream.getTracks().length} tracks`);
-
-      let micStream: MediaStream | null = null;
-      
-      // Try to get microphone for commentary
-      try {
-        debug('Requesting microphone for commentary...');
-        micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: { ideal: 44100 }
-          }
-        });
-        debug(`Got microphone stream with ${micStream.getTracks().length} tracks`);
-      } catch (micError: any) {
-        debug(`Microphone access failed: ${micError.message}`);
-        console.warn('Could not access microphone:', micError);
-      }
-
-      // Combine streams
-      const combinedStream = new MediaStream();
-      
-      // Add video track from screen
-      displayStream.getVideoTracks().forEach(track => {
-        combinedStream.addTrack(track);
-        debug(`Added display video track: ${track.label}`);
-      });
-
-      // Add system audio if available
-      displayStream.getAudioTracks().forEach(track => {
-        combinedStream.addTrack(track);
-        debug(`Added system audio track: ${track.label}`);
-      });
-
-      // Add microphone audio if available
-      if (micStream) {
-        micStream.getAudioTracks().forEach(track => {
-          combinedStream.addTrack(track);
-          debug(`Added microphone track: ${track.label}`);
-        });
-      }
-
-      debug(`Combined stream has ${combinedStream.getTracks().length} total tracks`);
-
-      mediaStreamRef.current = combinedStream;
-      setStreamingMode('screen');
-
-      // Check what we have
-      const videoTracks = combinedStream.getVideoTracks();
-      const audioTracks = combinedStream.getAudioTracks();
-      
-      setHasVideo(videoTracks.length > 0);
-      setHasAudio(audioTracks.length > 0);
-
-      debug(`Final - Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
-
-      // Video setup will be handled after state update to ensure video element exists
-      debug('Screen share stream setup complete, will setup video element after render');
-
-      // Handle screen share ending
-      const videoTrack = displayStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.addEventListener('ended', () => {
-          debug('Screen share ended by user');
-          stopPreview();
-          toast.info('Screen sharing ended');
-        });
-      }
-
-      setupAudioMonitoring(combinedStream);
-      setIsPreviewing(true);
-      
-      // Ensure video element is ready after state update
-      setTimeout(() => {
-        if (videoRef.current && combinedStream) {
-          setupVideoElement(videoRef.current, combinedStream, 'screen');
-        }
-      }, 100);
-      
-      toast.success('Screen sharing ready!');
-      debug('Screen share initialization complete');
-
-    } catch (err: any) {
-      console.error('Screen sharing failed:', err);
-      const errorMessage = err.name === 'NotAllowedError' 
-        ? 'Screen sharing permission denied. Please allow screen sharing and try again.'
-        : err.name === 'NotSupportedError'
-        ? 'Screen sharing is not supported in this browser.'
-        : `Screen sharing error: ${err.message}`;
-      
-      setError(errorMessage);
-      toast.error(errorMessage);
-      debug(`Screen share error: ${err.name} - ${err.message}`);
-    } finally {
-      setIsInitializing(false);
-    }
-  }, []);
-
-  // Setup audio level monitoring
-  const setupAudioMonitoring = useCallback(async (stream: MediaStream) => {
-    const audioTracks = stream.getAudioTracks();
-    if (audioTracks.length === 0) {
-      debug('No audio tracks for monitoring');
-      return;
-    }
-
-    debug(`Setting up audio monitoring with ${audioTracks.length} audio tracks`);
-    
-    // Log track details
-    audioTracks.forEach((track, index) => {
-      debug(`Audio track ${index}: ${track.label} - enabled: ${track.enabled} - ready: ${track.readyState}`);
-    });
-
-    try {
-      // Clean up existing audio context first
-      if (audioContextRef.current) {
-        await audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
-
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      const audioContext = new AudioContext();
-      
-      // Resume audio context if it's suspended
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-        debug('Audio context resumed');
-      }
-      
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyser = audioContext.createAnalyser();
-      
-      analyser.fftSize = 512; // Increased for better sensitivity
-      analyser.smoothingTimeConstant = 0.3; // More responsive
-      analyser.minDecibels = -90;
-      analyser.maxDecibels = -10;
-      
-      source.connect(analyser);
-      
-      audioContextRef.current = audioContext;
-      analyserRef.current = analyser;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      let isMonitoring = true;
-      
-      const updateAudioLevel = () => {
-        if (!analyserRef.current || !isMonitoring || (!isPreviewing && !isStreaming)) {
-          return;
-        }
-        
-        analyserRef.current.getByteFrequencyData(dataArray);
-        
-        // Calculate RMS for better audio level detection
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i] * dataArray[i];
-        }
-        const rms = Math.sqrt(sum / dataArray.length);
-        const level = Math.min(rms / 128, 1);
-        
-        setAudioLevel(level);
-        
-        // Debug high audio levels
-        if (level > 0.1) {
-          debug(`Audio level detected: ${(level * 100).toFixed(1)}%`);
-        }
-        
-        animationRef.current = requestAnimationFrame(updateAudioLevel);
-      };
-      
-      // Start monitoring
-      updateAudioLevel();
-      debug('Audio monitoring setup complete - starting level detection');
-      
-    } catch (err) {
-      debug(`Audio monitoring setup failed: ${err}`);
-      console.error('Audio monitoring setup failed:', err);
-    }
-  }, [isPreviewing, isStreaming]);
-
-  // Stop preview
-  const stopPreview = useCallback(() => {
-    debug('Stopping preview...');
-    
-    // Stop media stream
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => {
-        track.stop();
-        debug(`Stopped track: ${track.kind}`);
-      });
-      mediaStreamRef.current = null;
-    }
-
-    // Clear video source
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    // Stop audio monitoring
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(console.warn);
-      audioContextRef.current = null;
-    }
-
-    setIsPreviewing(false);
-    setHasVideo(false);
-    setHasAudio(false);
-    setAudioLevel(0);
-    setError(null);
-    setDebugInfo('');
-    debug('Preview stopped');
-  }, []);
-
-  // Toggle video
-  const toggleVideo = useCallback(() => {
-    if (!mediaStreamRef.current) return;
-    
-    const videoTracks = mediaStreamRef.current.getVideoTracks();
-    videoTracks.forEach(track => {
-      track.enabled = !videoEnabled;
-    });
-    setVideoEnabled(!videoEnabled);
-    debug(`Video ${!videoEnabled ? 'enabled' : 'disabled'}`);
-  }, [videoEnabled]);
-
-  // Toggle audio
-  const toggleAudio = useCallback(() => {
-    if (!mediaStreamRef.current) return;
-    
-    const audioTracks = mediaStreamRef.current.getAudioTracks();
-    audioTracks.forEach(track => {
-      track.enabled = !audioEnabled;
-    });
-    setAudioEnabled(!audioEnabled);
-    debug(`Audio ${!audioEnabled ? 'enabled' : 'disabled'}`);
-  }, [audioEnabled]);
-
-  // Toggle preview mute
-  const togglePreviewMute = useCallback(() => {
-    if (videoRef.current) {
-      const newMutedState = !isPreviewMuted;
-      videoRef.current.muted = newMutedState;
-      setIsPreviewMuted(newMutedState);
-      debug(`Preview ${newMutedState ? 'muted' : 'unmuted'}`);
-      toast.info(newMutedState ? 'Preview muted' : 'Preview unmuted');
-    }
-  }, [isPreviewMuted]);
-
-  // Start streaming with WebRTC WHIP
-  const startStream = useCallback(async () => {
-    if (!mediaStreamRef.current) {
-      toast.error('No media stream available. Please start preview first.');
-      return;
-    }
-
-    debug('Starting WebRTC stream...');
-
-    if (isPreviewMode && streamKey === 'preview') {
-      // Preview mode - just simulate streaming
-      setIsStreaming(true);
-      toast.success('Preview streaming started!');
-      onStreamStart?.();
-      debug('Preview stream started');
-      return;
-    }
-
-    try {
-      // First, mark the stream as live in the database immediately
       const streamId = localStorage.getItem('currentStreamId');
-      if (streamId) {
-        debug('Marking stream as live in database...');
+      if (!streamId) return;
+
+      try {
         const { error } = await supabase
           .from('streams')
           .update({ 
-            is_live: true, 
-            last_heartbeat: new Date().toISOString()
+            is_live: status === 'live',
+            last_heartbeat: new Date().toISOString(),
+            stream_type: 'browser'
           })
           .eq('id', streamId);
-          
+
         if (error) {
-          console.error('Failed to mark stream as live:', error);
-          toast.error('Failed to start stream');
-          return;
+          console.error('Heartbeat error:', error);
         }
-        debug('Stream marked as live in database');
+      } catch (err) {
+        console.error('Heartbeat failed:', err);
       }
+    };
 
-      debug(`Starting WebRTC stream to: ${ingestUrl}`);
+    // Start heartbeat interval when needed
+    const startHeartbeat = () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      heartbeatInterval = setInterval(() => sendHeartbeat('live'), 5000);
+    };
 
-      // Get the WebRTC redirect URL first
-      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
-        method: 'HEAD'
-      });
-      
-      const redirectUrl = redirectResponse.headers.get('location') || `https://livepeer.studio/webrtc/${streamKey}`;
-      const host = new URL(redirectUrl).host;
-      
-      debug(`WebRTC redirect URL: ${redirectUrl}`);
+    return () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+    };
+  }, [isPreviewMode]);
 
-      // Set up ICE servers
-      const iceServers: RTCIceServer[] = [
-        { urls: `stun:${host}` },
-        {
-          urls: `turn:${host}`,
-          username: "livepeer",
-          credential: "livepeer",
-        }
-      ];
+  const handleStreamStart = () => {
+    console.log('[BrowserStreaming] Stream started');
+    toast.success('Browser stream is now live!');
+    onStreamStart?.();
 
-      // Create peer connection
-      const peerConnection = new RTCPeerConnection({ iceServers });
-      peerConnectionRef.current = peerConnection;
-
-      // Add media tracks to peer connection
-      mediaStreamRef.current.getTracks().forEach(track => {
-        peerConnection.addTrack(track, mediaStreamRef.current!);
-      });
-
-      // Handle ICE connection state changes
-      peerConnection.oniceconnectionstatechange = () => {
-        debug(`ICE connection state: ${peerConnection.iceConnectionState}`);
-        
-        if (peerConnection.iceConnectionState === 'connected' || 
-            peerConnection.iceConnectionState === 'completed') {
-          setIsStreaming(true);
-          startHeartbeat();
-          toast.success('Live stream connected!');
-          onStreamStart?.();
-          localStorage.setItem('browserStreamingActive', 'true');
-        } else if (peerConnection.iceConnectionState === 'failed' || 
-                   peerConnection.iceConnectionState === 'disconnected') {
-          setIsStreaming(false);
-          stopHeartbeat();
-          toast.error('Stream connection lost');
-        }
-      };
-
-      // Create and set local description
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-
-      // Wait for ICE gathering to complete
-      await new Promise<void>((resolve) => {
-        if (peerConnection.iceGatheringState === 'complete') {
-          resolve();
-        } else {
-          peerConnection.addEventListener('icegatheringstatechange', () => {
-            if (peerConnection.iceGatheringState === 'complete') {
-              resolve();
-            }
-          });
-        }
-      });
-
-      // Send offer to Livepeer via WHIP
-      const response = await fetch(redirectUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/sdp',
-        },
-        body: peerConnection.localDescription!.sdp,
-      });
-
-      if (!response.ok) {
-        throw new Error(`WHIP request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const answerSdp = await response.text();
-      
-      // Set remote description
-      await peerConnection.setRemoteDescription({
-        type: 'answer',
-        sdp: answerSdp,
-      });
-
-      debug('WebRTC stream initiated successfully');
-
-    } catch (err) {
-      console.error('Failed to start WebRTC streaming:', err);
-      toast.error('Failed to start streaming');
-      debug(`WebRTC stream start failed: ${err}`);
-      setIsStreaming(false);
-    }
-  }, [isPreviewMode, streamKey, ingestUrl, onStreamStart, onStreamEnd, isStreaming]);
-
-  // Stop streaming
-  const stopStream = useCallback(async () => {
-    debug('Stopping WebRTC stream...');
-    
-    // Close peer connection
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    
-    setIsStreaming(false);
-    stopHeartbeat();
-    
-    // Mark stream as not live in database
+    // Mark stream as live
     if (!isPreviewMode) {
       const streamId = localStorage.getItem('currentStreamId');
       if (streamId) {
-        try {
-          await supabase
-            .from('streams')
-            .update({ 
-              is_live: false,
-              ended_at: new Date().toISOString()
-            })
-            .eq('id', streamId);
-          debug('Stream marked as ended in database');
-        } catch (error) {
-          console.error('Failed to update stream status:', error);
-        }
+        supabase
+          .from('streams')
+          .update({ 
+            is_live: true,
+            last_heartbeat: new Date().toISOString(),
+            stream_type: 'browser'
+          })
+          .eq('id', streamId)
+          .then(({ error }) => {
+            if (error) console.error('Failed to mark stream as live:', error);
+          });
       }
     }
-    
-    if (isPreviewMode) {
-      toast.info('Preview stopped');
-      onStreamEnd?.();
-    } else {
-      toast.info('Stream stopped');
-      onStreamEnd?.();
-    }
-    
-    // Clear streaming state
-    localStorage.setItem('browserStreamingActive', 'false');
-  }, [isStreaming, isPreviewMode, onStreamEnd]);
+  };
 
-  // Heartbeat for live streams - more frequent to prevent being marked as offline
-  const startHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-    }
+  const handleStreamEnd = () => {
+    console.log('[BrowserStreaming] Stream ended');
+    toast.info('Browser stream ended');
+    onStreamEnd?.();
 
+    // Mark stream as ended
     if (!isPreviewMode) {
-      heartbeatIntervalRef.current = setInterval(async () => {
-        try {
-          const streamId = localStorage.getItem('currentStreamId');
-          if (streamId && isStreaming && peerConnectionRef.current?.iceConnectionState === 'connected') {
-            debug('Sending browser stream heartbeat');
-            
-            // Update stream as live in database
-            const { error } = await supabase
-              .from('streams')
-              .update({ 
-                is_live: true, 
-                last_heartbeat: new Date().toISOString(),
-                stream_type: 'browser' // Mark as browser stream
-              })
-              .eq('id', streamId);
-              
-            if (error) {
-              console.error('Heartbeat update failed:', error);
-            } else {
-              debug('Browser stream heartbeat sent successfully');
-            }
-          }
-        } catch (err) {
-          debug(`Heartbeat failed: ${err}`);
-        }
-      }, 5000); // Every 5 seconds for browser streams to prevent being marked offline
-    }
-  }, [isPreviewMode, isStreaming]);
-
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-  }, []);
-
-  // Page visibility and refresh handling
-  useEffect(() => {
-    // Handle page refresh - restore streaming state
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isStreaming) {
-        // Save state before refresh
-        localStorage.setItem('browserStreamingActive', 'true');
-        localStorage.setItem('streamingMode', streamingMode);
-        e.preventDefault();
-        e.returnValue = '';
+      const streamId = localStorage.getItem('currentStreamId');
+      if (streamId) {
+        supabase
+          .from('streams')
+          .update({ 
+            is_live: false,
+            ended_at: new Date().toISOString()
+          })
+          .eq('id', streamId)
+          .then(({ error }) => {
+            if (error) console.error('Failed to mark stream as ended:', error);
+          });
       }
-    };
-
-    const handleVisibilityChange = () => {
-      if (!isStreaming || isPreviewMode) return;
-
-      if (document.hidden) {
-        // Page hidden - continue streaming but show warning
-        toast.info('Stream continues in background. Return to this tab to manage your stream.');
-      } else {
-        // Page visible again
-        if (isStreaming) {
-          toast.success('Welcome back! Your stream is still live.');
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isStreaming, isPreviewMode, streamingMode]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopPreview();
-      stopHeartbeat();
-    };
-  }, [stopPreview, stopHeartbeat]);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {/* Debug Info */}
-      {debugInfo && (
-        <div className="p-2 bg-gray-800 border border-gray-600 rounded text-xs text-gray-300">
-          Debug: {debugInfo}
-        </div>
-      )}
+      <Broadcast.Root ingestUrl={ingestUrl}>
+        <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
+          {/* Video Element */}
+          <div className="relative aspect-video bg-black">
+            <Broadcast.Video 
+              title="Browser livestream" 
+              className="w-full h-full object-cover"
+            />
 
-      {/* Error Display */}
-      {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
-          <AlertCircle className="size-4 text-red-400" />
-          <p className="text-red-400 text-sm">{error}</p>
-        </div>
-      )}
+            {/* Status Indicator */}
+            <Broadcast.LoadingIndicator asChild matcher={false}>
+              <div className="absolute top-3 left-3 overflow-hidden py-1 px-3 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
+                <Broadcast.StatusIndicator
+                  matcher="live"
+                  className="flex gap-2 items-center"
+                >
+                  <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full" />
+                  <span className="text-xs font-medium text-white select-none">LIVE</span>
+                </Broadcast.StatusIndicator>
 
-      {/* Stream Setup - Only show if not previewing */}
-      {!isPreviewing && (
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={initializeCamera}
-            disabled={isInitializing}
-            variant="outline"
-            className="h-24 flex flex-col items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
-          >
-            <Camera className="size-8" />
-            <div className="text-center">
-              <div className="font-medium">Camera</div>
-              <div className="text-xs text-gray-400">
-                {isInitializing ? 'Starting...' : 'Stream with webcam'}
+                <Broadcast.StatusIndicator
+                  className="flex gap-2 items-center"
+                  matcher="pending"
+                >
+                  <div className="bg-yellow-500/80 h-2 w-2 rounded-full animate-pulse" />
+                  <span className="text-xs font-medium text-white select-none">CONNECTING</span>
+                </Broadcast.StatusIndicator>
+
+                <Broadcast.StatusIndicator
+                  className="flex gap-2 items-center"
+                  matcher="idle"
+                >
+                  <div className="bg-gray-400 h-2 w-2 rounded-full" />
+                  <span className="text-xs font-medium text-white select-none">READY</span>
+                </Broadcast.StatusIndicator>
               </div>
-            </div>
-          </Button>
-          
-          <Button
-            onClick={initializeScreen}
-            disabled={isInitializing}
-            variant="outline"
-            className="h-24 flex flex-col items-center gap-2 bg-white/5 border-white/20 text-white hover:bg-white/10"
-          >
-            <Monitor className="size-8" />
-            <div className="text-center">
-              <div className="font-medium">Screen Share</div>
-              <div className="text-xs text-gray-400">
-                {isInitializing ? 'Starting...' : 'Share your screen'}
-              </div>
-            </div>
-          </Button>
-        </div>
-      )}
-
-      {/* Video Preview */}
-      {isPreviewing && (
-        <div className="relative rounded-xl overflow-hidden border border-white/20 bg-black">
-          <div className="aspect-video bg-black flex items-center justify-center">
-            {hasVideo ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted={isPreviewMuted}
-                playsInline
-                className="w-full h-full object-cover bg-black"
-                style={{ transform: streamingMode === 'camera' ? 'scaleX(-1)' : 'none' }}
-                onLoadedMetadata={(e) => {
-                  console.log('VIDEO RENDER - onLoadedMetadata fired', {
-                    videoWidth: e.currentTarget.videoWidth,
-                    videoHeight: e.currentTarget.videoHeight,
-                    srcObject: !!e.currentTarget.srcObject
-                  });
-                }}
-                onCanPlay={(e) => {
-                  console.log('VIDEO RENDER - onCanPlay fired', {
-                    readyState: e.currentTarget.readyState,
-                    currentTime: e.currentTarget.currentTime
-                  });
-                }}
-                onPlay={() => console.log('VIDEO RENDER - onPlay fired')}
-                onPlaying={() => console.log('VIDEO RENDER - onPlaying fired')}
-                onError={(e) => console.error('VIDEO RENDER - onError fired', e)}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-4 text-gray-400">
-                <Camera className="size-12" />
-                <p>No video available - hasVideo: {String(hasVideo)}</p>
-                <p className="text-xs">Debug: {debugInfo}</p>
-              </div>
-            )}
-          </div>
-          
-          {/* Status Overlay */}
-          <div className="absolute top-3 left-3">
-            <span className={`px-2 py-1 text-white text-xs font-medium rounded-full flex items-center gap-1 ${
-              isStreaming ? 'bg-red-500' : 'bg-blue-500'
-            }`}>
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              {isStreaming ? 'LIVE' : 'PREVIEW'}
-            </span>
-          </div>
-          
-          {/* Mode Indicator */}
-          <div className="absolute top-3 right-3">
-            <span className="px-2 py-1 bg-black/50 text-white text-xs rounded flex items-center gap-1">
-              {streamingMode === 'camera' ? <Camera className="size-3" /> : <Monitor className="size-3" />}
-              {streamingMode === 'camera' ? 'Camera' : 'Screen'}
-            </span>
-          </div>
-          
-          {/* Mute Toggle for preview - positioned in bottom right */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-2">
-            <Button
-              onClick={togglePreviewMute}
-              variant={isPreviewMuted ? "outline" : "secondary"}
-              size="sm"
-              className="bg-black/50 border-white/20 text-white hover:bg-black/70 px-2 py-1"
-              title={isPreviewMuted ? "Unmute preview" : "Mute preview"}
-            >
-              {isPreviewMuted ? <VolumeX className="size-3" /> : <Volume2 className="size-3" />}
-            </Button>
-          </div>
-          
-          {/* Audio Level */}
-          {hasAudio && audioEnabled && (
-            <div className="absolute bottom-3 left-3">
-              <div className="flex items-center gap-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
-                <Mic className="size-3" />
-                <div className="w-12 h-2 bg-gray-600 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-green-500 transition-all duration-100"
-                    style={{ width: `${Math.min(audioLevel * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Controls */}
-      {isPreviewing && (
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {/* Video Toggle */}
-            <Button
-              onClick={toggleVideo}
-              variant={videoEnabled ? "outline" : "destructive"}
-              size="sm"
-              disabled={!hasVideo}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              {videoEnabled ? 
-                (streamingMode === 'camera' ? <Video className="size-4" /> : <Monitor className="size-4" />) : 
-                <VideoOff className="size-4" />
-              }
-            </Button>
-            
-            {/* Audio Toggle */}
-            <Button
-              onClick={toggleAudio}
-              variant={audioEnabled ? "outline" : "destructive"}
-              size="sm"
-              disabled={!hasAudio}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              {audioEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
-            </Button>
-            
-            {/* Reset */}
-            <Button
-              onClick={stopPreview}
-              variant="outline"
-              size="sm"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <RefreshCw className="size-4" />
-            </Button>
+            </Broadcast.LoadingIndicator>
           </div>
 
-          {/* Stream Control - Only show Go Live button, not test buttons */}
-          {!isPreviewMode && (
+          {/* Controls */}
+          <Broadcast.Controls className="flex items-center justify-between p-4 bg-black/30 backdrop-blur-sm border-t border-white/10">
             <div className="flex items-center gap-2">
-              {!isStreaming ? (
-                <Button
-                  onClick={startStream}
-                  disabled={!hasVideo && !hasAudio}
-                  className="bg-red-500 hover:bg-red-600 text-white"
-                >
-                  <Play className="size-4 mr-2" />
-                  Go Live
-                </Button>
-              ) : (
-                <Button
-                  onClick={stopStream}
-                  variant="destructive"
-                >
-                  <Square className="size-4 mr-2" />
-                  End Stream
-                </Button>
-              )}
+              {/* Video Source Toggle */}
+              <Broadcast.VideoEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
+                <Broadcast.VideoEnabledIndicator asChild matcher={true}>
+                  <div className="flex items-center gap-2 text-white text-sm">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 7l-7 5 7 5V7z"></path>
+                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                    </svg>
+                    <span>Video On</span>
+                  </div>
+                </Broadcast.VideoEnabledIndicator>
+                <Broadcast.VideoEnabledIndicator asChild matcher={false}>
+                  <div className="flex items-center gap-2 text-red-400 text-sm">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <span>Video Off</span>
+                  </div>
+                </Broadcast.VideoEnabledIndicator>
+              </Broadcast.VideoEnabledTrigger>
+
+              {/* Audio Toggle */}
+              <Broadcast.AudioEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
+                <Broadcast.AudioEnabledIndicator asChild matcher={true}>
+                  <div className="flex items-center gap-2 text-white text-sm">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path>
+                      <path d="M19 10v2a7 7 0 01-14 0v-2"></path>
+                      <line x1="12" y1="19" x2="12" y2="23"></line>
+                      <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                    <span>Mic On</span>
+                  </div>
+                </Broadcast.AudioEnabledIndicator>
+                <Broadcast.AudioEnabledIndicator asChild matcher={false}>
+                  <div className="flex items-center gap-2 text-red-400 text-sm">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                      <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"></path>
+                      <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"></path>
+                      <line x1="12" y1="19" x2="12" y2="23"></line>
+                      <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                    <span>Mic Off</span>
+                  </div>
+                </Broadcast.AudioEnabledIndicator>
+              </Broadcast.AudioEnabledTrigger>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Start/Stop Stream */}
+            {!isPreviewMode && (
+              <Broadcast.EnabledTrigger 
+                className="px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+                onClick={(e) => {
+                  // Trigger stream start/end
+                  const isCurrentlyLive = (e.currentTarget as HTMLElement).getAttribute('data-live') === 'true';
+                  if (!isCurrentlyLive) {
+                    handleStreamStart();
+                  } else {
+                    handleStreamEnd();
+                  }
+                }}
+              >
+                <Broadcast.EnabledIndicator asChild matcher={false}>
+                  <div className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white flex items-center gap-2" data-live="false">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="10"></circle>
+                    </svg>
+                    <span>Go Live</span>
+                  </div>
+                </Broadcast.EnabledIndicator>
+                <Broadcast.EnabledIndicator asChild matcher={true}>
+                  <div className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white flex items-center gap-2" data-live="true">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12"></rect>
+                    </svg>
+                    <span>End Stream</span>
+                  </div>
+                </Broadcast.EnabledIndicator>
+              </Broadcast.EnabledTrigger>
+            )}
+          </Broadcast.Controls>
+        </Broadcast.Container>
+      </Broadcast.Root>
 
       {/* Help Text */}
-      <div className="text-xs text-gray-400 space-y-1">
-        <p>• Choose camera for webcam streaming or screen share to broadcast your desktop</p>
-        <p>• Test your audio and video in preview mode before going live</p>
-        <p>• Make sure to allow permissions when prompted by your browser</p>
-        {!isPreviewMode && (
-          <p>• Browser streams continue running even if you refresh the page (1 minute grace period)</p>
-        )}
+      <div className="text-xs text-gray-400 space-y-1 px-2">
+        <p>• Click "Go Live" to start broadcasting from your camera/microphone</p>
+        <p>• Use the video and audio toggles to control your stream</p>
+        <p>• Your browser stream will be available on your channel page</p>
+        {isPreviewMode && <p>• This is preview mode - complete setup to go live</p>}
       </div>
     </div>
   );

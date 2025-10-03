@@ -485,8 +485,12 @@ const GoLive = () => {
                 </button>
                 
                 <button
-                  onClick={() => {}} // Disabled - coming soon
-                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 border-white/20 bg-white/5 cursor-not-allowed`}
+                  onClick={() => setStreamingMode('browser')}
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                    streamingMode === 'browser' 
+                      ? 'border-cyan-400 bg-cyan-500/20' 
+                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
+                  }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <Camera className="size-6 text-cyan-400" />
@@ -495,14 +499,11 @@ const GoLive = () => {
                   <p className="text-sm text-gray-300 text-left">
                     Stream directly from your browser using your camera, microphone, or screen
                   </p>
-                  
-                  {/* Coming Soon Overlay */}
-                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center pointer-events-none">
-                    <div className="text-center">
-                      <h4 className="text-white text-xl font-semibold mb-2">Coming Soon</h4>
-                      <p className="text-gray-300 text-sm">Browser streaming is currently under development</p>
+                  {streamingMode === 'browser' && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
                     </div>
-                  </div>
+                  )}
                 </button>
               </div>
             </div>
@@ -582,42 +583,52 @@ const GoLive = () => {
               </div>
             </div>
 
-            {/* Browser Streaming Preview Section - BEFORE payment */}
-            {streamingMode === 'browser' && (
+            {/* Browser Streaming Setup Section - Show preview with actual stream key after creation */}
+            {streamingMode === 'browser' && streamKey && (
               <div className="mb-8">
-                <h3 className="text-lg font-semibold text-white mb-4">Preview Your Stream</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Browser Stream Setup</h3>
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
-                    streamKey={'preview'} // Placeholder for preview
-                    ingestUrl={'preview'} // Placeholder for preview
-                    isPreviewMode={true} // Enable preview mode
+                    streamKey={streamKey}
+                    playbackId={livepeerPlaybackId || undefined}
+                    isPreviewMode={false}
+                    onStreamStart={() => {
+                      console.log('Browser stream started');
+                      toast.success('Browser stream is live!');
+                    }}
+                    onStreamEnd={() => {
+                      console.log('Browser stream ended');
+                    }}
                   />
                 </div>
               </div>
             )}
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              {streamingMode === 'rtmp' && (
+              {/* For both RTMP and Browser, we need to generate stream details first */}
+              {!streamKey && (
                 <Button 
                   variant="outline" 
                   onClick={generateStreamDetails} 
                   disabled={!title || !kaspaAddress}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Details'}
+                  {!kaspaAddress ? 'Connect Wallet First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
                 </Button>
               )}
               
-              <Button 
-                onClick={handleStart} 
-                disabled={!kaspaAddress || !title.trim() || (streamingMode === 'rtmp' && !ingestUrl)}
-                className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                {!kaspaAddress ? 'Connect Wallet First' : 
-                 !title.trim() ? 'Enter Title First' : 
-                 streamingMode === 'rtmp' && !ingestUrl ? 'Generate RTMP Details First' :
-                 `Start ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee (1.2 KAS)`}
-              </Button>
+              {/* Only show Start button after stream is generated */}
+              {streamKey && (
+                <Button 
+                  onClick={handleStart} 
+                  disabled={!kaspaAddress || !title.trim()}
+                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  {!kaspaAddress ? 'Connect Wallet First' : 
+                   !title.trim() ? 'Enter Title First' : 
+                   `Setup ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee (1.2 KAS)`}
+                </Button>
+              )}
             </div>
 
             
