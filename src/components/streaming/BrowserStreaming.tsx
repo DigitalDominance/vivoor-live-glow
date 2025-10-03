@@ -22,11 +22,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   videoSource = 'camera'
 }) => {
   const ingestUrl = getIngest(streamKey);
-  
-  // Configure video constraints based on source
-  const videoConstraints = videoSource === 'screen' 
-    ? { displaySurface: 'monitor' as const }
-    : undefined;
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -116,7 +111,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   return (
     <div className="space-y-4">
-      <Broadcast.Root ingestUrl={ingestUrl} video={videoConstraints}>
+      <Broadcast.Root ingestUrl={ingestUrl}>
         <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
           {/* Video Element */}
           <div className="relative aspect-video bg-black">
@@ -158,8 +153,9 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           {/* Controls */}
           <Broadcast.Controls className="flex items-center justify-between p-4 bg-black/30 backdrop-blur-sm border-t border-white/10">
             <div className="flex items-center gap-2">
-              {/* Video Source Toggle */}
-              <Broadcast.VideoEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
+              {/* Video/Screen Source Toggle */}
+              {videoSource === 'camera' ? (
+                <Broadcast.VideoEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
                 <Broadcast.VideoEnabledIndicator asChild matcher={true}>
                   <div className="flex items-center gap-2 text-white text-sm">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -179,6 +175,31 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
                   </div>
                 </Broadcast.VideoEnabledIndicator>
               </Broadcast.VideoEnabledTrigger>
+              ) : (
+                <Broadcast.ScreenshareTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
+                  <Broadcast.ScreenshareIndicator asChild matcher={true}>
+                    <div className="flex items-center gap-2 text-white text-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                      </svg>
+                      <span>Screen On</span>
+                    </div>
+                  </Broadcast.ScreenshareIndicator>
+                  <Broadcast.ScreenshareIndicator asChild matcher={false}>
+                    <div className="flex items-center gap-2 text-red-400 text-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                      </svg>
+                      <span>Screen Off</span>
+                    </div>
+                  </Broadcast.ScreenshareIndicator>
+                </Broadcast.ScreenshareTrigger>
+              )}
 
               {/* Audio Toggle */}
               <Broadcast.AudioEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
