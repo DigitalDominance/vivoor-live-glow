@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
+import WebRtcPlayer from "@/components/players/WebRtcPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
@@ -79,21 +80,18 @@ const Watch = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
-  // For browser streams, use WebRTC playback for instant, low-latency viewing
-  // For RTMP streams, use HLS playback
-  const playbackUrl = React.useMemo(() => {
-    if (!streamData?.playback_url) return null;
+  // Detect stream type and prepare playback info
+  const streamPlayback = React.useMemo(() => {
+    if (!streamData) return null;
     
-    // Extract playback ID from the HLS URL
-    const playbackId = streamData.livepeer_playback_id || streamData.playback_url.split('/').slice(-2, -1)[0];
+    const isBrowserStream = streamData.streaming_mode === 'browser' || streamData.stream_type === 'browser';
+    const playbackId = streamData.livepeer_playback_id || streamData.playback_url?.split('/').slice(-2, -1)[0];
     
-    // For browser streams, use WebRTC WHEP for instant playback
-    if (streamData.streaming_mode === 'browser' || streamData.stream_type === 'browser') {
-      return `https://livepeercdn.studio/webrtc/${playbackId}`;
-    }
-    
-    // For RTMP streams, use HLS
-    return streamData.playback_url;
+    return {
+      isBrowserStream,
+      playbackId,
+      hlsUrl: streamData.playback_url
+    };
   }, [streamData?.playback_url, streamData?.streaming_mode, streamData?.stream_type, streamData?.livepeer_playback_id]);
 
   // Fetch streamer profile using secure function
@@ -750,17 +748,27 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                playbackUrl ? (
+                streamPlayback ? (
                   <>
-                    <HlsPlayer
-                      src={playbackUrl}
-                      autoPlay
-                      controls={false}
-                      poster={streamData.thumbnail_url || undefined}
-                      onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                      onQualityChange={qualityChangeRef}
-                      isLiveStream={true}
-                    />
+                    {streamPlayback.isBrowserStream && streamPlayback.playbackId ? (
+                      <WebRtcPlayer
+                        playbackId={streamPlayback.playbackId}
+                        autoPlay
+                        poster={streamData.thumbnail_url || undefined}
+                        videoRef={videoRef}
+                      />
+                    ) : streamPlayback.hlsUrl ? (
+                      <HlsPlayer
+                        src={streamPlayback.hlsUrl}
+                        autoPlay
+                        controls={false}
+                        poster={streamData.thumbnail_url || undefined}
+                        onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                        onQualityChange={qualityChangeRef}
+                        isLiveStream={true}
+                        videoRef={videoRef}
+                      />
+                    ) : null}
                     
                     {showControls && (
                       <CustomVideoControls
