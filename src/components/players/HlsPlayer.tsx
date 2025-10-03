@@ -116,11 +116,27 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
           }
         }
         
+        // Handle manifest parsing errors for browser streams
+        if (data.details === 'manifestParsingError' && isLiveStream) {
+          console.log('🎬 Stream not ready yet, will retry...');
+          setError('Stream is starting up...');
+          setRetryCount(prev => prev + 1);
+          if (retryCount < 10) {
+            retryTimeoutRef.current = setTimeout(() => {
+              console.log('🎬 Retrying stream connection...');
+              hls?.loadSource(src);
+            }, 3000);
+          } else {
+            setError('Stream unavailable');
+          }
+          return;
+        }
+        
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              if (isLiveStream && retryCount < 5) {
-                setError('Connection Lost, Retrying...');
+              if (isLiveStream && retryCount < 10) {
+                setError('Stream is starting...');
                 setRetryCount(prev => prev + 1);
                 retryTimeoutRef.current = setTimeout(() => {
                   console.log('🎬 Retrying HLS connection...');

@@ -734,52 +734,67 @@ const Watch = () => {
               {streamData.is_live ? (
                 streamData.livepeer_playback_id ? (
                   // Use Livepeer HLS URL for playback
-                  <>
-                    <HlsPlayer 
-                      src={`https://livepeer.studio/hls/${streamData.livepeer_playback_id}/index.m3u8`}
-                      autoPlay 
-                      isLiveStream={true}
-                      key={streamData.id}
-                      className="w-full h-full"
-                      videoRef={videoRef}
-                      onQualityLevelsUpdate={setQualityLevels}
-                      onQualityChange={qualityChangeRef}
-                    />
-                   {showControls && (
-                     <CustomVideoControls
-                       isPlaying={isPlaying}
-                       onPlayPause={handlePlayPause}
-                       onFullscreen={handleFullscreen}
-                       onCreateClip={() => setClipModalOpen(true)}
-                       volume={volume}
-                       onVolumeChange={handleVolumeChange}
-                       isMuted={isMuted}
-                       onToggleMute={handleToggleMute}
-                       elapsed={elapsed}
-                       viewers={viewerCount}
-                       isLive={true}
-                       showClipping={true}
-                       qualityLevels={qualityLevels}
-                       currentQuality={currentQuality}
-                       onQualityChange={handleQualityChange}
-                       streamId={streamData?.id}
-                     />
-                    )}
-                 </>
-               ) : (
-                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                   <div className="text-center space-y-4">
-                     <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                       {streamData.stream_type === 'browser' ? 'Waiting for stream...' : 'Stream Offline'}
-                     </div>
-                     <div className="text-gray-400">
-                       {streamData.stream_type === 'browser' 
-                         ? 'The broadcaster is setting up. Please wait a moment...' 
-                         : 'This stream is not currently available'}
-                     </div>
-                   </div>
-                 </div>
-               )
+                  // For browser streams, also check livepeerIsLive since WebRTC needs time to start
+                  streamData.stream_type === 'browser' && !livepeerIsLive ? (
+                    <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                          Waiting for stream...
+                        </div>
+                        <div className="text-gray-400">
+                          The broadcaster is setting up. Please wait a moment...
+                        </div>
+                        <div className="animate-pulse text-brand-cyan">
+                          Connecting via WebRTC
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <HlsPlayer 
+                        src={`https://livepeer.studio/hls/${streamData.livepeer_playback_id}/index.m3u8`}
+                        autoPlay 
+                        isLiveStream={true}
+                        key={streamData.id}
+                        className="w-full h-full"
+                        videoRef={videoRef}
+                        onQualityLevelsUpdate={setQualityLevels}
+                        onQualityChange={qualityChangeRef}
+                      />
+                     {showControls && (
+                       <CustomVideoControls
+                         isPlaying={isPlaying}
+                         onPlayPause={handlePlayPause}
+                         onFullscreen={handleFullscreen}
+                         onCreateClip={() => setClipModalOpen(true)}
+                         volume={volume}
+                         onVolumeChange={handleVolumeChange}
+                         isMuted={isMuted}
+                         onToggleMute={handleToggleMute}
+                         elapsed={elapsed}
+                         viewers={viewerCount}
+                         isLive={true}
+                         showClipping={true}
+                         qualityLevels={qualityLevels}
+                         currentQuality={currentQuality}
+                         onQualityChange={handleQualityChange}
+                         streamId={streamData?.id}
+                       />
+                      )}
+                   </>
+                  )
+                ) : (
+                  <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
+                        Stream Offline
+                      </div>
+                      <div className="text-gray-400">
+                        This stream is not currently available
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                   <div className="text-center space-y-4">
