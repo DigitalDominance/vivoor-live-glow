@@ -523,9 +523,9 @@ const GoLive = () => {
                     setLivepeerPlaybackId(null);
                     setPreviewReady(false);
                     
-                    // Show source selection modal for browser streaming
+                    // Set browser mode with camera as default source (no modal)
                     setStreamingMode('browser');
-                    setShowSourceModal(true);
+                    setBrowserSource('camera');
                   }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
                     streamingMode === 'browser' 
