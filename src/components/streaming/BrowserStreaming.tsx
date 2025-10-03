@@ -176,9 +176,38 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         console.log('[BrowserStreaming] Added audio track');
       }
 
-      // Step 5: Create offer
+      // Step 5: Create offer and modify SDP to force baseline profile (no B-frames)
       console.log('[BrowserStreaming] Creating SDP offer');
       const offer = await peerConnection.createOffer();
+      
+      // Modify SDP to force H.264 baseline profile (profile-level-id=42e01f or 42001f)
+      // This prevents B-frames from being used
+      if (offer.sdp) {
+        let modifiedSdp = offer.sdp;
+        
+        // Force baseline profile for H.264
+        // Replace any existing profile-level-id with baseline (42e01f = baseline level 3.1)
+        modifiedSdp = modifiedSdp.replace(
+          /profile-level-id=[0-9a-fA-F]{6}/g,
+          'profile-level-id=42e01f'
+        );
+        
+        // Also add baseline profile if not present
+        if (!modifiedSdp.includes('profile-level-id')) {
+          modifiedSdp = modifiedSdp.replace(
+            /(a=fmtp:\d+)/g,
+            '$1 profile-level-id=42e01f;level-asymmetry-allowed=1'
+          );
+        }
+        
+        // Remove any B-frame related parameters
+        modifiedSdp = modifiedSdp.replace(/max-br=[0-9]+;?/g, '');
+        modifiedSdp = modifiedSdp.replace(/max-mbps=[0-9]+;?/g, '');
+        
+        console.log('[BrowserStreaming] Modified SDP to force baseline profile (no B-frames)');
+        offer.sdp = modifiedSdp;
+      }
+      
       await peerConnection.setLocalDescription(offer);
 
       // Step 6: Wait for ICE gathering
