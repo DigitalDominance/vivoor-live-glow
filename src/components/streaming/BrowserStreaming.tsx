@@ -7,7 +7,7 @@ import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 import { useWallet } from '@/context/WalletContext';
 
 interface BrowserStreamingProps {
-  streamId: string; // Livepeer stream ID for WebRTC
+  streamKey: string;
   playbackId?: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
@@ -15,7 +15,7 @@ interface BrowserStreamingProps {
 }
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
-  streamId,
+  streamKey,
   onStreamStart,
   onStreamEnd,
   isPreviewMode = false,
@@ -93,19 +93,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const startBroadcast = async (source: 'camera' | 'screen') => {
     try {
       setStreamingMode(source);
-      console.log(`[BrowserStreaming] Starting ${source} broadcast with streamId:`, streamId);
+      console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       
-      // Step 1: Get redirect URL using Livepeer stream ID
+      // Step 1: Get redirect URL
       console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
-      const whipUrl = `https://livepeer.studio/webrtc/${streamId}`;
-      console.log('[BrowserStreaming] WHIP URL:', whipUrl);
-      
-      const redirectResponse = await fetch(whipUrl, {
-        method: 'OPTIONS',
+      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
+        method: 'HEAD',
+        redirect: 'manual'
       });
       
-      // Use the base URL if no redirect
-      const redirectUrl = redirectResponse.url || whipUrl;
+      const redirectUrl = redirectResponse.headers.get('Location') || 
+                         `https://livepeer.studio/webrtc/${streamKey}`;
       
       console.log('[BrowserStreaming] Redirect URL:', redirectUrl);
       const host = new URL(redirectUrl).host;

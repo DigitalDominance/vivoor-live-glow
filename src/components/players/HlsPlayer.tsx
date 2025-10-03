@@ -107,22 +107,6 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
         
-        // Handle manifest parsing errors (stream not ready yet) - retry for browser streams
-        if (data.details === 'manifestParsingError' && isLiveStream) {
-          console.log('🎬 Manifest not ready, retrying in 3 seconds...');
-          if (retryCount < 10) {
-            setError('Waiting for stream to start...');
-            setRetryCount(prev => prev + 1);
-            retryTimeoutRef.current = setTimeout(() => {
-              console.log(`🎬 Retry attempt ${retryCount + 1}/10`);
-              hls?.loadSource(src);
-            }, 3000);
-          } else {
-            setError('Stream failed to start');
-          }
-          return;
-        }
-        
         // Handle buffer stalled errors specifically
         if (data.details === 'bufferStalledError') {
           console.log('🎬 Buffer stalled, trying to recover...');
