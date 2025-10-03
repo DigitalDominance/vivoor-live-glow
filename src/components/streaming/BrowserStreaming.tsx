@@ -161,7 +161,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const audioTrack = mediaStream.getAudioTracks()[0];
 
       if (videoTrack) {
-        const videoSender = peerConnection.addTransceiver(videoTrack, { 
+        const videoTransceiver = peerConnection.addTransceiver(videoTrack, { 
           direction: 'sendonly',
           sendEncodings: [{
             // Disable B-frames by setting max bitrate and forcing baseline profile
@@ -169,6 +169,26 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             maxFramerate: 30,
           }]
         });
+        
+        // Force H.264 baseline profile using setCodecPreferences
+        const capabilities = RTCRtpSender.getCapabilities('video');
+        if (capabilities && capabilities.codecs) {
+          // Filter for H.264 baseline profile only (profile-level-id starts with 42)
+          const h264BaselineCodecs = capabilities.codecs.filter(codec => {
+            return codec.mimeType === 'video/H264' && 
+                   codec.sdpFmtpLine?.includes('profile-level-id=42');
+          });
+          
+          if (h264BaselineCodecs.length > 0) {
+            try {
+              videoTransceiver.setCodecPreferences(h264BaselineCodecs);
+              console.log('[BrowserStreaming] Forced H.264 baseline profile (no B-frames)');
+            } catch (e) {
+              console.warn('[BrowserStreaming] Could not set codec preferences:', e);
+            }
+          }
+        }
+        
         console.log('[BrowserStreaming] Added video track with no B-frames encoding');
       }
       if (audioTrack) {
