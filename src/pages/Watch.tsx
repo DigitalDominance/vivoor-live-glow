@@ -752,7 +752,7 @@ const Watch = () => {
                   ) : (
                     <>
                       <HlsPlayer 
-                        src={`https://livepeer.studio/hls/${streamData.livepeer_playback_id}/index.m3u8`}
+                        src={streamData.playback_url}
                         autoPlay 
                         isLiveStream={true}
                         key={streamData.id}
