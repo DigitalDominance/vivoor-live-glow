@@ -118,15 +118,23 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         },
       ];
 
-      // Step 3: Get user media
+      // Step 3: Get user media with encoding parameters to disable B-frames
       console.log(`[BrowserStreaming] Requesting ${source} media`);
       const mediaStream = source === 'screen' 
         ? await navigator.mediaDevices.getDisplayMedia({
-            video: { width: 1920, height: 1080 },
+            video: { 
+              width: { ideal: 1920 }, 
+              height: { ideal: 1080 },
+              frameRate: { ideal: 30 }
+            },
             audio: true,
           })
         : await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: { 
+              width: { ideal: 1280 }, 
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 }
+            },
             audio: true,
           });
 
@@ -148,13 +156,20 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
 
-      // Add tracks
+      // Add tracks with encoding parameters to disable B-frames
       const videoTrack = mediaStream.getVideoTracks()[0];
       const audioTrack = mediaStream.getAudioTracks()[0];
 
       if (videoTrack) {
-        peerConnection.addTransceiver(videoTrack, { direction: 'sendonly' });
-        console.log('[BrowserStreaming] Added video track');
+        const videoSender = peerConnection.addTransceiver(videoTrack, { 
+          direction: 'sendonly',
+          sendEncodings: [{
+            // Disable B-frames by setting max bitrate and forcing baseline profile
+            maxBitrate: 2500000, // 2.5 Mbps
+            maxFramerate: 30,
+          }]
+        });
+        console.log('[BrowserStreaming] Added video track with no B-frames encoding');
       }
       if (audioTrack) {
         peerConnection.addTransceiver(audioTrack, { direction: 'sendonly' });
