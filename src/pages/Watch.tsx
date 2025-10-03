@@ -4,8 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import * as Player from "@livepeer/react/player";
-import { getSrc } from "@livepeer/react/external";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
@@ -80,39 +78,8 @@ const Watch = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
-  // Fetch Livepeer playback source (HLS only, no WebRTC to avoid B-frames)
-  const { data: playbackSrc } = useQuery({
-    queryKey: ['playback-src', streamData?.livepeer_playback_id],
-    queryFn: async () => {
-      if (!streamData?.livepeer_playback_id) return null;
-      
-      try {
-        const response = await fetch(
-          `https://livepeer.studio/api/playback/${streamData.livepeer_playback_id}`
-        );
-        
-        if (!response.ok) return null;
-        
-        const playbackInfo = await response.json();
-        const src = getSrc(playbackInfo);
-        
-        // Filter out WebRTC sources to avoid B-frames issue
-        // Only use HLS for reliable playback
-        if (src && Array.isArray(src)) {
-          const hlsOnly = src.filter(s => s.type === 'hls');
-          console.log('[Watch] Filtered to HLS only sources:', hlsOnly);
-          return hlsOnly.length > 0 ? hlsOnly : null;
-        }
-        
-        return src;
-      } catch (error) {
-        console.error('Error fetching playback source:', error);
-        return null;
-      }
-    },
-    enabled: !!streamData?.livepeer_playback_id,
-    refetchInterval: streamData?.is_live ? 10000 : false
-  });
+  // Use playback_url directly like GoLive and Stream pages
+  const playbackUrl = streamData?.playback_url;
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
@@ -768,9 +735,8 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamData.livepeer_playback_id ? (
-                  // Use Livepeer HLS URL for playback
-                  // For browser streams, also check livepeerIsLive since WebRTC needs time to start
+                playbackUrl ? (
+                  // For browser streams, check livepeerIsLive since WebRTC needs time to start
                   streamData.stream_type === 'browser' && !livepeerIsLive ? (
                     <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                       <div className="text-center space-y-4">
@@ -785,23 +751,16 @@ const Watch = () => {
                         </div>
                       </div>
                     </div>
-                  ) : playbackSrc && playbackSrc.length > 0 ? (
+                  ) : (
                     <>
-                      <Player.Root 
-                        src={playbackSrc} 
+                      <HlsPlayer
+                        src={playbackUrl}
                         autoPlay
-                      >
-                        <Player.Container
-                          ref={videoRef as any}
-                          className="w-full aspect-video"
-                        >
-                          <Player.Video 
-                            title={streamData.title}
-                            className="w-full h-full"
-                            muted={isMuted}
-                          />
-                        </Player.Container>
-                      </Player.Root>
+                        controls={false}
+                        poster={streamData.thumbnail_url || undefined}
+                        onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                        onQualityChange={qualityChangeRef}
+                      />
                       
                       {showControls && (
                         <CustomVideoControls
@@ -824,17 +783,6 @@ const Watch = () => {
                         />
                       )}
                     </>
-                  ) : (
-                    <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                      <div className="text-center space-y-4">
-                        <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                          Loading Stream...
-                        </div>
-                        <div className="text-gray-400">
-                          Fetching playback information...
-                        </div>
-                      </div>
-                    </div>
                   )
                 ) : (
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
