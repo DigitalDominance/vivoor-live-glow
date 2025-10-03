@@ -636,7 +636,6 @@ const GoLive = () => {
                     streamKey={streamKey}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
-                    videoSource={browserSource}
                     onStreamStart={() => {
                       console.log('Browser stream started');
                       toast.success('Browser stream is live!');

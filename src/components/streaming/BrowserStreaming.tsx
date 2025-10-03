@@ -1,6 +1,4 @@
 import React, { useEffect } from 'react';
-import * as Broadcast from "@livepeer/react/broadcast";
-import { getIngest } from "@livepeer/react/external";
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -10,19 +8,14 @@ interface BrowserStreamingProps {
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   isPreviewMode?: boolean;
-  videoSource?: 'camera' | 'screen';
 }
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
-  playbackId,
   onStreamStart,
   onStreamEnd,
   isPreviewMode = false,
-  videoSource = 'camera'
 }) => {
-  const ingestUrl = getIngest(streamKey);
-
   // Send heartbeat to mark stream as live
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | null = null;
@@ -109,166 +102,52 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
   };
 
+  useEffect(() => {
+    // Mark stream as ready when component mounts
+    if (!isPreviewMode) {
+      const streamId = localStorage.getItem('currentStreamId');
+      if (streamId) {
+        supabase
+          .from('streams')
+          .update({ 
+            is_live: false,
+            stream_type: 'browser'
+          })
+          .eq('id', streamId);
+      }
+    }
+
+    // Handle messages from the iframe (if Livepeer sends any)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== 'https://lvpr.tv') return;
+      
+      if (event.data?.type === 'broadcast-started') {
+        handleStreamStart();
+      } else if (event.data?.type === 'broadcast-stopped') {
+        handleStreamEnd();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isPreviewMode]);
+
   return (
     <div className="space-y-4">
-      <Broadcast.Root ingestUrl={ingestUrl}>
-        <Broadcast.Container className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
-          {/* Video Element */}
-          <div className="relative aspect-video bg-black">
-            <Broadcast.Video 
-              title="Browser livestream" 
-              className="w-full h-full object-cover"
-            />
-
-            {/* Status Indicator */}
-            <Broadcast.LoadingIndicator asChild matcher={false}>
-              <div className="absolute top-3 left-3 overflow-hidden py-1 px-3 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
-                <Broadcast.StatusIndicator
-                  matcher="live"
-                  className="flex gap-2 items-center"
-                >
-                  <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full" />
-                  <span className="text-xs font-medium text-white select-none">LIVE</span>
-                </Broadcast.StatusIndicator>
-
-                <Broadcast.StatusIndicator
-                  className="flex gap-2 items-center"
-                  matcher="pending"
-                >
-                  <div className="bg-yellow-500/80 h-2 w-2 rounded-full animate-pulse" />
-                  <span className="text-xs font-medium text-white select-none">CONNECTING</span>
-                </Broadcast.StatusIndicator>
-
-                <Broadcast.StatusIndicator
-                  className="flex gap-2 items-center"
-                  matcher="idle"
-                >
-                  <div className="bg-gray-400 h-2 w-2 rounded-full" />
-                  <span className="text-xs font-medium text-white select-none">READY</span>
-                </Broadcast.StatusIndicator>
-              </div>
-            </Broadcast.LoadingIndicator>
-          </div>
-
-          {/* Controls */}
-          <Broadcast.Controls className="flex items-center justify-between p-4 bg-black/30 backdrop-blur-sm border-t border-white/10">
-            <div className="flex items-center gap-2">
-              {/* Video/Screen Source Toggle */}
-              {videoSource === 'camera' ? (
-                <Broadcast.VideoEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
-                <Broadcast.VideoEnabledIndicator asChild matcher={true}>
-                  <div className="flex items-center gap-2 text-white text-sm">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M23 7l-7 5 7 5V7z"></path>
-                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                    </svg>
-                    <span>Video On</span>
-                  </div>
-                </Broadcast.VideoEnabledIndicator>
-                <Broadcast.VideoEnabledIndicator asChild matcher={false}>
-                  <div className="flex items-center gap-2 text-red-400 text-sm">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"></path>
-                      <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                    <span>Video Off</span>
-                  </div>
-                </Broadcast.VideoEnabledIndicator>
-              </Broadcast.VideoEnabledTrigger>
-              ) : (
-                <Broadcast.ScreenshareTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
-                  <Broadcast.ScreenshareIndicator asChild matcher={true}>
-                    <div className="flex items-center gap-2 text-white text-sm">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                      </svg>
-                      <span>Screen On</span>
-                    </div>
-                  </Broadcast.ScreenshareIndicator>
-                  <Broadcast.ScreenshareIndicator asChild matcher={false}>
-                    <div className="flex items-center gap-2 text-red-400 text-sm">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                      </svg>
-                      <span>Screen Off</span>
-                    </div>
-                  </Broadcast.ScreenshareIndicator>
-                </Broadcast.ScreenshareTrigger>
-              )}
-
-              {/* Audio Toggle */}
-              <Broadcast.AudioEnabledTrigger className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-colors">
-                <Broadcast.AudioEnabledIndicator asChild matcher={true}>
-                  <div className="flex items-center gap-2 text-white text-sm">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path>
-                      <path d="M19 10v2a7 7 0 01-14 0v-2"></path>
-                      <line x1="12" y1="19" x2="12" y2="23"></line>
-                      <line x1="8" y1="23" x2="16" y2="23"></line>
-                    </svg>
-                    <span>Mic On</span>
-                  </div>
-                </Broadcast.AudioEnabledIndicator>
-                <Broadcast.AudioEnabledIndicator asChild matcher={false}>
-                  <div className="flex items-center gap-2 text-red-400 text-sm">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="1" y1="1" x2="23" y2="23"></line>
-                      <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"></path>
-                      <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"></path>
-                      <line x1="12" y1="19" x2="12" y2="23"></line>
-                      <line x1="8" y1="23" x2="16" y2="23"></line>
-                    </svg>
-                    <span>Mic Off</span>
-                  </div>
-                </Broadcast.AudioEnabledIndicator>
-              </Broadcast.AudioEnabledTrigger>
-            </div>
-
-            {/* Start/Stop Stream */}
-            {!isPreviewMode && (
-              <Broadcast.EnabledTrigger 
-                className="px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
-                onClick={(e) => {
-                  // Trigger stream start/end
-                  const isCurrentlyLive = (e.currentTarget as HTMLElement).getAttribute('data-live') === 'true';
-                  if (!isCurrentlyLive) {
-                    handleStreamStart();
-                  } else {
-                    handleStreamEnd();
-                  }
-                }}
-              >
-                <Broadcast.EnabledIndicator asChild matcher={false}>
-                  <div className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white flex items-center gap-2" data-live="false">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
-                    <span>Go Live</span>
-                  </div>
-                </Broadcast.EnabledIndicator>
-                <Broadcast.EnabledIndicator asChild matcher={true}>
-                  <div className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white flex items-center gap-2" data-live="true">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="6" width="12" height="12"></rect>
-                    </svg>
-                    <span>End Stream</span>
-                  </div>
-                </Broadcast.EnabledIndicator>
-              </Broadcast.EnabledTrigger>
-            )}
-          </Broadcast.Controls>
-        </Broadcast.Container>
-      </Broadcast.Root>
+      <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
+        <iframe
+          src={`https://lvpr.tv/broadcast/${streamKey}`}
+          className="w-full aspect-video"
+          allowFullScreen
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture; display-capture; camera; microphone"
+          style={{ border: 'none' }}
+        />
+      </div>
 
       {/* Help Text */}
       <div className="text-xs text-gray-400 space-y-1 px-2">
-        <p>• Click "Go Live" to start broadcasting from your {videoSource === 'screen' ? 'screen' : 'camera/microphone'}</p>
-        <p>• Use the video and audio toggles to control your stream</p>
+        <p>• Click the broadcast controls to select your camera or screen to share</p>
+        <p>• The player will handle all browser permissions and streaming controls</p>
         <p>• Your browser stream will be available on your channel page</p>
         {isPreviewMode && <p>• This is preview mode - complete setup to go live</p>}
       </div>
