@@ -389,21 +389,16 @@ const GoLive = () => {
           playbackId: currentLivepeerPlaybackId
         });
          
-          // For browser streams, mark that user is ready to stream but not live yet
+          // For browser streams, don't navigate yet - user needs to start broadcasting first
           if (streamingMode === 'browser') {
             // Mark that user has browser streaming setup but not active yet
-            localStorage.setItem('browserStreamingActive', 'false'); // They need to click "Go Live" to start
+            localStorage.setItem('browserStreamingActive', 'false');
+            toast.success('Browser stream created! Click "Stream Camera" or "Share Screen" below to start broadcasting.');
+          } else {
+            // For RTMP streams, navigate to stream control page
+            navigate(`/stream/${streamId}`);
           }
-         
-         // Preserve browser stream state if user is currently streaming
-         if (streamingMode === 'browser' && isPreviewing) {
-           console.log('Preserving browser stream state for navigation');
-           preserveStream();
-         }
-        
-        // Navigate to stream control page
-        navigate(`/stream/${streamId}`);
-      } catch (streamError) {
+        } catch (streamError) {
         console.error('Stream creation error:', streamError);
         throw streamError;
       }
@@ -618,8 +613,16 @@ const GoLive = () => {
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
                     onStreamStart={() => {
-                      console.log('Browser stream started');
-                      toast.success('Browser stream is live!');
+                      console.log('Browser stream started - user is now broadcasting');
+                      toast.success('Broadcasting started! Redirecting to stream page...');
+                      // Wait 5 seconds for Livepeer to start receiving and transcoding
+                      setTimeout(() => {
+                        const streamId = localStorage.getItem('currentStreamId');
+                        if (streamId) {
+                          preserveStream(); // Preserve the stream state
+                          navigate(`/stream/${streamId}`);
+                        }
+                      }, 5000);
                     }}
                     onStreamEnd={() => {
                       console.log('Browser stream ended');
