@@ -283,26 +283,8 @@ const GoLive = () => {
       // Wait a moment for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Ensure profile exists for this Kaspa address using wallet context profile
-      console.log('Creating/updating profile...');
-      if (walletProfile) {
-        try {
-          const { data: userId, error: profileError } = await supabase.rpc('authenticate_wallet_user', {
-            wallet_address: kaspaAddress,
-            user_handle: walletProfile.username,
-            user_display_name: walletProfile.username
-          });
-          
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw new Error(`Failed to create profile: ${profileError.message}`);
-          }
-          console.log('Profile created/updated successfully, user ID:', userId);
-        } catch (error) {
-          console.error('Profile creation failed:', error);
-          throw error;
-        }
-      }
+      // Profile will be ensured by create_stream_secure RPC function
+      console.log('Profile will be handled by stream creation...');
 
       // Handle thumbnail upload
       let thumbnailUrl = null;
