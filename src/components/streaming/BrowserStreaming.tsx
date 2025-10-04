@@ -96,12 +96,40 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       console.log('[BrowserStreaming] Stream key:', streamKey);
       
-      // Per WHIP spec, we POST directly to the endpoint
-      // The server will handle redirects (307/308) automatically
-      const whipEndpoint = `https://livepeer.studio/webrtc/${streamKey}`;
-      console.log('[BrowserStreaming] WHIP endpoint:', whipEndpoint);
+      // Step 1: Get redirect URL from Livepeer (per their docs)
+      console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
+      const headUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] HEAD request to:', headUrl);
+      
+      const redirectResponse = await fetch(headUrl, {
+        method: 'HEAD',
+        redirect: 'manual'
+      });
+      
+      console.log('[BrowserStreaming] HEAD response status:', redirectResponse.status);
+      
+      const redirectUrl = redirectResponse.headers.get('Location');
+      console.log('[BrowserStreaming] Location header:', redirectUrl);
+      
+      if (!redirectUrl) {
+        throw new Error('No redirect URL received from Livepeer');
+      }
+      
+      console.log('[BrowserStreaming] Using redirect URL:', redirectUrl);
+      const host = new URL(redirectUrl).host;
+      console.log('[BrowserStreaming] Host for ICE servers:', host);
 
-      // Step 1: Get user media with encoding parameters
+      // Step 2: Set up ICE servers using the redirect host
+      const iceServers = [
+        { urls: `stun:${host}` },
+        {
+          urls: `turn:${host}`,
+          username: 'livepeer',
+          credential: 'livepeer',
+        },
+      ];
+
+      // Step 3: Get user media
       console.log(`[BrowserStreaming] Requesting ${source} media`);
       const mediaStream = source === 'screen' 
         ? await navigator.mediaDevices.getDisplayMedia({
@@ -134,34 +162,35 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
       setIsPreviewing(true);
 
-      // Step 2: Create peer connection with ICE servers
-      // Use generic STUN servers since we'll let the POST handle redirects
+      // Step 4: Create peer connection with ICE servers from redirect host
       console.log('[BrowserStreaming] Creating peer connection');
-      const iceServers = [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ];
-      
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
 
-      // Add all tracks to peer connection
-      mediaStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, mediaStream);
-        console.log('[BrowserStreaming] Added track:', track.kind, track.label);
-      });
+      // Add all tracks to peer connection using addTransceiver (per Livepeer docs)
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const audioTrack = mediaStream.getAudioTracks()[0];
+      
+      if (videoTrack) {
+        peerConnection.addTransceiver(videoTrack, { direction: 'sendonly' });
+        console.log('[BrowserStreaming] Added video transceiver:', videoTrack.label);
+      }
+      
+      if (audioTrack) {
+        peerConnection.addTransceiver(audioTrack, { direction: 'sendonly' });
+        console.log('[BrowserStreaming] Added audio transceiver:', audioTrack.label);
+      }
 
-      // Step 3: Create offer
+      // Step 5: Create offer
       console.log('[BrowserStreaming] Creating SDP offer');
       const offer = await peerConnection.createOffer();
-      
       await peerConnection.setLocalDescription(offer);
 
-      // Step 4: Wait for ICE gathering
+      // Step 6: Wait for ICE gathering
       console.log('[BrowserStreaming] Waiting for ICE gathering');
-      const completeOffer = await new Promise<RTCSessionDescription>((resolve, reject) => {
+      const completeOffer = await new Promise<RTCSessionDescription>((resolve) => {
         const timeout = setTimeout(() => {
-          console.warn('[BrowserStreaming] ICE gathering timeout, using partial candidates');
+          console.log('[BrowserStreaming] ICE gathering timeout, using partial candidates');
           resolve(peerConnection.localDescription!);
         }, 5000);
         
@@ -178,11 +207,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error('Failed to create offer SDP');
       }
 
-      // Step 5: POST offer to WHIP endpoint (browser handles redirects automatically)
-      console.log('[BrowserStreaming] Sending WHIP POST to:', whipEndpoint);
+      // Step 7: POST offer to the REDIRECT URL (not the original URL)
+      console.log('[BrowserStreaming] Sending WHIP POST to redirect URL:', redirectUrl);
       console.log('[BrowserStreaming] Offer SDP length:', completeOffer.sdp.length);
       
-      const sdpResponse = await fetch(whipEndpoint, {
+      const sdpResponse = await fetch(redirectUrl, {
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -199,7 +228,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error(`Failed to negotiate with server: ${sdpResponse.status}`);
       }
 
-      // Step 6: Set remote description from answer
+      // Step 8: Set remote description from answer
       console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
       await peerConnection.setRemoteDescription(
