@@ -51,9 +51,9 @@ serve(async (req: Request) => {
     const ingestUrl = payload.rtmpIngestUrl || payload.ingest || payload.ingestUrl || "rtmp://rtmp.livepeer.com/live";
     const streamKey = payload.streamKey || payload.stream_key;
     
-    // Use the STREAM ID for WebRTC playback, not the playback ID
-    // WebRTC streams need to use the stream ID in the HLS URL
-    const playbackUrl = streamId ? `https://livepeercdn.studio/hls/${streamId}/index.m3u8` : null;
+    // Use the correct Livepeer CDN domain (.studio) and playback ID for HLS
+    // This works for both RTMP and WebRTC/WHIP ingested streams
+    const playbackUrl = playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null;
 
     return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
