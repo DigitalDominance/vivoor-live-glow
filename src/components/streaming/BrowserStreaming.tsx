@@ -96,35 +96,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       console.log('[BrowserStreaming] Stream key:', streamKey);
       
-      // Step 1: Get redirect URL from Livepeer using OPTIONS to avoid CORS issues
-      console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
-      const baseUrl = `https://livepeer.studio/webrtc/${streamKey}`;
-      console.log('[BrowserStreaming] OPTIONS request to:', baseUrl);
-      
-      // Use OPTIONS request to get the redirect without downloading content
-      const redirectResponse = await fetch(baseUrl, {
-        method: 'OPTIONS',
-        mode: 'cors',
-      });
-      
-      // The response.url will contain the final URL after redirects
-      const redirectUrl = redirectResponse.url || baseUrl;
-      console.log('[BrowserStreaming] Final URL after redirect:', redirectUrl);
-      
-      const host = new URL(redirectUrl).host;
-      console.log('[BrowserStreaming] Host for ICE servers:', host);
+      // WHIP endpoint - stream already created by our Supabase edge function
+      const whipUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] WHIP endpoint:', whipUrl);
 
-      // Step 2: Set up ICE servers using the redirect host
+      // Set up ICE servers
       const iceServers = [
-        { urls: `stun:${host}` },
+        { urls: 'stun:stun.livepeer.studio' },
         {
-          urls: `turn:${host}`,
+          urls: 'turn:turn.livepeer.studio',
           username: 'livepeer',
           credential: 'livepeer',
         },
       ];
 
-      // Step 3: Get user media
+      // Get user media
       console.log(`[BrowserStreaming] Requesting ${source} media`);
       const mediaStream = source === 'screen' 
         ? await navigator.mediaDevices.getDisplayMedia({
@@ -157,7 +143,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
       setIsPreviewing(true);
 
-      // Step 4: Create peer connection with ICE servers from redirect host
+      // Create peer connection
       console.log('[BrowserStreaming] Creating peer connection');
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
@@ -202,11 +188,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error('Failed to create offer SDP');
       }
 
-      // Step 7: POST offer to the REDIRECT URL (not the original URL)
-      console.log('[BrowserStreaming] Sending WHIP POST to redirect URL:', redirectUrl);
+      // POST offer to WHIP endpoint
+      console.log('[BrowserStreaming] Sending WHIP POST to:', whipUrl);
       console.log('[BrowserStreaming] Offer SDP length:', completeOffer.sdp.length);
       
-      const sdpResponse = await fetch(redirectUrl, {
+      const sdpResponse = await fetch(whipUrl, {
         method: 'POST',
         mode: 'cors',
         headers: {
@@ -223,7 +209,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error(`Failed to negotiate with server: ${sdpResponse.status}`);
       }
 
-      // Step 8: Set remote description from answer
+      // Set remote description from answer
       console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
       await peerConnection.setRemoteDescription(
