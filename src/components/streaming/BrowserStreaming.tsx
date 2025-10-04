@@ -94,19 +94,31 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     try {
       setStreamingMode(source);
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
+      console.log('[BrowserStreaming] Stream key:', streamKey);
       
       // Step 1: Get redirect URL from Livepeer
       console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
-      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
+      const headUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] HEAD request to:', headUrl);
+      
+      const redirectResponse = await fetch(headUrl, {
         method: 'HEAD',
         redirect: 'manual'
       });
       
-      const redirectUrl = redirectResponse.headers.get('Location') || 
-                         `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] HEAD response status:', redirectResponse.status);
+      console.log('[BrowserStreaming] HEAD response headers:', Object.fromEntries(redirectResponse.headers.entries()));
       
-      console.log('[BrowserStreaming] Redirect URL:', redirectUrl);
+      const redirectUrl = redirectResponse.headers.get('Location');
+      console.log('[BrowserStreaming] Location header:', redirectUrl);
+      
+      if (!redirectUrl) {
+        throw new Error('No redirect URL received from Livepeer');
+      }
+      
+      console.log('[BrowserStreaming] Using redirect URL:', redirectUrl);
       const host = new URL(redirectUrl).host;
+      console.log('[BrowserStreaming] Host for ICE servers:', host);
 
       // Step 2: Set up ICE servers using the redirect host
       const iceServers = [
