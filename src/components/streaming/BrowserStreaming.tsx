@@ -141,8 +141,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             </div>
             <p className="text-xs text-muted-foreground text-center">
               {broadcastSource === 'screen' 
-                ? 'Click the screen share button in the video to start sharing your screen'
-                : 'Click the camera button in the video to start your camera'}
+                ? 'Browser will request permission to share your screen'
+                : 'Browser will request permission to use your camera'}
             </p>
           </div>
         </>

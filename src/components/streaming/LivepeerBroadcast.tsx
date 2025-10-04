@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as Broadcast from '@livepeer/react/broadcast';
 import { getIngest } from '@livepeer/react/external';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 import { LoadingIcon, EnableVideoIcon, StopIcon, StartScreenshareIcon, StopScreenshareIcon } from '@livepeer/react/assets';
+import { toast } from 'sonner';
 
 interface LivepeerBroadcastProps {
   streamKey: string;
@@ -29,11 +30,38 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasStartedRef = useRef(false);
+  const screenShareButtonRef = useRef<HTMLButtonElement>(null);
+  const enableButtonRef = useRef<HTMLButtonElement>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const ingestUrl = getIngest(streamKey);
 
   console.log('[LivepeerBroadcast] Initializing with stream key:', streamKey);
   console.log('[LivepeerBroadcast] Ingest URL:', ingestUrl);
   console.log('[LivepeerBroadcast] Source:', source);
+
+  // Auto-trigger screen share or camera when component mounts
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const timer = setTimeout(() => {
+      if (source === 'screen' && screenShareButtonRef.current) {
+        console.log('[LivepeerBroadcast] Auto-triggering screen share');
+        toast.info('Click "Allow" to share your screen');
+        screenShareButtonRef.current.click();
+      } else if (source === 'camera' && enableButtonRef.current) {
+        console.log('[LivepeerBroadcast] Auto-triggering camera');
+        toast.info('Click "Allow" to enable your camera');
+        enableButtonRef.current.click();
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [source, isInitialized]);
+
+  // Set initialized after mount
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
 
   if (!ingestUrl) {
     console.error('[LivepeerBroadcast] Invalid stream key');
@@ -50,7 +78,7 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
       onError={(error) => {
         console.error('[LivepeerBroadcast] Broadcast error:', error);
         if (error?.type === 'permissions') {
-          onError?.(new Error('Camera/microphone/screen permissions denied. Please allow access and try again.'));
+          onError?.(new Error('Permissions denied. Please allow access and try again.'));
         } else {
           onError?.(new Error('Broadcast failed. Please try again.'));
         }
@@ -83,6 +111,7 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
               
               console.log('[LivepeerBroadcast] Video tracks:', videoTracks.length);
               console.log('[LivepeerBroadcast] Audio tracks:', audioTracks.length);
+              console.log('[LivepeerBroadcast] Video track label:', videoTracks[0]?.label);
             }
           }}
           onError={() => {
@@ -94,7 +123,9 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
         <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <LoadingIcon className="w-8 h-8 animate-spin text-white" />
-            <span className="text-sm text-white">Starting broadcast...</span>
+            <span className="text-sm text-white">
+              {source === 'screen' ? 'Preparing screen share...' : 'Starting camera...'}
+            </span>
           </div>
         </Broadcast.LoadingIndicator>
 
@@ -126,7 +157,19 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
           </div>
         </Broadcast.LoadingIndicator>
 
-        {/* Broadcast Controls - Visible to user */}
+        {/* Broadcast Controls - Hidden but auto-triggered */}
+        <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
+          <Broadcast.Controls>
+            <Broadcast.EnabledTrigger ref={enableButtonRef}>
+              <div />
+            </Broadcast.EnabledTrigger>
+            <Broadcast.ScreenshareTrigger ref={screenShareButtonRef}>
+              <div />
+            </Broadcast.ScreenshareTrigger>
+          </Broadcast.Controls>
+        </div>
+
+        {/* Visible control buttons */}
         <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
           {source === 'camera' ? (
             <Broadcast.EnabledTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
