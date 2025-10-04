@@ -234,16 +234,18 @@ const GoLive = () => {
       
       // First, end any existing active streams for this user
       try {
-        const { data: existingStreams } = await supabase
-          .from('streams')
-          .select('id')
-          .eq('user_id', kaspaAddress)
-          .eq('is_live', true);
-        
-        if (existingStreams && existingStreams.length > 0) {
-          console.log(`Ending ${existingStreams.length} existing active streams`);
-          await supabase.rpc('end_user_active_streams', { user_id_param: kaspaAddress });
-          toast.success('Ended previous active streams');
+        if (identity?.id) {
+          const { data: existingStreams } = await supabase
+            .from('streams')
+            .select('id')
+            .eq('user_id', identity.id)
+            .eq('is_live', true);
+          
+          if (existingStreams && existingStreams.length > 0) {
+            console.log(`Ending ${existingStreams.length} existing active streams`);
+            await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
+            toast.success('Ended previous active streams');
+          }
         }
       } catch (error) {
         console.error('Failed to end existing streams:', error);
