@@ -96,16 +96,19 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const whipUrl = `https://livepeer.studio/webrtc/${streamKey}`;
       console.log('[BrowserStreaming] WHIP endpoint:', whipUrl);
 
-      // ICE servers - will be updated from Link header
+      // ICE servers - start with STUN servers, will add TURN from Link header
       let iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
       ];
       
-      // CRITICAL: Force relay mode to bypass Livepeer's private IP candidates
+      // Store TURN servers for potential retry with relay mode
+      let livepeerTurnServers: RTCIceServer[] = [];
+      
+      // Initial config: Allow all transport types for best compatibility
       const rtcConfig: RTCConfiguration = {
         iceServers,
-        iceTransportPolicy: 'relay' // Force TURN relay to avoid unreachable private IPs
+        // Do NOT force relay mode initially - let all candidates be tried
       };
 
       // Get user media
@@ -141,8 +144,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
       setIsPreviewing(true);
 
-      // Create peer connection with TURN relay forced
-      console.log('[BrowserStreaming] Creating peer connection with relay policy');
+      // Create peer connection - allowing all ICE transport types initially
+      console.log('[BrowserStreaming] Creating peer connection (all transport types)');
       const peerConnection = new RTCPeerConnection(rtcConfig);
       peerConnectionRef.current = peerConnection;
 
@@ -236,9 +239,12 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         }
         
         if (parsedServers.length > 0) {
-          iceServers = parsedServers; // Replace with Livepeer's servers
-          rtcConfig.iceServers = parsedServers; // Update config with new servers
-          console.log(`[BrowserStreaming] Using ${parsedServers.length} ICE servers from Livepeer`);
+          // Store Livepeer's TURN servers for potential relay-mode retry
+          livepeerTurnServers = parsedServers.filter(s => 
+            s.urls.toString().startsWith('turn:')
+          );
+          console.log(`[BrowserStreaming] Received ${parsedServers.length} ICE servers from Livepeer`);
+          console.log(`[BrowserStreaming] Including ${livepeerTurnServers.length} TURN servers for potential retry`);
         }
       }
 
@@ -280,10 +286,17 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // ===== ICE CANDIDATE LOGGING (No trickle ICE - Livepeer doesn't support PATCH) =====
       // All candidates are exchanged in initial SDP offer/answer
       let candidatesSent = 0;
+      let hasSrflxCandidate = false;
+      let hasRelayCandidate = false;
+      
       peerConnection.onicecandidate = async (event) => {
         if (event.candidate) {
           const c = event.candidate;
           candidatesSent++;
+          
+          // Track candidate types for diagnostics
+          if (c.type === 'srflx') hasSrflxCandidate = true;
+          if (c.type === 'relay') hasRelayCandidate = true;
           
           console.log(`[BrowserStreaming] 🧊 Local ICE candidate #${candidatesSent}:`, {
             type: c.type,
@@ -294,6 +307,12 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           });
         } else {
           console.log(`[BrowserStreaming] ✅ All ${candidatesSent} local ICE candidates gathered`);
+          console.log(`[BrowserStreaming] Candidate types: host=${candidatesSent - (hasSrflxCandidate ? 1 : 0) - (hasRelayCandidate ? 1 : 0)}, srflx=${hasSrflxCandidate ? 1 : 0}, relay=${hasRelayCandidate ? 1 : 0}`);
+          
+          // Warn if no relay candidates but TURN servers are available
+          if (!hasRelayCandidate && livepeerTurnServers.length > 0) {
+            console.warn('[BrowserStreaming] ⚠️ No relay candidates generated despite TURN servers being available');
+          }
           
           // Start monitoring ICE candidate pairs to see which ones are being tested
           monitorICECandidatePairs(peerConnection);
@@ -336,19 +355,109 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         setTimeout(() => clearInterval(checkInterval), 30000);
       };
 
-      // Monitor connection state with ICE restart capability
+      // Monitor connection state with fallback retry capability
+      let connectionTimeout: NodeJS.Timeout | null = null;
+      let hasAttemptedRelayFallback = false;
+      
       peerConnection.onconnectionstatechange = async () => {
         console.log('[BrowserStreaming] Connection state:', peerConnection.connectionState);
         
         if (peerConnection.connectionState === 'connected') {
           console.log('[BrowserStreaming] ✅ Peer connection fully established');
-          iceRestartAttemptsRef.current = 0; // Reset restart counter on success
+          if (connectionTimeout) clearTimeout(connectionTimeout);
+          iceRestartAttemptsRef.current = 0;
           toast.success('Stream connection established!');
           
           // Start monitoring media flow
           monitorMediaFlow(peerConnection);
+        } else if (peerConnection.connectionState === 'connecting') {
+          // Set a 10-second timeout for connection attempt
+          if (connectionTimeout) clearTimeout(connectionTimeout);
+          
+          connectionTimeout = setTimeout(async () => {
+            if (peerConnection.connectionState !== 'connected' && 
+                !hasAttemptedRelayFallback && 
+                livepeerTurnServers.length > 0) {
+              
+              console.warn('[BrowserStreaming] ⏰ Connection timeout - attempting fallback with TURN relay mode');
+              hasAttemptedRelayFallback = true;
+              
+              // Stop current attempt
+              peerConnection.close();
+              
+              // Retry with relay-only mode using Livepeer's TURN servers
+              toast.info('Retrying connection with relay servers...');
+              
+              // Create new connection with relay mode forced
+              const relayConfig: RTCConfiguration = {
+                iceServers: livepeerTurnServers,
+                iceTransportPolicy: 'relay'
+              };
+              
+              console.log('[BrowserStreaming] Retry: Creating peer connection with TURN relay forced');
+              const retryPc = new RTCPeerConnection(relayConfig);
+              peerConnectionRef.current = retryPc;
+              
+              // Re-add tracks
+              const videoTrack = mediaStream.getVideoTracks()[0];
+              const audioTrack = mediaStream.getAudioTracks()[0];
+              
+              if (videoTrack) retryPc.addTransceiver(videoTrack, { direction: 'sendonly' });
+              if (audioTrack) retryPc.addTransceiver(audioTrack, { direction: 'sendonly' });
+              
+              // Create new offer
+              const retryOffer = await retryPc.createOffer();
+              await retryPc.setLocalDescription(retryOffer);
+              
+              // Wait for ICE gathering
+              const retryCompleteOffer = await new Promise<RTCSessionDescription>((resolve) => {
+                const timeout = setTimeout(() => {
+                  resolve(retryPc.localDescription!);
+                }, 5000);
+                
+                retryPc.onicegatheringstatechange = () => {
+                  if (retryPc.iceGatheringState === 'complete') {
+                    clearTimeout(timeout);
+                    resolve(retryPc.localDescription!);
+                  }
+                };
+              });
+              
+              // Send new WHIP POST
+              const retryResponse = await fetch(whipUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/sdp' },
+                body: retryCompleteOffer.sdp,
+              });
+              
+              if (retryResponse.ok) {
+                const retryAnswer = await retryResponse.text();
+                await retryPc.setRemoteDescription(
+                  new RTCSessionDescription({ type: 'answer', sdp: retryAnswer })
+                );
+                
+                // Attach same connection handlers (simplified)
+                retryPc.onconnectionstatechange = async () => {
+                  if (retryPc.connectionState === 'connected') {
+                    console.log('[BrowserStreaming] ✅ Relay fallback connection successful');
+                    toast.success('Stream connection established (relay mode)!');
+                  } else if (retryPc.connectionState === 'failed') {
+                    console.error('[BrowserStreaming] ❌ Relay fallback also failed');
+                    toast.error('Unable to establish connection');
+                    stopBroadcast();
+                  }
+                };
+              } else {
+                console.error('[BrowserStreaming] ❌ Relay fallback WHIP request failed');
+                toast.error('Connection retry failed');
+                stopBroadcast();
+              }
+            }
+          }, 10000);
         } else if (peerConnection.connectionState === 'failed') {
           console.error('[BrowserStreaming] ❌ Connection failed');
+          if (connectionTimeout) clearTimeout(connectionTimeout);
           
           // Log stats to diagnose why it failed
           const stats = await peerConnection.getStats();
@@ -360,36 +469,24 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             if (stat.type === 'local-candidate') hasLocalCandidates = true;
           });
           
-          // CRITICAL: Log detailed stats to diagnose the issue
           console.error('[BrowserStreaming] Failure diagnosis:', {
             hasLocalCandidates,
             hasRemoteCandidates,
             localDescription: !!peerConnection.localDescription,
-            remoteDescription: !!peerConnection.remoteDescription
+            remoteDescription: !!peerConnection.remoteDescription,
+            attemptedRelayFallback: hasAttemptedRelayFallback
           });
           
-          // Log all remote candidates from getStats
-          console.log('[BrowserStreaming] Examining all remote candidates:');
-          stats.forEach(stat => {
-            if (stat.type === 'remote-candidate') {
-              console.log('[BrowserStreaming] Remote candidate found:', {
-                id: stat.id,
-                address: stat.address,
-                port: stat.port,
-                protocol: stat.protocol,
-                type: stat.candidateType
-              });
-            }
-          });
-          
-          // ICE restart doesn't work with Livepeer (403 Forbidden)
-          // Just fail and let user retry from scratch
-          console.error('[BrowserStreaming] Connection failed - no ICE restart support');
-          toast.error('Unable to establish connection. Please try again.');
-          stopBroadcast();
+          if (!hasAttemptedRelayFallback) {
+            // The timeout will handle the retry
+            console.log('[BrowserStreaming] Waiting for connection timeout to trigger relay fallback...');
+          } else {
+            console.error('[BrowserStreaming] All connection attempts exhausted');
+            toast.error('Unable to establish connection. Please try again.');
+            stopBroadcast();
+          }
         } else if (peerConnection.connectionState === 'disconnected') {
           console.warn('[BrowserStreaming] ⚠️ Connection disconnected, waiting for recovery...');
-          // Give it more time (10s) to reconnect before taking action
           setTimeout(() => {
             if (peerConnection.connectionState === 'disconnected' || 
                 peerConnection.connectionState === 'failed') {
