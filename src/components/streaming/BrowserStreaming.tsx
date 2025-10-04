@@ -138,7 +138,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           <div className="flex flex-col gap-2 items-center">
             <p className="text-xs text-muted-foreground text-center">
               {broadcastSource === 'screen' 
-                ? 'Step 1: Click "Enable Broadcast" → Step 2: Click "Share Screen" and select your display'
+                ? 'Click the button above, allow camera briefly, then select your screen to share'
                 : 'Click "Start Camera" and allow camera access'}
             </p>
             <Button onClick={stopBroadcast} variant="outline" size="sm">
