@@ -233,6 +233,30 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // Monitor ICE connection state for better debugging
       peerConnection.oniceconnectionstatechange = () => {
         console.log('[BrowserStreaming] ICE connection state:', peerConnection.iceConnectionState);
+        
+        if (peerConnection.iceConnectionState === 'failed') {
+          console.error('[BrowserStreaming] ICE connection failed - likely NAT/firewall issue');
+          toast.error('Connection failed - please check network settings');
+          stopBroadcast();
+        } else if (peerConnection.iceConnectionState === 'disconnected') {
+          console.warn('[BrowserStreaming] ICE connection disconnected');
+          setTimeout(() => {
+            if (peerConnection.iceConnectionState === 'disconnected') {
+              console.error('[BrowserStreaming] ICE connection still disconnected after 3s');
+              toast.error('Connection lost');
+              stopBroadcast();
+            }
+          }, 3000);
+        }
+      };
+      
+      // Log ICE candidates for debugging
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log('[BrowserStreaming] ICE candidate:', event.candidate.type, event.candidate.protocol);
+        } else {
+          console.log('[BrowserStreaming] All ICE candidates sent');
+        }
       };
 
       // Log stats every 5 seconds to verify data is flowing
