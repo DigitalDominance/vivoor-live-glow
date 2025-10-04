@@ -48,6 +48,8 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
   return (
     <Broadcast.Root 
       ingestUrl={ingestUrl}
+      video={source === 'camera'}
+      audio={source === 'camera'}
       onError={(error) => {
         console.error('[LivepeerBroadcast] Broadcast error:', error);
         if (error?.type === 'permissions') {
@@ -96,16 +98,21 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
         {/* Start broadcast button */}
         <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center bg-black/80">
           <div className="flex flex-col items-center gap-4">
-            <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
-              <EnableVideoIcon className="w-6 h-6" />
-              <span className="font-medium">
-                {source === 'screen' ? 'Enable Broadcast' : 'Start Camera'}
-              </span>
-            </Broadcast.EnabledTrigger>
-            {source === 'screen' && (
-              <p className="text-sm text-white/80 text-center max-w-xs">
-                After enabling, click the screen share button to select your display
-              </p>
+            {source === 'screen' ? (
+              <>
+                <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+                  <EnableVideoIcon className="w-6 h-6" />
+                  <span className="font-medium">Ready to Share Screen</span>
+                </Broadcast.EnabledTrigger>
+                <p className="text-sm text-white/80 text-center max-w-xs">
+                  Click above, then click "Share Screen" to select your display
+                </p>
+              </>
+            ) : (
+              <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+                <EnableVideoIcon className="w-6 h-6" />
+                <span className="font-medium">Start Camera</span>
+              </Broadcast.EnabledTrigger>
             )}
           </div>
         </Broadcast.EnabledIndicator>
