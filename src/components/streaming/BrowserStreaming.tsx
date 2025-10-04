@@ -246,13 +246,29 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
       
+      // CRITICAL: Log the full answer SDP to diagnose candidate format
+      console.log('[BrowserStreaming] ===== FULL ANSWER SDP =====');
+      console.log(answerSDP);
+      console.log('[BrowserStreaming] ===== END ANSWER SDP =====');
+      
       // Log answer SDP to check for embedded ICE candidates
       const candidateLines = answerSDP.split('\n').filter(line => line.startsWith('a=candidate:'));
       console.log(`[BrowserStreaming] Answer SDP contains ${candidateLines.length} ICE candidates`);
       
+      if (candidateLines.length > 0) {
+        console.log('[BrowserStreaming] First candidate:', candidateLines[0]);
+      }
+      
       await peerConnection.setRemoteDescription(
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
+      
+      // CRITICAL: Verify remote description was set correctly
+      console.log('[BrowserStreaming] Remote description set:', {
+        type: peerConnection.remoteDescription?.type,
+        hasSDP: !!peerConnection.remoteDescription?.sdp,
+        sdpLength: peerConnection.remoteDescription?.sdp?.length
+      });
       
       // ===== ICE CANDIDATE LOGGING (No trickle ICE - Livepeer doesn't support PATCH) =====
       // All candidates are exchanged in initial SDP offer/answer
@@ -337,6 +353,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             if (stat.type === 'local-candidate') hasLocalCandidates = true;
           });
           
+          // CRITICAL: Log detailed stats to diagnose the issue
           console.error('[BrowserStreaming] Failure diagnosis:', {
             hasLocalCandidates,
             hasRemoteCandidates,
@@ -344,43 +361,25 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             remoteDescription: !!peerConnection.remoteDescription
           });
           
-          // Attempt ICE restart before giving up - but wait 3 seconds first
-          if (iceRestartAttemptsRef.current < 2) {
-            iceRestartAttemptsRef.current++;
-            console.log(`[BrowserStreaming] 🔄 Attempting ICE restart in 3s (${iceRestartAttemptsRef.current}/2)`);
-            toast.info('Connection issue detected, retrying...');
-            
-            setTimeout(async () => {
-              try {
-                const restartOffer = await peerConnection.createOffer({ iceRestart: true });
-                await peerConnection.setLocalDescription(restartOffer);
-                
-                // Re-negotiate with WHIP endpoint
-                const restartResponse = await fetch(whipUrl, {
-                  method: 'POST',
-                  mode: 'cors',
-                  headers: { 'Content-Type': 'application/sdp' },
-                  body: restartOffer.sdp,
-                });
-                
-                if (restartResponse.ok) {
-                  const restartAnswer = await restartResponse.text();
-                  await peerConnection.setRemoteDescription(
-                    new RTCSessionDescription({ type: 'answer', sdp: restartAnswer })
-                  );
-                  console.log('[BrowserStreaming] ICE restart successful');
-                }
-              } catch (error) {
-                console.error('[BrowserStreaming] ICE restart failed:', error);
-                toast.error('Failed to reconnect - please try again');
-                stopBroadcast();
-              }
-            }, 3000);
-          } else {
-            console.error('[BrowserStreaming] Max ICE restart attempts reached');
-            toast.error('Unable to establish connection - check your network');
-            stopBroadcast();
-          }
+          // Log all remote candidates from getStats
+          console.log('[BrowserStreaming] Examining all remote candidates:');
+          stats.forEach(stat => {
+            if (stat.type === 'remote-candidate') {
+              console.log('[BrowserStreaming] Remote candidate found:', {
+                id: stat.id,
+                address: stat.address,
+                port: stat.port,
+                protocol: stat.protocol,
+                type: stat.candidateType
+              });
+            }
+          });
+          
+          // ICE restart doesn't work with Livepeer (403 Forbidden)
+          // Just fail and let user retry from scratch
+          console.error('[BrowserStreaming] Connection failed - no ICE restart support');
+          toast.error('Unable to establish connection. Please try again.');
+          stopBroadcast();
         } else if (peerConnection.connectionState === 'disconnected') {
           console.warn('[BrowserStreaming] ⚠️ Connection disconnected, waiting for recovery...');
           // Give it more time (10s) to reconnect before taking action
