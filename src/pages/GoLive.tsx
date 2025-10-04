@@ -38,6 +38,7 @@ const GoLive = () => {
   const [previewReady, setPreviewReady] = React.useState(false);
   const [playerKey, setPlayerKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
+  const [createdStreamId, setCreatedStreamId] = React.useState<string | null>(null);
 
 
   // Get current user profile for display using secure function
@@ -350,14 +351,16 @@ const GoLive = () => {
 
         console.log('Stream created successfully with ID:', streamId);
         
-        // Store stream data in localStorage for persistence
+        // Store stream data for persistence (used by RTMP streams and initial browser setup)
         localStorage.setItem('currentIngestUrl', currentIngestUrl || '');
         localStorage.setItem('currentStreamKey', currentStreamKey || '');
         localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
         localStorage.setItem('streamStartTime', new Date().toISOString());
-        localStorage.setItem('currentStreamId', streamId);
         localStorage.setItem('currentStreamingMode', streamingMode);
         localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
+        
+        // Store streamId in state to pass as prop to BrowserStreaming component
+        setCreatedStreamId(streamId);
         
         if (streamingMode === 'browser') {
           toast.success('Browser stream created! You can now start broadcasting with your camera or screen.');
@@ -594,6 +597,7 @@ const GoLive = () => {
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}
+                    streamId={createdStreamId || undefined}
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={false}
                     onStreamStart={() => {
@@ -601,10 +605,9 @@ const GoLive = () => {
                       toast.success('Broadcasting started! Redirecting to stream page...');
                       // Wait 5 seconds for Livepeer to start receiving and transcoding
                       setTimeout(() => {
-                        const streamId = localStorage.getItem('currentStreamId');
-                        if (streamId) {
+                        if (createdStreamId) {
                           preserveStream(); // Preserve the stream state
-                          navigate(`/stream/${streamId}`);
+                          navigate(`/stream/${createdStreamId}`);
                         }
                       }, 5000);
                     }}

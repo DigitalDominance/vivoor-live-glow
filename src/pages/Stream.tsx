@@ -188,6 +188,11 @@ const Stream = () => {
   React.useEffect(() => {
     if (!streamData?.id || !isOwnStream) return;
 
+    // Skip heartbeat for browser streams - they use update_browser_stream_heartbeat via BrowserStreaming component
+    if (streamData.stream_type === 'browser') {
+      return;
+    }
+
     let heartbeatInterval: number;
     let disconnectTimer: number;
     let lastHeartbeat = Date.now();
@@ -330,6 +335,7 @@ const Stream = () => {
               <div className="space-y-4">
                 <BrowserStreaming
                   streamKey={localStreamData.streamKey || ''}
+                  streamId={streamData.id}
                   playbackId={streamData.livepeer_playback_id || undefined}
                   onStreamStart={() => {
                     console.log('Browser stream started');

@@ -9,6 +9,7 @@ import { useWallet } from '@/context/WalletContext';
 interface BrowserStreamingProps {
   streamKey: string;
   playbackId?: string;
+  streamId?: string;
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   isPreviewMode?: boolean;
@@ -16,6 +17,7 @@ interface BrowserStreamingProps {
 
 const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   streamKey,
+  streamId,
   onStreamStart,
   onStreamEnd,
   isPreviewMode = false,
@@ -40,12 +42,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
     const sendHeartbeat = async () => {
-      if (isPreviewMode || !sessionToken || !identity?.address) return;
-
-      const streamId = localStorage.getItem('currentStreamId');
-      if (!streamId) {
-        return;
-      }
+      if (isPreviewMode || !sessionToken || !identity?.address || !streamId) return;
 
       try {
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
@@ -76,7 +73,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         clearInterval(heartbeatInterval);
       }
     };
-  }, [isStreaming, isPreviewMode, sessionToken, identity]);
+  }, [isStreaming, isPreviewMode, sessionToken, identity, streamId]);
 
   // Restore preserved stream on mount
   useEffect(() => {
@@ -314,17 +311,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     onStreamEnd?.();
 
     // Mark stream as ended using secure RPC function
-    if (!isPreviewMode && sessionToken && identity?.address) {
-      const streamId = localStorage.getItem('currentStreamId');
-      if (streamId) {
-        console.log('[BrowserStreaming] Marking stream as ended');
-        await supabase.rpc('update_browser_stream_heartbeat', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          stream_id_param: streamId,
-          is_live_param: false
-        });
-      }
+    if (!isPreviewMode && sessionToken && identity?.address && streamId) {
+      console.log('[BrowserStreaming] Marking stream as ended');
+      await supabase.rpc('update_browser_stream_heartbeat', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        stream_id_param: streamId,
+        is_live_param: false
+      });
     }
   };
 
