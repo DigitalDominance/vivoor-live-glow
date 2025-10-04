@@ -6,7 +6,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
-import * as Player from "@livepeer/react/player";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
@@ -80,19 +79,14 @@ const Watch = () => {
     refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
   });
 
-  // Detect stream type and prepare playback info
+  // All streams use HLS for compatibility (browser capture produces B-frames incompatible with WebRTC)
   const streamPlayback = React.useMemo(() => {
     if (!streamData) return null;
     
-    const isBrowserStream = streamData.streaming_mode === 'browser' || streamData.stream_type === 'browser';
-    const playbackId = streamData.livepeer_playback_id || streamData.playback_url?.split('/').slice(-2, -1)[0];
-    
     return {
-      isBrowserStream,
-      playbackId,
       hlsUrl: streamData.playback_url
     };
-  }, [streamData?.playback_url, streamData?.streaming_mode, streamData?.stream_type, streamData?.livepeer_playback_id]);
+  }, [streamData?.playback_url]);
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
@@ -750,24 +744,7 @@ const Watch = () => {
               {streamData.is_live ? (
                 streamPlayback ? (
                   <>
-                    {streamPlayback.isBrowserStream && streamPlayback.playbackId ? (
-                      <div className="aspect-video relative bg-black">
-                        <Player.Root src={[{
-                          src: `https://livepeercdn.studio/webrtc/${streamPlayback.playbackId}`,
-                          type: "webrtc",
-                          mime: "application/sdp"
-                        }] as any}>
-                          <Player.Container>
-                            <Player.Video
-                              title="Live Stream"
-                              muted={isMuted}
-                              className="w-full h-full object-contain"
-                            />
-                            <Player.LoadingIndicator className="absolute inset-0 flex items-center justify-center" />
-                          </Player.Container>
-                        </Player.Root>
-                      </div>
-                    ) : streamPlayback.hlsUrl ? (
+                    {streamPlayback.hlsUrl ? (
                       <HlsPlayer
                         src={streamPlayback.hlsUrl}
                         autoPlay
