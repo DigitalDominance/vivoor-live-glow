@@ -20,7 +20,7 @@ const Stream = () => {
   const { streamId } = useParams();
   const navigate = useNavigate();
   const { identity } = useWallet();
-  const kaspaAddress = identity?.id; // The kaspa address from wallet identity
+  const kaspaAddress = identity?.address; // The kaspa wallet address from wallet identity
   const [elapsed, setElapsed] = React.useState(0);
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
@@ -119,7 +119,7 @@ const Stream = () => {
   // Monitor tips for this stream (only if it's own stream)
   const { tips: allTips, totalAmountReceived } = useTipMonitoring({
     streamId: streamData?.id,
-    kaspaAddress: identity?.id,
+    kaspaAddress: kaspaAddress, // Use the actual wallet address, not user ID
     streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {

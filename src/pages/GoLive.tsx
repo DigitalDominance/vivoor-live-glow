@@ -18,7 +18,7 @@ const GoLive = () => {
   const navigate = useNavigate();
   const { identity, profile: walletProfile, sessionToken } = useWallet();
   const { preserveStream, isPreviewing } = useBrowserStreaming();
-  const kaspaAddress = identity?.id; // The kaspa address from wallet identity
+  const kaspaAddress = identity?.address; // The kaspa wallet address from wallet identity
   
   const [title, setTitle] = React.useState('');
   const [category, setCategory] = React.useState('IRL');
