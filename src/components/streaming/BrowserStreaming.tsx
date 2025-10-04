@@ -95,14 +95,27 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       setStreamingMode(source);
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       
-      // Use Livepeer's WebRTC endpoint directly
-      const webrtcUrl = `https://livepeer.studio/webrtc/${streamKey}`;
-      console.log('[BrowserStreaming] WebRTC endpoint:', webrtcUrl);
+      // Step 1: Get redirect URL from Livepeer
+      console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
+      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
+        method: 'HEAD',
+        redirect: 'manual'
+      });
+      
+      const redirectUrl = redirectResponse.headers.get('Location') || 
+                         `https://livepeer.studio/webrtc/${streamKey}`;
+      
+      console.log('[BrowserStreaming] Redirect URL:', redirectUrl);
+      const host = new URL(redirectUrl).host;
 
-      // Step 2: Set up ICE servers - use public STUN servers
+      // Step 2: Set up ICE servers using the redirect host
       const iceServers = [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: `stun:${host}` },
+        {
+          urls: `turn:${host}`,
+          username: 'livepeer',
+          credential: 'livepeer',
+        },
       ];
 
       // Step 3: Get user media with encoding parameters to disable B-frames
@@ -155,7 +168,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       
       await peerConnection.setLocalDescription(offer);
 
-      // Step 6: Wait for ICE gathering with longer timeout
+      // Step 6: Wait for ICE gathering
       console.log('[BrowserStreaming] Waiting for ICE gathering');
       const completeOffer = await new Promise<RTCSessionDescription>((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -163,7 +176,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             console.warn('[BrowserStreaming] ICE gathering timeout, using partial candidates');
           }
           resolve(peerConnection.localDescription!);
-        }, 10000); // Increased to 10 seconds
+        }, 5000);
         
         peerConnection.onicegatheringstatechange = () => {
           console.log('[BrowserStreaming] ICE gathering state:', peerConnection.iceGatheringState);
@@ -178,12 +191,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error('Failed to create offer SDP');
       }
 
-      // Step 7: Send offer to Livepeer's WHIP endpoint
-      console.log('[BrowserStreaming] Sending offer to Livepeer WHIP endpoint');
+      // Step 7: Send offer to the redirect URL (not the original URL)
+      console.log('[BrowserStreaming] Sending offer to Livepeer redirect endpoint');
       console.log('[BrowserStreaming] Offer SDP length:', completeOffer.sdp.length);
       
-      const sdpResponse = await fetch(webrtcUrl, {
+      const sdpResponse = await fetch(redirectUrl, {
         method: 'POST',
+        mode: 'cors',
         headers: {
           'Content-Type': 'application/sdp',
         },
