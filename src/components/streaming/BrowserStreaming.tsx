@@ -97,14 +97,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const whipUrl = `https://livepeer.studio/webrtc/${streamKey}`;
       console.log('[BrowserStreaming] WHIP endpoint:', whipUrl);
 
-      // Set up ICE servers
+      // Set up ICE servers - use Google's public STUN servers as fallback
       const iceServers = [
-        { urls: 'stun:stun.livepeer.studio' },
-        {
-          urls: 'turn:turn.livepeer.studio',
-          username: 'livepeer',
-          credential: 'livepeer',
-        },
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.livepeer.studio' }
       ];
 
       // Get user media
@@ -213,14 +210,32 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
 
-      // Monitor connection state
+      // Monitor connection state with more nuanced handling
       peerConnection.onconnectionstatechange = () => {
         console.log('[BrowserStreaming] Connection state:', peerConnection.connectionState);
-        if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
-          console.error('[BrowserStreaming] Connection lost to Livepeer');
-          toast.error('Lost connection to streaming server');
+        
+        if (peerConnection.connectionState === 'connected') {
+          console.log('[BrowserStreaming] Peer connection fully established');
+        } else if (peerConnection.connectionState === 'failed') {
+          console.error('[BrowserStreaming] Connection failed');
+          toast.error('Failed to connect to streaming server');
           stopBroadcast();
+        } else if (peerConnection.connectionState === 'disconnected') {
+          console.warn('[BrowserStreaming] Connection disconnected, attempting to reconnect...');
+          // Give it a moment to reconnect before stopping
+          setTimeout(() => {
+            if (peerConnection.connectionState === 'disconnected') {
+              console.error('[BrowserStreaming] Connection lost to Livepeer');
+              toast.error('Lost connection to streaming server');
+              stopBroadcast();
+            }
+          }, 3000);
         }
+      };
+
+      // Monitor ICE connection state for better debugging
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log('[BrowserStreaming] ICE connection state:', peerConnection.iceConnectionState);
       };
 
       // Log stats every 5 seconds to verify data is flowing
