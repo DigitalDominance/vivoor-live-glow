@@ -136,13 +136,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           </div>
           
           <div className="flex flex-col gap-2 items-center">
-            <div className="text-sm text-green-500 font-medium">
-              🔴 Live - {broadcastSource === 'screen' ? 'Screen sharing' : 'Camera streaming'}
-            </div>
             <p className="text-xs text-muted-foreground text-center">
-              {broadcastSource === 'screen' 
-                ? 'Browser will request permission to share your screen'
-                : 'Browser will request permission to use your camera'}
+              Click the {broadcastSource === 'screen' ? 'screen share' : 'camera'} button in the preview to start broadcasting
             </p>
           </div>
         </>
