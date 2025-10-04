@@ -36,6 +36,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const { sessionToken, identity } = useWallet();
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const whipResourceRef = useRef<string | null>(null);
+  const iceRestartAttemptsRef = useRef(0);
 
   // Send heartbeat to mark stream as live - using secure RPC function like RTMP
   useEffect(() => {
@@ -94,11 +96,18 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const whipUrl = `https://livepeer.studio/webrtc/${streamKey}`;
       console.log('[BrowserStreaming] WHIP endpoint:', whipUrl);
 
-      // Set up ICE servers - use Google's public STUN servers as fallback
+      // Set up ICE servers - include both STUN and TURN for robust NAT traversal
       const iceServers = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun.livepeer.studio' }
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.livepeer.studio' },
+        // Add TURN servers for NAT traversal
+        { 
+          urls: 'turn:turn.livepeer.studio:3478',
+          username: 'livepeer',
+          credential: 'livepeer'
+        }
       ];
 
       // Get user media
@@ -200,6 +209,26 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error(`Failed to negotiate with server: ${sdpResponse.status}`);
       }
 
+      // CRITICAL: Parse Link header for additional ICE servers
+      const linkHeader = sdpResponse.headers.get('Link');
+      if (linkHeader) {
+        console.log('[BrowserStreaming] Link header received:', linkHeader);
+        // Parse Link headers for ICE servers (format: <stun:server>; rel="ice-server")
+        const iceServerMatches = linkHeader.matchAll(/<([^>]+)>;\s*rel="ice-server"/g);
+        for (const match of iceServerMatches) {
+          const serverUrl = match[1];
+          console.log('[BrowserStreaming] Adding ICE server from Link header:', serverUrl);
+          iceServers.push({ urls: serverUrl });
+        }
+      }
+
+      // CRITICAL: Store resource location for potential PATCH requests (trickle ICE)
+      const locationHeader = sdpResponse.headers.get('Location');
+      if (locationHeader) {
+        whipResourceRef.current = locationHeader;
+        console.log('[BrowserStreaming] WHIP resource URL:', locationHeader);
+      }
+
       // Set remote description from answer
       console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
@@ -207,56 +236,112 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
 
-      // Monitor connection state with more nuanced handling
-      peerConnection.onconnectionstatechange = () => {
+      // Monitor connection state with ICE restart capability
+      peerConnection.onconnectionstatechange = async () => {
         console.log('[BrowserStreaming] Connection state:', peerConnection.connectionState);
         
         if (peerConnection.connectionState === 'connected') {
-          console.log('[BrowserStreaming] Peer connection fully established');
+          console.log('[BrowserStreaming] ✅ Peer connection fully established');
+          iceRestartAttemptsRef.current = 0; // Reset restart counter on success
+          toast.success('Stream connection established!');
         } else if (peerConnection.connectionState === 'failed') {
-          console.error('[BrowserStreaming] Connection failed');
-          toast.error('Failed to connect to streaming server');
-          stopBroadcast();
-        } else if (peerConnection.connectionState === 'disconnected') {
-          console.warn('[BrowserStreaming] Connection disconnected, attempting to reconnect...');
-          // Give it a moment to reconnect before stopping
-          setTimeout(() => {
-            if (peerConnection.connectionState === 'disconnected') {
-              console.error('[BrowserStreaming] Connection lost to Livepeer');
-              toast.error('Lost connection to streaming server');
+          console.error('[BrowserStreaming] ❌ Connection failed');
+          
+          // Attempt ICE restart before giving up
+          if (iceRestartAttemptsRef.current < 2) {
+            iceRestartAttemptsRef.current++;
+            console.log(`[BrowserStreaming] 🔄 Attempting ICE restart (${iceRestartAttemptsRef.current}/2)`);
+            toast.info('Connection issue detected, retrying...');
+            
+            try {
+              const restartOffer = await peerConnection.createOffer({ iceRestart: true });
+              await peerConnection.setLocalDescription(restartOffer);
+              
+              // Re-negotiate with WHIP endpoint
+              const restartResponse = await fetch(whipUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/sdp' },
+                body: restartOffer.sdp,
+              });
+              
+              if (restartResponse.ok) {
+                const restartAnswer = await restartResponse.text();
+                await peerConnection.setRemoteDescription(
+                  new RTCSessionDescription({ type: 'answer', sdp: restartAnswer })
+                );
+                console.log('[BrowserStreaming] ICE restart successful');
+              }
+            } catch (error) {
+              console.error('[BrowserStreaming] ICE restart failed:', error);
+              toast.error('Failed to reconnect - please try again');
               stopBroadcast();
             }
-          }, 3000);
-        }
-      };
-
-      // Monitor ICE connection state for better debugging
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('[BrowserStreaming] ICE connection state:', peerConnection.iceConnectionState);
-        
-        if (peerConnection.iceConnectionState === 'failed') {
-          console.error('[BrowserStreaming] ICE connection failed - likely NAT/firewall issue');
-          toast.error('Connection failed - please check network settings');
-          stopBroadcast();
-        } else if (peerConnection.iceConnectionState === 'disconnected') {
-          console.warn('[BrowserStreaming] ICE connection disconnected');
+          } else {
+            console.error('[BrowserStreaming] Max ICE restart attempts reached');
+            toast.error('Unable to establish connection - check your network');
+            stopBroadcast();
+          }
+        } else if (peerConnection.connectionState === 'disconnected') {
+          console.warn('[BrowserStreaming] ⚠️ Connection disconnected, waiting for recovery...');
+          // Give it more time (10s) to reconnect before taking action
           setTimeout(() => {
-            if (peerConnection.iceConnectionState === 'disconnected') {
-              console.error('[BrowserStreaming] ICE connection still disconnected after 3s');
+            if (peerConnection.connectionState === 'disconnected' || 
+                peerConnection.connectionState === 'failed') {
+              console.error('[BrowserStreaming] Connection did not recover');
               toast.error('Connection lost');
               stopBroadcast();
             }
-          }, 3000);
+          }, 10000);
+        }
+      };
+
+      // Monitor ICE connection state with detailed transitions
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        console.log('[BrowserStreaming] 🧊 ICE connection state:', state);
+        
+        if (state === 'connected' || state === 'completed') {
+          console.log('[BrowserStreaming] ✅ ICE connection established successfully');
+        } else if (state === 'checking') {
+          console.log('[BrowserStreaming] 🔍 ICE candidates being checked...');
+        } else if (state === 'failed') {
+          console.error('[BrowserStreaming] ❌ ICE connection failed');
+          console.error('[BrowserStreaming] This usually indicates:');
+          console.error('[BrowserStreaming] - Firewall blocking WebRTC');
+          console.error('[BrowserStreaming] - No valid ICE candidate pairs found');
+          console.error('[BrowserStreaming] - TURN server not reachable');
+          // Don't immediately stop - let connection state handler manage ICE restart
+        } else if (state === 'disconnected') {
+          console.warn('[BrowserStreaming] ⚠️ ICE connection disconnected');
+          // Give it time to reconnect before taking action
         }
       };
       
-      // Log ICE candidates for debugging
+      // Log all ICE candidates for comprehensive debugging
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('[BrowserStreaming] ICE candidate:', event.candidate.type, event.candidate.protocol);
+          const c = event.candidate;
+          console.log('[BrowserStreaming] 🧊 Local ICE candidate:', {
+            type: c.type,
+            protocol: c.protocol,
+            address: c.address,
+            port: c.port,
+            priority: c.priority,
+            foundation: c.foundation
+          });
         } else {
-          console.log('[BrowserStreaming] All ICE candidates sent');
+          console.log('[BrowserStreaming] ✅ All local ICE candidates gathered');
         }
+      };
+
+      // Track remote ICE candidates
+      let remoteIceCandidateCount = 0;
+      const originalAddIceCandidate = peerConnection.addIceCandidate.bind(peerConnection);
+      peerConnection.addIceCandidate = async (candidate: RTCIceCandidateInit | RTCIceCandidate) => {
+        remoteIceCandidateCount++;
+        console.log('[BrowserStreaming] 📥 Remote ICE candidate #' + remoteIceCandidateCount + ':', candidate);
+        return originalAddIceCandidate(candidate);
       };
 
       // Log stats every 5 seconds to verify data is flowing
@@ -304,6 +389,9 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   const stopBroadcast = async () => {
     console.log('[BrowserStreaming] Stopping broadcast');
     
+    // Reset ICE restart counter
+    iceRestartAttemptsRef.current = 0;
+    
     // Stop all tracks
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => {
@@ -323,6 +411,9 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       peerConnectionRef.current = null;
       console.log('[BrowserStreaming] Closed peer connection');
     }
+    
+    // Clear WHIP resource reference
+    whipResourceRef.current = null;
 
     // Clear video preview
     if (videoRef.current) {
