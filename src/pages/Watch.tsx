@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
-import WebRtcPlayer from "@/components/players/WebRtcPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
+import * as Player from "@livepeer/react/player";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
 import ProfileModal from "@/components/modals/ProfileModal";
@@ -751,12 +751,22 @@ const Watch = () => {
                 streamPlayback ? (
                   <>
                     {streamPlayback.isBrowserStream && streamPlayback.playbackId ? (
-                      <WebRtcPlayer
-                        playbackId={streamPlayback.playbackId}
-                        autoPlay
-                        poster={streamData.thumbnail_url || undefined}
-                        videoRef={videoRef}
-                      />
+                      <div className="aspect-video relative bg-black">
+                        <Player.Root src={[{
+                          src: `https://livepeercdn.studio/webrtc/${streamPlayback.playbackId}`,
+                          type: "webrtc",
+                          mime: "application/sdp"
+                        }] as any}>
+                          <Player.Container>
+                            <Player.Video
+                              title="Live Stream"
+                              muted={isMuted}
+                              className="w-full h-full object-contain"
+                            />
+                            <Player.LoadingIndicator className="absolute inset-0 flex items-center justify-center" />
+                          </Player.Container>
+                        </Player.Root>
+                      </div>
                     ) : streamPlayback.hlsUrl ? (
                       <HlsPlayer
                         src={streamPlayback.hlsUrl}
