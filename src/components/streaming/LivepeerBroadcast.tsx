@@ -93,6 +93,16 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
           }}
         />
         
+        {/* Start broadcast button - must be clicked first */}
+        <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center">
+          <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+            <EnableVideoIcon className="w-6 h-6" />
+            <span className="font-medium">
+              {source === 'screen' ? 'Start Screen Share' : 'Start Camera'}
+            </span>
+          </Broadcast.EnabledTrigger>
+        </Broadcast.EnabledIndicator>
+        
         <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <LoadingIcon className="w-8 h-8 animate-spin text-white" />
@@ -130,28 +140,27 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
           </div>
         </Broadcast.LoadingIndicator>
 
-        {/* Control buttons */}
-        <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
-          {source === 'camera' ? (
+        {/* Control buttons - only shown when broadcast is enabled */}
+        <Broadcast.EnabledIndicator asChild>
+          <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
+            {source === 'screen' && (
+              <Broadcast.ScreenshareTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
+                <Broadcast.ScreenshareIndicator asChild matcher={false}>
+                  <StartScreenshareIcon className="w-full h-full text-white" />
+                </Broadcast.ScreenshareIndicator>
+                <Broadcast.ScreenshareIndicator asChild matcher={true}>
+                  <StopScreenshareIcon className="w-full h-full text-red-500" />
+                </Broadcast.ScreenshareIndicator>
+              </Broadcast.ScreenshareTrigger>
+            )}
+            
             <Broadcast.EnabledTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
-              <Broadcast.EnabledIndicator asChild matcher={false}>
-                <EnableVideoIcon className="w-full h-full text-white" />
-              </Broadcast.EnabledIndicator>
               <Broadcast.EnabledIndicator asChild matcher={true}>
                 <StopIcon className="w-full h-full text-red-500" />
               </Broadcast.EnabledIndicator>
             </Broadcast.EnabledTrigger>
-          ) : (
-            <Broadcast.ScreenshareTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
-              <Broadcast.ScreenshareIndicator asChild matcher={false}>
-                <StartScreenshareIcon className="w-full h-full text-white" />
-              </Broadcast.ScreenshareIndicator>
-              <Broadcast.ScreenshareIndicator asChild matcher={true}>
-                <StopScreenshareIcon className="w-full h-full text-red-500" />
-              </Broadcast.ScreenshareIndicator>
-            </Broadcast.ScreenshareTrigger>
-          )}
-        </Broadcast.Controls>
+          </Broadcast.Controls>
+        </Broadcast.EnabledIndicator>
       </Broadcast.Container>
     </Broadcast.Root>
   );
