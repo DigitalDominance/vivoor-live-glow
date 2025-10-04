@@ -471,6 +471,11 @@ const GoLive = () => {
                 
                 <button
                   onClick={async () => {
+                    if (!kaspaAddress) {
+                      toast.error('Please connect wallet first');
+                      return;
+                    }
+                    
                     // Clear existing stream data when switching modes
                     setIngestUrl(null);
                     setStreamKey(null);
@@ -483,7 +488,7 @@ const GoLive = () => {
                     setStreamingMode('browser');
                     
                     // Generate stream details for camera
-                    toast.info('Setting up camera streaming...');
+                    toast.info('Setting up browser streaming...');
                     try {
                       await generateStreamDetails();
                     } catch (error) {
@@ -587,11 +592,12 @@ const GoLive = () => {
               </div>
             </div>
 
-            {/* Browser Streaming Setup Section - Show preview with actual stream key after creation */}
-            {streamingMode === 'browser' && streamKey && (
+            {/* Browser Streaming Setup Section - Show preview with actual stream key after payment/setup */}
+            {streamingMode === 'browser' && createdStreamId && streamKey && (
               <div className="mb-8">
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  Browser Stream Setup - {browserSource === 'screen' ? 'Screen Share' : 'Camera'}
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                  Browser Stream Ready - Start Broadcasting
                 </h3>
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
@@ -603,18 +609,21 @@ const GoLive = () => {
                     onStreamStart={() => {
                       console.log('Browser stream started - user is now broadcasting');
                       toast.success('Broadcasting started! Redirecting to stream page...');
-                      // Wait 5 seconds for Livepeer to start receiving and transcoding
+                      // Wait 2 seconds then navigate
                       setTimeout(() => {
                         if (createdStreamId) {
                           preserveStream(); // Preserve the stream state
                           navigate(`/stream/${createdStreamId}`);
                         }
-                      }, 5000);
+                      }, 2000);
                     }}
                     onStreamEnd={() => {
                       console.log('Browser stream ended');
                     }}
                   />
+                </div>
+                <div className="text-xs text-gray-400 mt-2">
+                  Click "Stream Camera" or "Share Screen" above to start broadcasting. You'll automatically be redirected to your stream page.
                 </div>
               </div>
             )}
