@@ -340,7 +340,7 @@ const GoLive = () => {
           playback_url_param: currentPlaybackUrl,
           treasury_txid_param: treasuryTxid,
           treasury_block_time_param: Date.now(),
-          stream_type_param: 'livepeer',
+          stream_type_param: streamingMode === 'browser' ? 'browser' : 'livepeer',
           thumbnail_url_param: thumbnailUrl
         });
 
