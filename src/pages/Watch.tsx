@@ -83,10 +83,18 @@ const Watch = () => {
   const streamPlayback = React.useMemo(() => {
     if (!streamData) return null;
     
+    console.log('Stream playback data:', {
+      playback_url: streamData.playback_url,
+      streaming_mode: streamData.streaming_mode,
+      stream_type: streamData.stream_type,
+      is_live: streamData.is_live,
+      livepeer_playback_id: streamData.livepeer_playback_id
+    });
+    
     return {
       hlsUrl: streamData.playback_url
     };
-  }, [streamData?.playback_url]);
+  }, [streamData?.playback_url, streamData?.streaming_mode, streamData?.stream_type, streamData?.is_live, streamData?.livepeer_playback_id]);
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({

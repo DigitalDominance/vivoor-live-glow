@@ -27,13 +27,39 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     setStreamReadyCalled(false); // Reset when src changes
   }, [src]);
 
+  // Pre-check if HLS manifest is ready before trying to load
+  React.useEffect(() => {
+    if (!src || !isLiveStream) return;
+    
+    const checkManifestReady = async () => {
+      try {
+        console.log('🎬 Checking if HLS manifest is ready:', src);
+        const response = await fetch(src, { method: 'HEAD' });
+        if (response.ok) {
+          console.log('🎬 HLS manifest is ready');
+          setError(null);
+        } else {
+          console.log('🎬 HLS manifest not ready yet, status:', response.status);
+          setError('Stream is starting up, please wait...');
+          // Retry check after 3 seconds
+          setTimeout(checkManifestReady, 3000);
+        }
+      } catch (err) {
+        console.log('🎬 HLS manifest check failed:', err);
+        setError('Waiting for stream to start...');
+        setTimeout(checkManifestReady, 3000);
+      }
+    };
+    
+    checkManifestReady();
+  }, [src, isLiveStream]);
+
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     console.log('🎬 HlsPlayer: Initializing with src:', src);
     setLoading(true);
-    setError(null);
 
     let hls: Hls | null = null;
 
@@ -45,6 +71,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       console.log('🎬 Video: canplay event');
       setLoading(false);
       setRetryCount(0);
+      setError(null);
       if (!streamReadyCalled && onStreamReady) {
         setStreamReadyCalled(true);
         onStreamReady();
@@ -60,13 +87,15 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       console.error('🎬 Video error:', e, video.error);
       setLoading(false);
       
-      if (isLiveStream && retryCount < 20) { // Increased retry attempts
-        setError('Stream is transcoding, please wait...');
+      if (isLiveStream && retryCount < 30) { // More retries for browser streams
+        const waitTime = Math.min(5000 + (retryCount * 1000), 10000); // Gradually increase wait time
+        setError(`Stream is transcoding (${retryCount + 1}/30), retrying in ${waitTime/1000}s...`);
         setRetryCount(prev => prev + 1);
         retryTimeoutRef.current = setTimeout(() => {
-          console.log('🎬 Retrying stream connection...');
+          console.log(`🎬 Retrying stream connection (attempt ${retryCount + 1})...`);
+          setError(null);
           video.load();
-        }, 5000);
+        }, waitTime);
       } else {
         setError('Stream unavailable - please refresh the page');
       }
@@ -77,6 +106,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     const onPlaying = () => {
       console.log('🎬 Video: playing started');
       setError(null);
+      setLoading(false);
     };
 
     video.addEventListener('loadstart', onLoadStart);
