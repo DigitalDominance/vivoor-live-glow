@@ -46,14 +46,25 @@ serve(async (req: Request) => {
     }
 
     const payload: any = await createRes.json();
-    const streamId = payload.id; // Store the actual Livepeer stream ID
-    const playbackId = payload.playbackId || payload.playback_id || payload.playback?.id;
-    const ingestUrl = payload.rtmpIngestUrl || payload.ingest || payload.ingestUrl || "rtmp://rtmp.livepeer.com/live";
-    const streamKey = payload.streamKey || payload.stream_key;
     
-    // Use the correct Livepeer CDN domain (.studio) and playback ID for HLS
-    // This works for both RTMP and WebRTC/WHIP ingested streams
+    // Log the full payload for debugging
+    console.log('[livepeer-create-stream] Livepeer API response:', JSON.stringify(payload, null, 2));
+    
+    const streamId = payload.id;
+    const playbackId = payload.playbackId || payload.playback_id;
+    const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
+    const streamKey = payload.streamKey;
+    
+    // Use playbackId for HLS URL - works for both RTMP and WebRTC streams
+    // Note: Stream must be actively receiving data for HLS to work
     const playbackUrl = playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null;
+    
+    console.log('[livepeer-create-stream] Generated URLs:', {
+      streamId,
+      playbackId,
+      playbackUrl,
+      ingestUrl
+    });
 
     return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
