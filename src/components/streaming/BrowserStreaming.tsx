@@ -254,11 +254,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
       
-      // ===== TRICKLE ICE IMPLEMENTATION =====
-      // Send local ICE candidates to WHIP resource via PATCH
+      // ===== ICE CANDIDATE LOGGING (No trickle ICE - Livepeer doesn't support PATCH) =====
+      // All candidates are exchanged in initial SDP offer/answer
       let candidatesSent = 0;
       peerConnection.onicecandidate = async (event) => {
-        if (event.candidate && whipResourceRef.current) {
+        if (event.candidate) {
           const c = event.candidate;
           candidatesSent++;
           
@@ -266,64 +266,51 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             type: c.type,
             protocol: c.protocol,
             address: c.address,
-            port: c.port
+            port: c.port,
+            priority: c.priority
           });
-          
-          // Format candidate as SDP fragment for PATCH
-          const candidateSDP = `a=${c.candidate}\r\n`;
-          
-          try {
-            // Send candidate via PATCH to WHIP resource
-            const patchResponse = await fetch(`https://livepeer.studio/webrtc/${whipResourceRef.current}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/trickle-ice-sdpfrag',
-              },
-              body: candidateSDP,
-            });
-            
-            if (patchResponse.ok) {
-              console.log(`[BrowserStreaming] ✅ Sent candidate #${candidatesSent} via PATCH`);
-              
-              // Parse remote candidates from PATCH response
-              const responseSDP = await patchResponse.text();
-              if (responseSDP && responseSDP.trim()) {
-                const remoteCandidateLines = responseSDP.split('\n')
-                  .filter(line => line.trim().startsWith('a=candidate:'));
-                
-                for (const line of remoteCandidateLines) {
-                  const candidateStr = line.trim().substring(2); // Remove 'a='
-                  const remoteCandidate = new RTCIceCandidate({ candidate: candidateStr, sdpMid: '0' });
-                  
-                  await peerConnection.addIceCandidate(remoteCandidate);
-                  console.log('[BrowserStreaming] 📥 Added remote candidate from PATCH:', candidateStr.substring(0, 50) + '...');
-                }
-              }
-            } else {
-              console.warn(`[BrowserStreaming] PATCH candidate failed: ${patchResponse.status}`);
-            }
-          } catch (error) {
-            console.error('[BrowserStreaming] Error sending candidate via PATCH:', error);
-          }
-        } else if (!event.candidate) {
+        } else {
           console.log(`[BrowserStreaming] ✅ All ${candidatesSent} local ICE candidates gathered`);
           
-          // Send end-of-candidates signal
-          if (whipResourceRef.current) {
-            try {
-              await fetch(`https://livepeer.studio/webrtc/${whipResourceRef.current}`, {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/trickle-ice-sdpfrag',
-                },
-                body: 'a=end-of-candidates\r\n',
-              });
-              console.log('[BrowserStreaming] Sent end-of-candidates');
-            } catch (error) {
-              console.error('[BrowserStreaming] Error sending end-of-candidates:', error);
-            }
-          }
+          // Start monitoring ICE candidate pairs to see which ones are being tested
+          monitorICECandidatePairs(peerConnection);
         }
+      };
+
+      // Helper function to monitor ICE candidate pairs
+      const monitorICECandidatePairs = async (pc: RTCPeerConnection) => {
+        console.log('[BrowserStreaming] 🔍 Monitoring ICE candidate pairs...');
+        
+        const checkInterval = setInterval(async () => {
+          if (pc.connectionState === 'connected' || pc.connectionState === 'closed') {
+            clearInterval(checkInterval);
+            return;
+          }
+          
+          const stats = await pc.getStats();
+          let foundPairs = false;
+          
+          stats.forEach(stat => {
+            if (stat.type === 'candidate-pair') {
+              foundPairs = true;
+              console.log('[BrowserStreaming] ICE candidate pair:', {
+                state: stat.state,
+                local: stat.localCandidateId,
+                remote: stat.remoteCandidateId,
+                nominated: stat.nominated,
+                bytesSent: stat.bytesSent,
+                bytesReceived: stat.bytesReceived
+              });
+            }
+          });
+          
+          if (!foundPairs) {
+            console.warn('[BrowserStreaming] ⚠️ No ICE candidate pairs found - remote candidates may be missing');
+          }
+        }, 2000);
+        
+        // Stop monitoring after 30 seconds
+        setTimeout(() => clearInterval(checkInterval), 30000);
       };
 
       // Monitor connection state with ICE restart capability
@@ -334,39 +321,61 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           console.log('[BrowserStreaming] ✅ Peer connection fully established');
           iceRestartAttemptsRef.current = 0; // Reset restart counter on success
           toast.success('Stream connection established!');
+          
+          // Start monitoring media flow
+          monitorMediaFlow(peerConnection);
         } else if (peerConnection.connectionState === 'failed') {
           console.error('[BrowserStreaming] ❌ Connection failed');
           
-          // Attempt ICE restart before giving up
+          // Log stats to diagnose why it failed
+          const stats = await peerConnection.getStats();
+          let hasRemoteCandidates = false;
+          let hasLocalCandidates = false;
+          
+          stats.forEach(stat => {
+            if (stat.type === 'remote-candidate') hasRemoteCandidates = true;
+            if (stat.type === 'local-candidate') hasLocalCandidates = true;
+          });
+          
+          console.error('[BrowserStreaming] Failure diagnosis:', {
+            hasLocalCandidates,
+            hasRemoteCandidates,
+            localDescription: !!peerConnection.localDescription,
+            remoteDescription: !!peerConnection.remoteDescription
+          });
+          
+          // Attempt ICE restart before giving up - but wait 3 seconds first
           if (iceRestartAttemptsRef.current < 2) {
             iceRestartAttemptsRef.current++;
-            console.log(`[BrowserStreaming] 🔄 Attempting ICE restart (${iceRestartAttemptsRef.current}/2)`);
+            console.log(`[BrowserStreaming] 🔄 Attempting ICE restart in 3s (${iceRestartAttemptsRef.current}/2)`);
             toast.info('Connection issue detected, retrying...');
             
-            try {
-              const restartOffer = await peerConnection.createOffer({ iceRestart: true });
-              await peerConnection.setLocalDescription(restartOffer);
-              
-              // Re-negotiate with WHIP endpoint
-              const restartResponse = await fetch(whipUrl, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/sdp' },
-                body: restartOffer.sdp,
-              });
-              
-              if (restartResponse.ok) {
-                const restartAnswer = await restartResponse.text();
-                await peerConnection.setRemoteDescription(
-                  new RTCSessionDescription({ type: 'answer', sdp: restartAnswer })
-                );
-                console.log('[BrowserStreaming] ICE restart successful');
+            setTimeout(async () => {
+              try {
+                const restartOffer = await peerConnection.createOffer({ iceRestart: true });
+                await peerConnection.setLocalDescription(restartOffer);
+                
+                // Re-negotiate with WHIP endpoint
+                const restartResponse = await fetch(whipUrl, {
+                  method: 'POST',
+                  mode: 'cors',
+                  headers: { 'Content-Type': 'application/sdp' },
+                  body: restartOffer.sdp,
+                });
+                
+                if (restartResponse.ok) {
+                  const restartAnswer = await restartResponse.text();
+                  await peerConnection.setRemoteDescription(
+                    new RTCSessionDescription({ type: 'answer', sdp: restartAnswer })
+                  );
+                  console.log('[BrowserStreaming] ICE restart successful');
+                }
+              } catch (error) {
+                console.error('[BrowserStreaming] ICE restart failed:', error);
+                toast.error('Failed to reconnect - please try again');
+                stopBroadcast();
               }
-            } catch (error) {
-              console.error('[BrowserStreaming] ICE restart failed:', error);
-              toast.error('Failed to reconnect - please try again');
-              stopBroadcast();
-            }
+            }, 3000);
           } else {
             console.error('[BrowserStreaming] Max ICE restart attempts reached');
             toast.error('Unable to establish connection - check your network');
@@ -409,24 +418,42 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       };
       
 
-      // Log stats every 5 seconds to verify data is flowing
-      const statsInterval = setInterval(async () => {
-        if (peerConnection.connectionState === 'connected') {
-          const stats = await peerConnection.getStats();
+      // Helper function to monitor media flow
+      const monitorMediaFlow = (pc: RTCPeerConnection) => {
+        let lastBytesSent = 0;
+        
+        const statsInterval = setInterval(async () => {
+          if (pc.connectionState !== 'connected') {
+            clearInterval(statsInterval);
+            return;
+          }
+          
+          const stats = await pc.getStats();
           stats.forEach(stat => {
             if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
-              console.log('[BrowserStreaming] Video stats:', {
+              const bytesDelta = stat.bytesSent - lastBytesSent;
+              const kbps = (bytesDelta * 8) / (5 * 1024); // 5 second interval
+              
+              console.log('[BrowserStreaming] 📊 Video stream:', {
                 bytesSent: stat.bytesSent,
+                bandwidth: `${kbps.toFixed(1)} kbps`,
                 packetsSent: stat.packetsSent,
-                framesEncoded: stat.framesEncoded
+                framesEncoded: stat.framesEncoded,
+                isFlowing: bytesDelta > 0
               });
+              
+              if (bytesDelta === 0) {
+                console.warn('[BrowserStreaming] ⚠️ No data flowing - stream may be frozen');
+              }
+              
+              lastBytesSent = stat.bytesSent;
             }
           });
-        }
-      }, 5000);
+        }, 5000);
 
-      // Store interval for cleanup
-      (peerConnection as any)._statsInterval = statsInterval;
+        // Store interval for cleanup
+        (pc as any)._statsInterval = statsInterval;
+      };
 
       console.log('[BrowserStreaming] WebRTC connection established');
       setIsStreaming(true);
