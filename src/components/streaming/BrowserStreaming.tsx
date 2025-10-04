@@ -101,6 +101,12 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
       ];
+      
+      // CRITICAL: Force relay mode to bypass Livepeer's private IP candidates
+      const rtcConfig: RTCConfiguration = {
+        iceServers,
+        iceTransportPolicy: 'relay' // Force TURN relay to avoid unreachable private IPs
+      };
 
       // Get user media
       console.log(`[BrowserStreaming] Requesting ${source} media`);
@@ -135,9 +141,9 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       }
       setIsPreviewing(true);
 
-      // Create peer connection
-      console.log('[BrowserStreaming] Creating peer connection');
-      const peerConnection = new RTCPeerConnection({ iceServers });
+      // Create peer connection with TURN relay forced
+      console.log('[BrowserStreaming] Creating peer connection with relay policy');
+      const peerConnection = new RTCPeerConnection(rtcConfig);
       peerConnectionRef.current = peerConnection;
 
       // Add all tracks to peer connection using addTransceiver (per Livepeer docs)
@@ -231,6 +237,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         
         if (parsedServers.length > 0) {
           iceServers = parsedServers; // Replace with Livepeer's servers
+          rtcConfig.iceServers = parsedServers; // Update config with new servers
           console.log(`[BrowserStreaming] Using ${parsedServers.length} ICE servers from Livepeer`);
         }
       }
