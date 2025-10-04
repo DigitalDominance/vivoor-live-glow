@@ -96,18 +96,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const whipUrl = `https://livepeer.studio/webrtc/${streamKey}`;
       console.log('[BrowserStreaming] WHIP endpoint:', whipUrl);
 
-      // Set up ICE servers - include both STUN and TURN for robust NAT traversal
-      const iceServers = [
+      // ICE servers - will be updated from Link header
+      let iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun.livepeer.studio' },
-        // Add TURN servers for NAT traversal
-        { 
-          urls: 'turn:turn.livepeer.studio:3478',
-          username: 'livepeer',
-          credential: 'livepeer'
-        }
+        { urls: 'stun:stun1.l.google.com:19302' }
       ];
 
       // Get user media
@@ -209,16 +201,37 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         throw new Error(`Failed to negotiate with server: ${sdpResponse.status}`);
       }
 
-      // CRITICAL: Parse Link header for additional ICE servers
+      // CRITICAL: Parse Link header for ICE servers (replaces defaults)
       const linkHeader = sdpResponse.headers.get('Link');
       if (linkHeader) {
         console.log('[BrowserStreaming] Link header received:', linkHeader);
-        // Parse Link headers for ICE servers (format: <stun:server>; rel="ice-server")
-        const iceServerMatches = linkHeader.matchAll(/<([^>]+)>;\s*rel="ice-server"/g);
-        for (const match of iceServerMatches) {
-          const serverUrl = match[1];
-          console.log('[BrowserStreaming] Adding ICE server from Link header:', serverUrl);
-          iceServers.push({ urls: serverUrl });
+        
+        // Parse ICE servers from Link header with credentials
+        // Format: <stun:server>; rel="ice-server"; username="x"; credential="y"
+        const parsedServers: RTCIceServer[] = [];
+        const serverMatches = linkHeader.split(',');
+        
+        for (const serverEntry of serverMatches) {
+          const urlMatch = serverEntry.match(/<([^>]+)>/);
+          const relMatch = serverEntry.match(/rel="([^"]+)"/);
+          
+          if (urlMatch && relMatch && relMatch[1] === 'ice-server') {
+            const urls = urlMatch[1];
+            const usernameMatch = serverEntry.match(/username="([^"]+)"/);
+            const credentialMatch = serverEntry.match(/credential="([^"]+)"/);
+            
+            const server: RTCIceServer = { urls };
+            if (usernameMatch) server.username = usernameMatch[1];
+            if (credentialMatch) server.credential = credentialMatch[1];
+            
+            parsedServers.push(server);
+            console.log('[BrowserStreaming] Parsed ICE server:', server);
+          }
+        }
+        
+        if (parsedServers.length > 0) {
+          iceServers = parsedServers; // Replace with Livepeer's servers
+          console.log(`[BrowserStreaming] Using ${parsedServers.length} ICE servers from Livepeer`);
         }
       }
 
@@ -232,9 +245,86 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       // Set remote description from answer
       console.log('[BrowserStreaming] Setting remote description');
       const answerSDP = await sdpResponse.text();
+      
+      // Log answer SDP to check for embedded ICE candidates
+      const candidateLines = answerSDP.split('\n').filter(line => line.startsWith('a=candidate:'));
+      console.log(`[BrowserStreaming] Answer SDP contains ${candidateLines.length} ICE candidates`);
+      
       await peerConnection.setRemoteDescription(
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
+      
+      // ===== TRICKLE ICE IMPLEMENTATION =====
+      // Send local ICE candidates to WHIP resource via PATCH
+      let candidatesSent = 0;
+      peerConnection.onicecandidate = async (event) => {
+        if (event.candidate && whipResourceRef.current) {
+          const c = event.candidate;
+          candidatesSent++;
+          
+          console.log(`[BrowserStreaming] 🧊 Local ICE candidate #${candidatesSent}:`, {
+            type: c.type,
+            protocol: c.protocol,
+            address: c.address,
+            port: c.port
+          });
+          
+          // Format candidate as SDP fragment for PATCH
+          const candidateSDP = `a=${c.candidate}\r\n`;
+          
+          try {
+            // Send candidate via PATCH to WHIP resource
+            const patchResponse = await fetch(`https://livepeer.studio/webrtc/${whipResourceRef.current}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/trickle-ice-sdpfrag',
+              },
+              body: candidateSDP,
+            });
+            
+            if (patchResponse.ok) {
+              console.log(`[BrowserStreaming] ✅ Sent candidate #${candidatesSent} via PATCH`);
+              
+              // Parse remote candidates from PATCH response
+              const responseSDP = await patchResponse.text();
+              if (responseSDP && responseSDP.trim()) {
+                const remoteCandidateLines = responseSDP.split('\n')
+                  .filter(line => line.trim().startsWith('a=candidate:'));
+                
+                for (const line of remoteCandidateLines) {
+                  const candidateStr = line.trim().substring(2); // Remove 'a='
+                  const remoteCandidate = new RTCIceCandidate({ candidate: candidateStr, sdpMid: '0' });
+                  
+                  await peerConnection.addIceCandidate(remoteCandidate);
+                  console.log('[BrowserStreaming] 📥 Added remote candidate from PATCH:', candidateStr.substring(0, 50) + '...');
+                }
+              }
+            } else {
+              console.warn(`[BrowserStreaming] PATCH candidate failed: ${patchResponse.status}`);
+            }
+          } catch (error) {
+            console.error('[BrowserStreaming] Error sending candidate via PATCH:', error);
+          }
+        } else if (!event.candidate) {
+          console.log(`[BrowserStreaming] ✅ All ${candidatesSent} local ICE candidates gathered`);
+          
+          // Send end-of-candidates signal
+          if (whipResourceRef.current) {
+            try {
+              await fetch(`https://livepeer.studio/webrtc/${whipResourceRef.current}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/trickle-ice-sdpfrag',
+                },
+                body: 'a=end-of-candidates\r\n',
+              });
+              console.log('[BrowserStreaming] Sent end-of-candidates');
+            } catch (error) {
+              console.error('[BrowserStreaming] Error sending end-of-candidates:', error);
+            }
+          }
+        }
+      };
 
       // Monitor connection state with ICE restart capability
       peerConnection.onconnectionstatechange = async () => {
@@ -318,31 +408,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         }
       };
       
-      // Log all ICE candidates for comprehensive debugging
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          const c = event.candidate;
-          console.log('[BrowserStreaming] 🧊 Local ICE candidate:', {
-            type: c.type,
-            protocol: c.protocol,
-            address: c.address,
-            port: c.port,
-            priority: c.priority,
-            foundation: c.foundation
-          });
-        } else {
-          console.log('[BrowserStreaming] ✅ All local ICE candidates gathered');
-        }
-      };
-
-      // Track remote ICE candidates
-      let remoteIceCandidateCount = 0;
-      const originalAddIceCandidate = peerConnection.addIceCandidate.bind(peerConnection);
-      peerConnection.addIceCandidate = async (candidate: RTCIceCandidateInit | RTCIceCandidate) => {
-        remoteIceCandidateCount++;
-        console.log('[BrowserStreaming] 📥 Remote ICE candidate #' + remoteIceCandidateCount + ':', candidate);
-        return originalAddIceCandidate(candidate);
-      };
 
       // Log stats every 5 seconds to verify data is flowing
       const statsInterval = setInterval(async () => {
