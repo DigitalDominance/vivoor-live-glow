@@ -244,6 +244,35 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         new RTCSessionDescription({ type: 'answer', sdp: answerSDP })
       );
 
+      // Monitor connection state
+      peerConnection.onconnectionstatechange = () => {
+        console.log('[BrowserStreaming] Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+          console.error('[BrowserStreaming] Connection lost to Livepeer');
+          toast.error('Lost connection to streaming server');
+          stopBroadcast();
+        }
+      };
+
+      // Log stats every 5 seconds to verify data is flowing
+      const statsInterval = setInterval(async () => {
+        if (peerConnection.connectionState === 'connected') {
+          const stats = await peerConnection.getStats();
+          stats.forEach(stat => {
+            if (stat.type === 'outbound-rtp' && stat.kind === 'video') {
+              console.log('[BrowserStreaming] Video stats:', {
+                bytesSent: stat.bytesSent,
+                packetsSent: stat.packetsSent,
+                framesEncoded: stat.framesEncoded
+              });
+            }
+          });
+        }
+      }, 5000);
+
+      // Store interval for cleanup
+      (peerConnection as any)._statsInterval = statsInterval;
+
       console.log('[BrowserStreaming] WebRTC connection established');
       setIsStreaming(true);
       toast.success('Browser stream is now live!');
@@ -301,6 +330,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
     // Close peer connection
     if (peerConnectionRef.current) {
+      // Clear stats interval
+      if ((peerConnectionRef.current as any)._statsInterval) {
+        clearInterval((peerConnectionRef.current as any)._statsInterval);
+      }
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
       console.log('[BrowserStreaming] Closed peer connection');
