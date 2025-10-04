@@ -156,7 +156,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
 
-      // Add tracks with encoding parameters to disable B-frames
+      // Add tracks with VP8 codec (no B-frames)
       const videoTrack = mediaStream.getVideoTracks()[0];
       const audioTrack = mediaStream.getAudioTracks()[0];
 
@@ -164,69 +164,41 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         const videoTransceiver = peerConnection.addTransceiver(videoTrack, { 
           direction: 'sendonly',
           sendEncodings: [{
-            // Disable B-frames by setting max bitrate and forcing baseline profile
             maxBitrate: 2500000, // 2.5 Mbps
             maxFramerate: 30,
           }]
         });
         
-        // Force H.264 baseline profile using setCodecPreferences
+        // Force VP8 codec (no B-frames support)
         const capabilities = RTCRtpSender.getCapabilities('video');
         if (capabilities && capabilities.codecs) {
-          // Filter for H.264 baseline profile only (profile-level-id starts with 42)
-          const h264BaselineCodecs = capabilities.codecs.filter(codec => {
-            return codec.mimeType === 'video/H264' && 
-                   codec.sdpFmtpLine?.includes('profile-level-id=42');
+          // Filter for VP8 codec only
+          const vp8Codecs = capabilities.codecs.filter(codec => {
+            return codec.mimeType === 'video/VP8';
           });
           
-          if (h264BaselineCodecs.length > 0) {
+          if (vp8Codecs.length > 0) {
             try {
-              videoTransceiver.setCodecPreferences(h264BaselineCodecs);
-              console.log('[BrowserStreaming] Forced H.264 baseline profile (no B-frames)');
+              videoTransceiver.setCodecPreferences(vp8Codecs);
+              console.log('[BrowserStreaming] Forced VP8 codec (no B-frames)');
             } catch (e) {
-              console.warn('[BrowserStreaming] Could not set codec preferences:', e);
+              console.warn('[BrowserStreaming] Could not set VP8 codec:', e);
             }
+          } else {
+            console.warn('[BrowserStreaming] VP8 codec not available, falling back to default');
           }
         }
         
-        console.log('[BrowserStreaming] Added video track with no B-frames encoding');
+        console.log('[BrowserStreaming] Added video track with VP8 encoding');
       }
       if (audioTrack) {
         peerConnection.addTransceiver(audioTrack, { direction: 'sendonly' });
         console.log('[BrowserStreaming] Added audio track');
       }
 
-      // Step 5: Create offer and modify SDP to force baseline profile (no B-frames)
+      // Step 5: Create offer
       console.log('[BrowserStreaming] Creating SDP offer');
       const offer = await peerConnection.createOffer();
-      
-      // Modify SDP to force H.264 baseline profile (profile-level-id=42e01f or 42001f)
-      // This prevents B-frames from being used
-      if (offer.sdp) {
-        let modifiedSdp = offer.sdp;
-        
-        // Force baseline profile for H.264
-        // Replace any existing profile-level-id with baseline (42e01f = baseline level 3.1)
-        modifiedSdp = modifiedSdp.replace(
-          /profile-level-id=[0-9a-fA-F]{6}/g,
-          'profile-level-id=42e01f'
-        );
-        
-        // Also add baseline profile if not present
-        if (!modifiedSdp.includes('profile-level-id')) {
-          modifiedSdp = modifiedSdp.replace(
-            /(a=fmtp:\d+)/g,
-            '$1 profile-level-id=42e01f;level-asymmetry-allowed=1'
-          );
-        }
-        
-        // Remove any B-frame related parameters
-        modifiedSdp = modifiedSdp.replace(/max-br=[0-9]+;?/g, '');
-        modifiedSdp = modifiedSdp.replace(/max-mbps=[0-9]+;?/g, '');
-        
-        console.log('[BrowserStreaming] Modified SDP to force baseline profile (no B-frames)');
-        offer.sdp = modifiedSdp;
-      }
       
       await peerConnection.setLocalDescription(offer);
 
