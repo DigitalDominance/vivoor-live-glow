@@ -44,12 +44,10 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
       const streamId = localStorage.getItem('currentStreamId');
       if (!streamId) {
-        console.log('[BrowserStreaming] No streamId in localStorage');
         return;
       }
 
       try {
-        console.log(`[BrowserStreaming] Sending heartbeat - streamId: ${streamId}`);
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
           session_token_param: sessionToken,
           wallet_address_param: identity.address,
@@ -58,24 +56,23 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         });
 
         if (error) {
-          console.error('[BrowserStreaming] Heartbeat error:', error);
-        } else {
-          console.log('[BrowserStreaming] Heartbeat sent successfully');
+          // Only log critical errors (not auth failures which happen during page transitions)
+          if (error.code !== 'PGRST301' && !error.message?.includes('session')) {
+            console.error('[BrowserStreaming] Heartbeat error:', error);
+          }
         }
       } catch (err) {
-        console.error('[BrowserStreaming] Heartbeat failed:', err);
+        // Silently handle heartbeat failures to avoid spam
       }
     };
 
     if (isStreaming) {
-      console.log('[BrowserStreaming] Starting heartbeat interval');
       sendHeartbeat();
       heartbeatInterval = setInterval(sendHeartbeat, 5000);
     }
 
     return () => {
       if (heartbeatInterval) {
-        console.log('[BrowserStreaming] Clearing heartbeat interval');
         clearInterval(heartbeatInterval);
       }
     };
