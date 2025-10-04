@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as Broadcast from '@livepeer/react/broadcast';
 import { getIngest } from '@livepeer/react/external';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
-import { LoadingIcon } from '@livepeer/react/assets';
+import { LoadingIcon, EnableVideoIcon, StopIcon, StartScreenshareIcon, StopScreenshareIcon } from '@livepeer/react/assets';
 
 interface LivepeerBroadcastProps {
   streamKey: string;
@@ -47,12 +47,10 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
   return (
     <Broadcast.Root 
       ingestUrl={ingestUrl}
-      video={true}
-      audio={true}
       onError={(error) => {
         console.error('[LivepeerBroadcast] Broadcast error:', error);
         if (error?.type === 'permissions') {
-          onError?.(new Error('Camera/microphone permissions denied. Please allow access and try again.'));
+          onError?.(new Error('Camera/microphone/screen permissions denied. Please allow access and try again.'));
         } else {
           onError?.(new Error('Broadcast failed. Please try again.'));
         }
@@ -128,12 +126,28 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
           </div>
         </Broadcast.LoadingIndicator>
 
-        {/* Hidden controls - handled externally */}
-        <div style={{ display: 'none' }}>
-          <Broadcast.Controls>
-            <Broadcast.EnabledTrigger />
-          </Broadcast.Controls>
-        </div>
+        {/* Broadcast Controls - Visible to user */}
+        <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
+          {source === 'camera' ? (
+            <Broadcast.EnabledTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
+              <Broadcast.EnabledIndicator asChild matcher={false}>
+                <EnableVideoIcon className="w-full h-full text-white" />
+              </Broadcast.EnabledIndicator>
+              <Broadcast.EnabledIndicator asChild matcher={true}>
+                <StopIcon className="w-full h-full text-red-500" />
+              </Broadcast.EnabledIndicator>
+            </Broadcast.EnabledTrigger>
+          ) : (
+            <Broadcast.ScreenshareTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
+              <Broadcast.ScreenshareIndicator asChild matcher={false}>
+                <StartScreenshareIcon className="w-full h-full text-white" />
+              </Broadcast.ScreenshareIndicator>
+              <Broadcast.ScreenshareIndicator asChild matcher={true}>
+                <StopScreenshareIcon className="w-full h-full text-red-500" />
+              </Broadcast.ScreenshareIndicator>
+            </Broadcast.ScreenshareTrigger>
+          )}
+        </Broadcast.Controls>
       </Broadcast.Container>
     </Broadcast.Root>
   );

@@ -125,7 +125,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     <div className="space-y-4">
       {broadcastSource ? (
         <>
-          <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10">
+          <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video">
             <LivepeerBroadcast
               streamKey={streamKey}
               source={broadcastSource}
@@ -137,11 +137,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           
           <div className="flex flex-col gap-2 items-center">
             <div className="text-sm text-green-500 font-medium">
-              🔴 Live - Broadcasting {streamingMode === 'screen' ? 'Screen' : 'Camera'}
+              🔴 Live - {broadcastSource === 'screen' ? 'Screen sharing' : 'Camera streaming'}
             </div>
-            <Button onClick={stopBroadcast} variant="destructive">
-              Stop Broadcast
-            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              {broadcastSource === 'screen' 
+                ? 'Click the screen share button in the video to start sharing your screen'
+                : 'Click the camera button in the video to start your camera'}
+            </p>
           </div>
         </>
       ) : (
