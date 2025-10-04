@@ -95,27 +95,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       setStreamingMode(source);
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       
-      // Step 1: Get redirect URL
-      console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
-      const redirectResponse = await fetch(`https://livepeer.studio/webrtc/${streamKey}`, {
-        method: 'HEAD',
-        redirect: 'manual'
-      });
-      
-      const redirectUrl = redirectResponse.headers.get('Location') || 
-                         `https://livepeer.studio/webrtc/${streamKey}`;
-      
-      console.log('[BrowserStreaming] Redirect URL:', redirectUrl);
-      const host = new URL(redirectUrl).host;
+      // Use Livepeer's WebRTC endpoint directly
+      const webrtcUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] WebRTC endpoint:', webrtcUrl);
 
-      // Step 2: Set up ICE servers
+      // Step 2: Set up ICE servers - use public STUN servers
       const iceServers = [
-        { urls: `stun:${host}` },
-        {
-          urls: `turn:${host}`,
-          username: 'livepeer',
-          credential: 'livepeer',
-        },
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
       ];
 
       // Step 3: Get user media with encoding parameters to disable B-frames
@@ -156,45 +143,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       const peerConnection = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = peerConnection;
 
-      // Add tracks with VP8 codec (no B-frames)
-      const videoTrack = mediaStream.getVideoTracks()[0];
-      const audioTrack = mediaStream.getAudioTracks()[0];
-
-      if (videoTrack) {
-        const videoTransceiver = peerConnection.addTransceiver(videoTrack, { 
-          direction: 'sendonly',
-          sendEncodings: [{
-            maxBitrate: 2500000, // 2.5 Mbps
-            maxFramerate: 30,
-          }]
-        });
-        
-        // Force VP8 codec (no B-frames support)
-        const capabilities = RTCRtpSender.getCapabilities('video');
-        if (capabilities && capabilities.codecs) {
-          // Filter for VP8 codec only
-          const vp8Codecs = capabilities.codecs.filter(codec => {
-            return codec.mimeType === 'video/VP8';
-          });
-          
-          if (vp8Codecs.length > 0) {
-            try {
-              videoTransceiver.setCodecPreferences(vp8Codecs);
-              console.log('[BrowserStreaming] Forced VP8 codec (no B-frames)');
-            } catch (e) {
-              console.warn('[BrowserStreaming] Could not set VP8 codec:', e);
-            }
-          } else {
-            console.warn('[BrowserStreaming] VP8 codec not available, falling back to default');
-          }
-        }
-        
-        console.log('[BrowserStreaming] Added video track with VP8 encoding');
-      }
-      if (audioTrack) {
-        peerConnection.addTransceiver(audioTrack, { direction: 'sendonly' });
-        console.log('[BrowserStreaming] Added audio track');
-      }
+      // Add all tracks to peer connection
+      mediaStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, mediaStream);
+        console.log('[BrowserStreaming] Added track:', track.kind, track.label);
+      });
 
       // Step 5: Create offer
       console.log('[BrowserStreaming] Creating SDP offer');
@@ -202,33 +155,37 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       
       await peerConnection.setLocalDescription(offer);
 
-      // Step 6: Wait for ICE gathering
+      // Step 6: Wait for ICE gathering with longer timeout
       console.log('[BrowserStreaming] Waiting for ICE gathering');
-      const completeOffer = await new Promise<RTCSessionDescription>((resolve) => {
-        setTimeout(() => {
-          console.log('[BrowserStreaming] ICE gathering timeout');
+      const completeOffer = await new Promise<RTCSessionDescription>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          if (peerConnection.iceGatheringState !== 'complete') {
+            console.warn('[BrowserStreaming] ICE gathering timeout, using partial candidates');
+          }
           resolve(peerConnection.localDescription!);
-        }, 5000);
+        }, 10000); // Increased to 10 seconds
         
         peerConnection.onicegatheringstatechange = () => {
           console.log('[BrowserStreaming] ICE gathering state:', peerConnection.iceGatheringState);
           if (peerConnection.iceGatheringState === 'complete') {
+            clearTimeout(timeout);
             resolve(peerConnection.localDescription!);
           }
         };
       });
 
-      if (!completeOffer) {
-        throw new Error('Failed to gather ICE candidates');
+      if (!completeOffer || !completeOffer.sdp) {
+        throw new Error('Failed to create offer SDP');
       }
 
-      // Step 7: Send offer to server
-      console.log('[BrowserStreaming] Sending offer to Livepeer');
-      const sdpResponse = await fetch(redirectUrl, {
+      // Step 7: Send offer to Livepeer's WHIP endpoint
+      console.log('[BrowserStreaming] Sending offer to Livepeer WHIP endpoint');
+      console.log('[BrowserStreaming] Offer SDP length:', completeOffer.sdp.length);
+      
+      const sdpResponse = await fetch(webrtcUrl, {
         method: 'POST',
-        mode: 'cors',
         headers: {
-          'content-type': 'application/sdp',
+          'Content-Type': 'application/sdp',
         },
         body: completeOffer.sdp,
       });
