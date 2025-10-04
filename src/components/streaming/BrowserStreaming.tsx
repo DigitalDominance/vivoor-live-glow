@@ -247,28 +247,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       toast.success('Browser stream is now live!');
       onStreamStart?.();
 
-      // Mark stream as live using secure RPC function - same as RTMP
-      if (!isPreviewMode && sessionToken && identity?.address) {
-        const streamId = localStorage.getItem('currentStreamId');
-        console.log('[BrowserStreaming] Marking stream as live, streamId:', streamId);
-        
-        if (streamId) {
-          const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
-            session_token_param: sessionToken,
-            wallet_address_param: identity.address,
-            stream_id_param: streamId,
-            is_live_param: true
-          });
-
-          if (error) {
-            console.error('[BrowserStreaming] Failed to mark stream as live:', error);
-          } else {
-            console.log('[BrowserStreaming] Stream marked as live successfully');
-          }
-        } else {
-          console.error('[BrowserStreaming] No streamId found in localStorage');
-        }
-      }
+      // Stream is already marked as live by create_stream_secure in GoLive.tsx
+      // The heartbeat interval will keep it alive using the streamId from localStorage
 
       // Handle stream end when tracks end
       mediaStream.getTracks().forEach(track => {
