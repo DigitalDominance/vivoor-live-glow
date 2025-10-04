@@ -96,26 +96,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       console.log(`[BrowserStreaming] Starting ${source} broadcast`);
       console.log('[BrowserStreaming] Stream key:', streamKey);
       
-      // Step 1: Get redirect URL from Livepeer (per their docs)
+      // Step 1: Get redirect URL from Livepeer using OPTIONS to avoid CORS issues
       console.log('[BrowserStreaming] Getting redirect URL from Livepeer');
-      const headUrl = `https://livepeer.studio/webrtc/${streamKey}`;
-      console.log('[BrowserStreaming] HEAD request to:', headUrl);
+      const baseUrl = `https://livepeer.studio/webrtc/${streamKey}`;
+      console.log('[BrowserStreaming] OPTIONS request to:', baseUrl);
       
-      const redirectResponse = await fetch(headUrl, {
-        method: 'HEAD',
-        redirect: 'manual'
+      // Use OPTIONS request to get the redirect without downloading content
+      const redirectResponse = await fetch(baseUrl, {
+        method: 'OPTIONS',
+        mode: 'cors',
       });
       
-      console.log('[BrowserStreaming] HEAD response status:', redirectResponse.status);
+      // The response.url will contain the final URL after redirects
+      const redirectUrl = redirectResponse.url || baseUrl;
+      console.log('[BrowserStreaming] Final URL after redirect:', redirectUrl);
       
-      const redirectUrl = redirectResponse.headers.get('Location');
-      console.log('[BrowserStreaming] Location header:', redirectUrl);
-      
-      if (!redirectUrl) {
-        throw new Error('No redirect URL received from Livepeer');
-      }
-      
-      console.log('[BrowserStreaming] Using redirect URL:', redirectUrl);
       const host = new URL(redirectUrl).host;
       console.log('[BrowserStreaming] Host for ICE servers:', host);
 
