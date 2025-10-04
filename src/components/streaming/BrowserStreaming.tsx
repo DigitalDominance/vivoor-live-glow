@@ -6,6 +6,7 @@ import { Video, Monitor } from 'lucide-react';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 import { useWallet } from '@/context/WalletContext';
 import { LivepeerBroadcast } from './LivepeerBroadcast';
+import { ScreenShareBroadcast } from './ScreenShareBroadcast';
 
 interface BrowserStreamingProps {
   streamKey: string;
@@ -126,21 +127,25 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       {broadcastSource ? (
         <>
           <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video">
-            <LivepeerBroadcast
-              streamKey={streamKey}
-              source={broadcastSource}
-              onStreamStart={handleStreamStart}
-              onStreamEnd={handleStreamEnd}
-              onError={handleStreamError}
-            />
+            {broadcastSource === 'screen' ? (
+              <ScreenShareBroadcast
+                ingestUrl={`https://rtmp.livepeer.com/webrtc/${streamKey}`}
+                onStreamStart={handleStreamStart}
+                onStreamEnd={handleStreamEnd}
+                onError={handleStreamError}
+              />
+            ) : (
+              <LivepeerBroadcast
+                streamKey={streamKey}
+                source={broadcastSource}
+                onStreamStart={handleStreamStart}
+                onStreamEnd={handleStreamEnd}
+                onError={handleStreamError}
+              />
+            )}
           </div>
           
           <div className="flex flex-col gap-2 items-center">
-            <p className="text-xs text-muted-foreground text-center">
-              {broadcastSource === 'screen' 
-                ? 'Click the button above, allow camera briefly, then select your screen to share'
-                : 'Click "Start Camera" and allow camera access'}
-            </p>
             <Button onClick={stopBroadcast} variant="outline" size="sm">
               Cancel
             </Button>
