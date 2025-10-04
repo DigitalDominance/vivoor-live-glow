@@ -93,14 +93,21 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
           }}
         />
         
-        {/* Start broadcast button - must be clicked first */}
-        <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center">
-          <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
-            <EnableVideoIcon className="w-6 h-6" />
-            <span className="font-medium">
-              {source === 'screen' ? 'Start Screen Share' : 'Start Camera'}
-            </span>
-          </Broadcast.EnabledTrigger>
+        {/* Start broadcast button */}
+        <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center bg-black/80">
+          <div className="flex flex-col items-center gap-4">
+            <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+              <EnableVideoIcon className="w-6 h-6" />
+              <span className="font-medium">
+                {source === 'screen' ? 'Enable Broadcast' : 'Start Camera'}
+              </span>
+            </Broadcast.EnabledTrigger>
+            {source === 'screen' && (
+              <p className="text-sm text-white/80 text-center max-w-xs">
+                After enabling, click the screen share button to select your display
+              </p>
+            )}
+          </div>
         </Broadcast.EnabledIndicator>
         
         <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center">
@@ -144,12 +151,18 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
         <Broadcast.EnabledIndicator asChild>
           <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
             {source === 'screen' && (
-              <Broadcast.ScreenshareTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
+              <Broadcast.ScreenshareTrigger className="px-4 py-2 rounded-lg hover:scale-105 flex-shrink-0 transition-transform flex items-center gap-2 bg-primary text-primary-foreground">
                 <Broadcast.ScreenshareIndicator asChild matcher={false}>
-                  <StartScreenshareIcon className="w-full h-full text-white" />
+                  <>
+                    <StartScreenshareIcon className="w-5 h-5" />
+                    <span className="text-sm font-medium">Share Screen</span>
+                  </>
                 </Broadcast.ScreenshareIndicator>
                 <Broadcast.ScreenshareIndicator asChild matcher={true}>
-                  <StopScreenshareIcon className="w-full h-full text-red-500" />
+                  <>
+                    <StopScreenshareIcon className="w-5 h-5" />
+                    <span className="text-sm font-medium">Stop Sharing</span>
+                  </>
                 </Broadcast.ScreenshareIndicator>
               </Broadcast.ScreenshareTrigger>
             )}
