@@ -629,10 +629,10 @@ const GoLive = () => {
             {streamingMode === 'browser' && streamKey && streamReady && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-pulse shadow-lg shadow-cyan-500/50"></div>
                   {cameraReady ? 'Camera Ready - Ready to Go Live!' : 'Connect Your Camera'}
                 </h3>
-                <div className="border border-white/20 rounded-xl overflow-hidden">
+                <div className="border-2 border-cyan-400/30 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl shadow-2xl shadow-cyan-500/20">
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}
