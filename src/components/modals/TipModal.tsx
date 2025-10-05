@@ -66,39 +66,16 @@ const TipModal: React.FC<{
         payload: encryptedPayload
       });
       
-      // LOG THE ENTIRE RESPONSE FOR DEBUGGING
-      console.log('=== KASWARE TRANSACTION RESPONSE ===');
-      console.log('Type:', typeof txResponse);
-      console.log('Full Response:', txResponse);
-      console.log('Response JSON:', JSON.stringify(txResponse, null, 2));
-      console.log('Is String?', typeof txResponse === 'string');
-      console.log('Is Object?', typeof txResponse === 'object');
-      if (typeof txResponse === 'object' && txResponse !== null) {
-        console.log('Object Keys:', Object.keys(txResponse));
-        console.log('Object Values:', Object.values(txResponse));
-        console.log('txResponse.txid:', (txResponse as any).txid);
-        console.log('txResponse.id:', (txResponse as any).id);
-        console.log('txResponse.hash:', (txResponse as any).hash);
-        console.log('txResponse.transaction_id:', (txResponse as any).transaction_id);
-      }
-      console.log('=== END KASWARE RESPONSE ===');
-      
       // Extract transaction ID from response
+      // Kasware returns an object with an "id" field containing the transaction ID
       let txid: string;
+      console.log('Kasware response:', txResponse);
       
       if (typeof txResponse === 'string') {
-        // If it's a string, it might be JSON or just the txid
-        try {
-          const parsed = JSON.parse(txResponse);
-          // Try multiple possible field names for the transaction ID
-          txid = parsed.txid || parsed.id || parsed.transaction_id || parsed.transactionId;
-        } catch {
-          // If parsing fails, assume it's the txid directly
-          txid = txResponse;
-        }
+        txid = txResponse;
       } else if (txResponse && typeof txResponse === 'object') {
-        // If it's an object, extract the txid (try multiple field names)
-        txid = (txResponse as any).txid || (txResponse as any).id || (txResponse as any).transaction_id || (txResponse as any).transactionId;
+        // Use the top-level "id" field which is the actual transaction ID
+        txid = (txResponse as any).id;
       } else {
         console.error('Unexpected transaction response format:', txResponse);
         throw new Error('Invalid transaction response format');
