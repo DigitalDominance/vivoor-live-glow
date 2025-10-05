@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Video, Monitor } from 'lucide-react';
+import { Video } from 'lucide-react';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
 import { useWallet } from '@/context/WalletContext';
 import { LivepeerBroadcast } from './LivepeerBroadcast';
-import { ScreenShareBroadcast } from './ScreenShareBroadcast';
 
 interface BrowserStreamingProps {
   streamKey: string;
@@ -33,7 +33,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
   } = useBrowserStreaming();
 
   const { sessionToken, identity } = useWallet();
-  const [broadcastSource, setBroadcastSource] = useState<'camera' | 'screen' | null>(null);
+  const [broadcastSource, setBroadcastSource] = useState<'camera' | null>(null);
+  const navigate = useNavigate();
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -73,11 +74,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     };
   }, [isStreaming, isPreviewMode, sessionToken, identity, streamId]);
 
-  const startBroadcast = async (source: 'camera' | 'screen') => {
+  const startBroadcast = async () => {
     try {
-      setStreamingMode(source);
-      console.log(`[BrowserStreaming] Starting ${source} broadcast with Livepeer`);
-      setBroadcastSource(source);
+      setStreamingMode('camera');
+      console.log('[BrowserStreaming] Starting camera broadcast with Livepeer');
+      setBroadcastSource('camera');
     } catch (error) {
       console.error('[BrowserStreaming] Error starting broadcast:', error);
       toast.error('Failed to start broadcast');
@@ -109,6 +110,14 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     console.log('[BrowserStreaming] Livepeer stream started');
     toast.success('Browser stream is now live!');
     onStreamStart?.();
+    
+    // Navigate to stream page after successful connection
+    const pendingStreamId = localStorage.getItem('pendingBrowserStreamId');
+    if (pendingStreamId) {
+      console.log('[BrowserStreaming] Navigating to stream page:', pendingStreamId);
+      localStorage.removeItem('pendingBrowserStreamId');
+      navigate(`/stream/${pendingStreamId}`);
+    }
   };
 
   const handleStreamEnd = () => {
@@ -127,22 +136,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       {broadcastSource ? (
         <>
           <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video">
-            {broadcastSource === 'screen' ? (
-              <ScreenShareBroadcast
-                ingestUrl={`https://rtmp.livepeer.com/webrtc/${streamKey}`}
-                onStreamStart={handleStreamStart}
-                onStreamEnd={handleStreamEnd}
-                onError={handleStreamError}
-              />
-            ) : (
-              <LivepeerBroadcast
-                streamKey={streamKey}
-                source={broadcastSource}
-                onStreamStart={handleStreamStart}
-                onStreamEnd={handleStreamEnd}
-                onError={handleStreamError}
-              />
-            )}
+            <LivepeerBroadcast
+              streamKey={streamKey}
+              source="camera"
+              onStreamStart={handleStreamStart}
+              onStreamEnd={handleStreamEnd}
+              onError={handleStreamError}
+            />
           </div>
           
           <div className="flex flex-col gap-2 items-center">
@@ -154,19 +154,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       ) : (
         <div className="flex gap-4 justify-center">
           <Button
-            onClick={() => startBroadcast('camera')}
+            onClick={startBroadcast}
             className="flex items-center gap-2"
           >
             <Video className="w-4 h-4" />
-            Stream Camera
-          </Button>
-          <Button
-            onClick={() => startBroadcast('screen')}
-            className="flex items-center gap-2"
-            variant="secondary"
-          >
-            <Monitor className="w-4 h-4" />
-            Share Screen
+            Start Camera Stream
           </Button>
         </div>
       )}

@@ -358,14 +358,16 @@ const GoLive = () => {
         localStorage.setItem('streamStartTime', new Date().toISOString());
         localStorage.setItem('currentStreamingMode', streamingMode);
         localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
+        localStorage.setItem('pendingBrowserStreamId', streamId); // Store for navigation after broadcast starts
         
         // Store streamId in state to pass as prop to BrowserStreaming component
         setCreatedStreamId(streamId);
         
         if (streamingMode === 'browser') {
-          toast.success('Browser stream created! You can now start broadcasting with your camera or screen.');
+          toast.success('Browser stream created! Click "Start Camera Stream" below to go live.');
         } else {
           toast.success('Stream started! Use the RTMP details below in OBS.');
+          navigate(`/stream/${streamId}`);
         }
         
         console.log('Stream ready, details:', {
@@ -375,16 +377,6 @@ const GoLive = () => {
           playbackUrl: currentPlaybackUrl,
           playbackId: currentLivepeerPlaybackId
         });
-         
-          // For browser streams, don't navigate yet - user needs to start broadcasting first
-          if (streamingMode === 'browser') {
-            // Mark that user has browser streaming setup but not active yet
-            localStorage.setItem('browserStreamingActive', 'false');
-            toast.success('Browser stream created! Click "Stream Camera" or "Share Screen" below to start broadcasting.');
-          } else {
-            // For RTMP streams, navigate to stream control page
-            navigate(`/stream/${streamId}`);
-          }
         } catch (streamError) {
         console.error('Stream creation error:', streamError);
         throw streamError;
