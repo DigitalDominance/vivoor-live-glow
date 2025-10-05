@@ -305,6 +305,11 @@ const Stream = () => {
 
   const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
   
+  console.log('[Stream] Playback URL:', playbackUrl);
+  console.log('[Stream] Streaming mode:', streamingMode);
+  console.log('[Stream] Stream data:', streamData);
+  console.log('[Stream] Local stream data:', localStreamData);
+  
   if (!streamId || !isAuthorized) {
     return (
       <main className="container mx-auto px-4 py-8">

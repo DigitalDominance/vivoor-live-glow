@@ -83,7 +83,7 @@ const Watch = () => {
   const streamPlayback = React.useMemo(() => {
     if (!streamData) return null;
     
-    console.log('Stream playback data:', {
+    console.log('[Watch] Stream playback data:', {
       playback_url: streamData.playback_url,
       streaming_mode: streamData.streaming_mode,
       stream_type: streamData.stream_type,
