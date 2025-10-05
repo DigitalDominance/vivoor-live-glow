@@ -48,23 +48,35 @@ serve(async (req: Request) => {
     const payload: any = await createRes.json();
     
     // Log the full payload for debugging
-    console.log('[livepeer-create-stream] Livepeer API response:', JSON.stringify(payload, null, 2));
+    console.log('[livepeer-create-stream] Full Livepeer API response:', JSON.stringify(payload, null, 2));
     
     const streamId = payload.id;
     const playbackId = payload.playbackId || payload.playback_id;
     const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
     const streamKey = payload.streamKey;
     
-    // Use livepeercdn.studio for playback URL - this is the proper CDN domain
-    // This ensures we get the regional CDN URLs that work properly with HLS
-    const playbackUrl = playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null;
+    // CRITICAL: Use the playback URL that Livepeer provides in their response
+    // They return regional CDN URLs that work properly (e.g., mdw-prod-catalyst-0.lp-playback.studio)
+    // Check multiple possible fields where Livepeer might return the playback URL
+    let playbackUrl = null;
     
-    console.log('[livepeer-create-stream] Generated URLs:', {
+    if (payload.playbackUrl) {
+      playbackUrl = payload.playbackUrl;
+      console.log('[livepeer-create-stream] Using playbackUrl from payload:', playbackUrl);
+    } else if (payload.playback?.hls) {
+      playbackUrl = payload.playback.hls;
+      console.log('[livepeer-create-stream] Using playback.hls from payload:', playbackUrl);
+    } else if (playbackId) {
+      // Fallback: construct URL if Livepeer doesn't provide one
+      playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
+      console.log('[livepeer-create-stream] Constructed fallback URL:', playbackUrl);
+    }
+    
+    console.log('[livepeer-create-stream] Final URLs:', {
       streamId,
       playbackId,
       playbackUrl,
-      ingestUrl,
-      note: 'Using livepeercdn.studio for regional CDN support'
+      ingestUrl
     });
 
     return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {
