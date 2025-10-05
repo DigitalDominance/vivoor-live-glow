@@ -632,7 +632,7 @@ const GoLive = () => {
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
                   {cameraReady ? 'Camera Ready - Ready to Go Live!' : 'Connect Your Camera'}
                 </h3>
-                <div className="bg-white/5 border border-white/20 rounded-xl p-6">
+                <div className="border border-white/20 rounded-xl overflow-hidden">
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}

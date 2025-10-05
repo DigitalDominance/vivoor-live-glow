@@ -330,24 +330,8 @@ const Stream = () => {
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           <div className="relative">
-            {/* Stream content - Show browser streaming interface for browser mode */}
-            {streamingMode === 'browser' && isOwnStream ? (
-              <div className="space-y-4">
-                <BrowserStreaming
-                  streamKey={localStreamData.streamKey || ''}
-                  streamId={streamData.id}
-                  playbackId={streamData.livepeer_playback_id || undefined}
-                  onStreamStart={() => {
-                    console.log('Browser stream started');
-                  }}
-                  onStreamEnd={() => {
-                    console.log('Browser stream ended');
-                    handleEndStream();
-                  }}
-                  isPreviewMode={false}
-                />
-              </div>
-            ) : playbackUrl ? (
+            {/* Stream content - Always use HLS for playback, even for browser streams */}
+            {playbackUrl ? (
               <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
             ) : (
               <PlayerPlaceholder />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -29,10 +29,25 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     setIsPreviewing,
     streamingMode,
     setStreamingMode,
+    isStreamPreserved,
   } = useBrowserStreaming();
 
   const { sessionToken, identity } = useWallet();
-  const [broadcastSource, setBroadcastSource] = useState<'camera' | null>(null);
+  const [broadcastSource, setBroadcastSource] = useState<'camera' | null>(
+    // If stream is preserved, automatically set broadcast source
+    isStreamPreserved ? 'camera' : null
+  );
+  
+  // Handle preserved stream on mount
+  React.useEffect(() => {
+    if (isStreamPreserved && !isPreviewMode) {
+      console.log('[BrowserStreaming] Using preserved stream connection');
+      setBroadcastSource('camera');
+      setIsStreaming(true);
+      setIsPreviewing(false);
+      onStreamStart?.();
+    }
+  }, []);
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -127,7 +142,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     <div className="space-y-4">
       {broadcastSource ? (
         <>
-          <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video">
+          <div className="w-full rounded-xl overflow-hidden aspect-video">
             <LivepeerBroadcast
               key={streamKey}
               streamKey={streamKey}
@@ -137,11 +152,13 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
             />
           </div>
           
-          <div className="flex flex-col gap-2 items-center">
-            <Button onClick={stopBroadcast} variant="outline" size="sm">
-              Cancel
-            </Button>
-          </div>
+          {!isPreviewMode && (
+            <div className="flex flex-col gap-2 items-center">
+              <Button onClick={stopBroadcast} variant="destructive" size="sm">
+                End Stream
+              </Button>
+            </div>
+          )}
         </>
       ) : (
         <div className="flex gap-4 justify-center">

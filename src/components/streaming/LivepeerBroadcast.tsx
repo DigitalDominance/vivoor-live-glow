@@ -87,7 +87,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
       ingestUrl={ingestUrl}
       onError={handleError}
     >
-      <Broadcast.Container className="w-full h-full bg-black/50 rounded-xl overflow-hidden relative">
+      <Broadcast.Container className="w-full h-full bg-black rounded-xl overflow-hidden relative">
         <Broadcast.Video
           ref={videoRef}
           title="Live stream"
