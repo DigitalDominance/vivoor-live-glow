@@ -164,7 +164,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         <div className="flex gap-4 justify-center">
           <Button
             onClick={startBroadcast}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:from-pink-600 hover:via-purple-600 hover:to-blue-600 text-white border-0 shadow-lg shadow-purple-500/50"
           >
             <Video className="w-4 h-4" />
             Start Camera Stream
