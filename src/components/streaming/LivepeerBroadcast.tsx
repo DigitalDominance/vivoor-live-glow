@@ -87,7 +87,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
       ingestUrl={ingestUrl}
       onError={handleError}
     >
-      <Broadcast.Container className="w-full h-full bg-black rounded-xl overflow-hidden relative">
+      <Broadcast.Container className="w-full h-full bg-black overflow-hidden relative">
         <Broadcast.Video
           ref={videoRef}
           title="Live stream"
@@ -103,7 +103,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
           </Broadcast.EnabledTrigger>
         </Broadcast.EnabledIndicator>
         
-        <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center">
+        <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center bg-black/80">
           <div className="flex flex-col items-center gap-2">
             <LoadingIcon className="w-8 h-8 animate-spin text-white" />
             <span className="text-sm text-white">Starting camera...</span>
@@ -122,7 +122,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
 
         {/* Status indicator */}
         <Broadcast.LoadingIndicator asChild matcher={false}>
-          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/50 backdrop-blur">
+          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/80">
             <Broadcast.StatusIndicator matcher="live" className="flex gap-2 items-center">
               <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full" />
               <span className="text-xs text-white select-none">LIVE</span>
@@ -140,7 +140,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
 
         {/* Control buttons - only shown when broadcast is enabled */}
         <Broadcast.EnabledIndicator asChild>
-          <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-full">
+          <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/80 px-4 py-2 rounded-full">
             <Broadcast.EnabledTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
               <Broadcast.EnabledIndicator asChild matcher={true}>
                 <StopIcon className="w-full h-full text-red-500" />
