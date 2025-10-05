@@ -473,10 +473,10 @@ const GoLive = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <button
                   onClick={() => setStreamingMode('rtmp')}
-                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 backdrop-blur-xl ${
                     streamingMode === 'rtmp' 
-                      ? 'border-purple-400 bg-purple-500/20' 
-                      : 'border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-purple-500/10'
+                      ? 'border-purple-400 bg-gradient-to-br from-purple-500/30 via-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/20' 
+                      : 'border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-gradient-to-br hover:from-purple-500/20 hover:via-purple-500/10 hover:to-pink-500/10'
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -488,7 +488,7 @@ const GoLive = () => {
                   </p>
                   {streamingMode === 'rtmp' && (
                     <div className="absolute top-3 right-3">
-                      <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                      <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse shadow-lg shadow-purple-500/50"></div>
                     </div>
                   )}
                 </button>
@@ -528,10 +528,10 @@ const GoLive = () => {
                       toast.error('Failed to setup streaming. Please try again.');
                     }
                   }}
-                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
+                  className={`relative p-6 rounded-xl border-2 transition-all duration-300 backdrop-blur-xl ${
                     streamingMode === 'browser' 
-                      ? 'border-cyan-400 bg-cyan-500/20' 
-                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
+                      ? 'border-cyan-400 bg-gradient-to-br from-cyan-500/30 via-purple-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/20' 
+                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-gradient-to-br hover:from-cyan-500/20 hover:via-purple-500/10 hover:to-blue-500/10'
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -543,7 +543,7 @@ const GoLive = () => {
                   </p>
                   {streamingMode === 'browser' && (
                     <div className="absolute top-3 right-3">
-                      <div className="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
+                      <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-pulse shadow-lg shadow-cyan-500/50"></div>
                     </div>
                   )}
                 </button>
@@ -676,7 +676,7 @@ const GoLive = () => {
                   variant="outline" 
                   onClick={generateStreamDetails} 
                   disabled={!title || !kaspaAddress}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
+                  className="bg-gradient-to-r from-white/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl border-white/20 text-white hover:from-white/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/50 transition-all duration-300"
                 >
                   {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Stream'}
                 </Button>
@@ -687,7 +687,7 @@ const GoLive = () => {
                 <Button 
                   onClick={handleGoLive} 
                   disabled={!kaspaAddress || !title.trim() || isProcessingPayment}
-                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-purple-500/30 border border-white/20 backdrop-blur-xl"
                 >
                   {isProcessingPayment ? 'Processing Payment...' : 'Go Live & Pay 1.2 KAS 🚀'}
                 </Button>
@@ -698,7 +698,7 @@ const GoLive = () => {
                 <Button 
                   onClick={handleStartRTMP} 
                   disabled={!kaspaAddress || !title.trim() || !previewReady}
-                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-purple-500/30 border border-white/20 backdrop-blur-xl"
                 >
                   {!kaspaAddress ? 'Connect Wallet First' : 
                    !title.trim() ? 'Enter Title First' :
@@ -709,7 +709,7 @@ const GoLive = () => {
               
               {/* Browser mode status when camera is not ready yet */}
               {streamingMode === 'browser' && streamKey && !cameraReady && (
-                <div className="flex-1 px-6 py-3 rounded-lg bg-white/5 border border-white/20 text-center">
+                <div className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-white/5 via-cyan-500/5 to-purple-500/5 backdrop-blur-xl border border-white/20 text-center">
                   <p className="text-sm text-white/80">
                     ⬆️ Connect your camera above to continue
                   </p>

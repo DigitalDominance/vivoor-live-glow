@@ -55,17 +55,16 @@ serve(async (req: Request) => {
     const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
     const streamKey = payload.streamKey;
     
-    // Use the playbackUrl directly from Livepeer's response if available (includes regional CDN)
-    // Otherwise fall back to constructing it from playbackId
-    const playbackUrl = payload.playbackUrl || 
-                       (playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null);
+    // Use livepeercdn.studio for playback URL - this is the proper CDN domain
+    // This ensures we get the regional CDN URLs that work properly with HLS
+    const playbackUrl = playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null;
     
     console.log('[livepeer-create-stream] Generated URLs:', {
       streamId,
       playbackId,
       playbackUrl,
       ingestUrl,
-      hasDirectPlaybackUrl: !!payload.playbackUrl
+      note: 'Using livepeercdn.studio for regional CDN support'
     });
 
     return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {

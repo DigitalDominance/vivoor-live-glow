@@ -95,11 +95,11 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
           onCanPlay={handleCanPlay}
         />
         
-        {/* Start broadcast button */}
+        {/* Start broadcast button - no overlay */}
         <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center">
-          <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+          <Broadcast.EnabledTrigger className="px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-500/90 via-purple-500/90 to-pink-500/90 backdrop-blur-xl border border-white/20 text-white hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 flex items-center gap-3 shadow-2xl transition-all duration-300 transform hover:scale-105">
             <EnableVideoIcon className="w-6 h-6" />
-            <span className="font-medium">Start Camera</span>
+            <span className="font-semibold text-lg">Start Camera</span>
           </Broadcast.EnabledTrigger>
         </Broadcast.EnabledIndicator>
       </Broadcast.Container>
