@@ -120,6 +120,25 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       video.src = src;
     } else if (Hls.isSupported()) {
       console.log('🎬 Using HLS.js library');
+      // Create custom loader that rewrites URLs
+      class CustomLoader extends Hls.DefaultConfig.loader {
+        constructor(config: any) {
+          super(config);
+        }
+        
+        load(context: any, config: any, callbacks: any) {
+          // Rewrite playback.livepeer.studio to livepeercdn.studio
+          if (context.url && context.url.includes('playback.livepeer.studio')) {
+            const originalUrl = context.url;
+            context.url = context.url.replace('playback.livepeer.studio', 'livepeercdn.studio');
+            console.log('🎬 Rewriting URL:', originalUrl, '→', context.url);
+          } else {
+            console.log('🎬 Loading URL:', context.url);
+          }
+          super.load(context, config, callbacks);
+        }
+      }
+      
       hls = new Hls({ 
         enableWorker: true, 
         lowLatencyMode: true,
@@ -129,9 +148,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         liveMaxLatencyDurationCount: 5,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        xhrSetup: (xhr: XMLHttpRequest, url: string) => {
-          console.log('🎬 HLS.js loading URL:', url);
-        }
+        loader: CustomLoader
       });
       
       // Store hls reference for quality control
