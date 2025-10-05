@@ -209,7 +209,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
         hlsRef.current = null;
       }
     };
-  }, [playbackUrl, autoPlay, onStreamReady]);
+  }, [playbackUrl, autoPlay]); // Removed onStreamReady to prevent unnecessary re-initialization
 
   return (
     <div
