@@ -345,7 +345,6 @@ const Stream = () => {
                   <BrowserStreamPlayer
                     playbackUrl={playbackUrl}
                     autoPlay
-                    onStreamReady={() => console.log('Browser stream ready')}
                   />
                 </>
               ) : (
