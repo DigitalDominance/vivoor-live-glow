@@ -106,13 +106,16 @@ serve(async (req) => {
       )
     }
 
+    // Wait 10 seconds initially to allow transaction to propagate to Kaspa network
+    console.log('Waiting 10 seconds for transaction to propagate to network...')
+    await new Promise(resolve => setTimeout(resolve, 10000))
+    
     // Fetch transaction from Kaspa API with progressive retry logic
-    // Longer delays to allow for blockchain confirmation time
-    const maxRetries = 5
+    const maxRetries = 8
     let tx: KaspaTx | null = null
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const retryDelay = attempt * 5000 // Progressive delay: 5s, 10s, 15s, 20s, 25s
+      const retryDelay = attempt * 5000 // Progressive delay: 5s, 10s, 15s, 20s, 25s, 30s, 35s, 40s
       try {
         console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}):`, cleanTxid)
         const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${cleanTxid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)
