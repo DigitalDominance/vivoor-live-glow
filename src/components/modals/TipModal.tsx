@@ -72,7 +72,14 @@ const TipModal: React.FC<{
       console.log('Kasware response:', txResponse);
       
       if (typeof txResponse === 'string') {
-        txid = txResponse;
+        // If it's a JSON string, parse it first
+        try {
+          const parsed = JSON.parse(txResponse);
+          txid = parsed.id;
+        } catch {
+          // If not JSON, assume it's the txid directly
+          txid = txResponse;
+        }
       } else if (txResponse && typeof txResponse === 'object') {
         // Use the top-level "id" field which is the actual transaction ID
         txid = (txResponse as any).id;

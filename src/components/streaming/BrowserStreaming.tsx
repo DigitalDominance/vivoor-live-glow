@@ -30,6 +30,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     streamingMode,
     setStreamingMode,
     isStreamPreserved,
+    startHeartbeat,
+    stopHeartbeat,
   } = useBrowserStreaming();
 
   const { sessionToken, identity } = useWallet();
@@ -49,48 +51,18 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
   }, []);
 
-  // Send heartbeat to mark stream as live - more frequent for browser streams
+  // Start heartbeat when streaming starts
   useEffect(() => {
-    let heartbeatInterval: NodeJS.Timeout | null = null;
-
-    const sendHeartbeat = async () => {
-      if (isPreviewMode || !sessionToken || !identity?.address || !streamId) return;
-
-      try {
-        console.log('[BrowserStreaming] Sending heartbeat - isStreaming:', isStreaming);
-        const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          stream_id_param: streamId,
-          is_live_param: true
-        });
-
-        if (error) {
-          // Only log critical errors (not auth failures which happen during page transitions)
-          if (error.code !== 'PGRST301' && !error.message?.includes('session')) {
-            console.error('[BrowserStreaming] Heartbeat error:', error);
-          }
-        } else {
-          console.log('[BrowserStreaming] Heartbeat sent successfully');
-        }
-      } catch (err) {
-        console.error('[BrowserStreaming] Heartbeat exception:', err);
-      }
-    };
-
-    if (isStreaming && !isPreviewMode) {
-      console.log('[BrowserStreaming] Starting heartbeat interval');
-      sendHeartbeat(); // Send immediately
-      heartbeatInterval = setInterval(sendHeartbeat, 15000); // Send every 15 seconds (well under 60s threshold)
+    if (isStreaming && !isPreviewMode && sessionToken && identity?.address && streamId) {
+      console.log('[BrowserStreaming] Starting global heartbeat');
+      startHeartbeat(streamId, sessionToken, identity.address);
     }
-
+    
     return () => {
-      if (heartbeatInterval) {
-        console.log('[BrowserStreaming] Clearing heartbeat interval');
-        clearInterval(heartbeatInterval);
-      }
+      // Don't stop heartbeat on unmount - it will continue globally
+      console.log('[BrowserStreaming] Component unmounting, heartbeat continues globally');
     };
-  }, [isStreaming, isPreviewMode, sessionToken, identity, streamId]);
+  }, [isStreaming, isPreviewMode, sessionToken, identity?.address, streamId, startHeartbeat]);
 
   const startBroadcast = async () => {
     try {
@@ -109,22 +81,11 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     setBroadcastSource(null);
     setIsStreaming(false);
     setIsPreviewing(false);
+    
+    // Stop the global heartbeat
+    stopHeartbeat();
+    
     onStreamEnd?.();
-
-    // Mark stream as ended using secure RPC function
-    if (!isPreviewMode && sessionToken && identity?.address && streamId) {
-      console.log('[BrowserStreaming] Marking stream as ended');
-      try {
-        await supabase.rpc('update_browser_stream_heartbeat', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          stream_id_param: streamId,
-          is_live_param: false
-        });
-      } catch (error) {
-        console.error('[BrowserStreaming] Error marking stream as ended:', error);
-      }
-    }
   };
 
   const handleStreamStart = () => {
