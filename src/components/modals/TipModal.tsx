@@ -66,9 +66,25 @@ const TipModal: React.FC<{
         payload: encryptedPayload
       });
       
+      // LOG THE ENTIRE RESPONSE FOR DEBUGGING
+      console.log('=== KASWARE TRANSACTION RESPONSE ===');
+      console.log('Type:', typeof txResponse);
+      console.log('Full Response:', txResponse);
+      console.log('Response JSON:', JSON.stringify(txResponse, null, 2));
+      console.log('Is String?', typeof txResponse === 'string');
+      console.log('Is Object?', typeof txResponse === 'object');
+      if (typeof txResponse === 'object' && txResponse !== null) {
+        console.log('Object Keys:', Object.keys(txResponse));
+        console.log('Object Values:', Object.values(txResponse));
+        console.log('txResponse.txid:', (txResponse as any).txid);
+        console.log('txResponse.id:', (txResponse as any).id);
+        console.log('txResponse.hash:', (txResponse as any).hash);
+        console.log('txResponse.transaction_id:', (txResponse as any).transaction_id);
+      }
+      console.log('=== END KASWARE RESPONSE ===');
+      
       // Extract transaction ID from response
       let txid: string;
-      console.log('Kasware response:', txResponse);
       
       if (typeof txResponse === 'string') {
         // If it's a string, it might be JSON or just the txid
