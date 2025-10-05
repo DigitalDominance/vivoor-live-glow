@@ -96,57 +96,11 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
         />
         
         {/* Start broadcast button */}
-        <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center bg-black/80">
+        <Broadcast.EnabledIndicator matcher={false} className="absolute inset-0 flex items-center justify-center">
           <Broadcast.EnabledTrigger className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
             <EnableVideoIcon className="w-6 h-6" />
             <span className="font-medium">Start Camera</span>
           </Broadcast.EnabledTrigger>
-        </Broadcast.EnabledIndicator>
-        
-        <Broadcast.LoadingIndicator className="absolute inset-0 flex items-center justify-center bg-black/80">
-          <div className="flex flex-col items-center gap-2">
-            <LoadingIcon className="w-8 h-8 animate-spin text-white" />
-            <span className="text-sm text-white">Starting camera...</span>
-          </div>
-        </Broadcast.LoadingIndicator>
-
-        <Broadcast.ErrorIndicator
-          matcher="not-permissions"
-          className="absolute inset-0 flex items-center justify-center bg-black/80"
-        >
-          <div className="flex flex-col gap-2 text-center text-white">
-            <p className="text-xl font-bold">Broadcast failed</p>
-            <p className="text-sm">Retrying in the background...</p>
-          </div>
-        </Broadcast.ErrorIndicator>
-
-        {/* Status indicator */}
-        <Broadcast.LoadingIndicator asChild matcher={false}>
-          <div className="absolute top-2 left-2 px-2 py-1 rounded-full bg-black/80">
-            <Broadcast.StatusIndicator matcher="live" className="flex gap-2 items-center">
-              <div className="bg-red-500 animate-pulse h-2 w-2 rounded-full" />
-              <span className="text-xs text-white select-none">LIVE</span>
-            </Broadcast.StatusIndicator>
-            <Broadcast.StatusIndicator matcher="pending" className="flex gap-2 items-center">
-              <div className="bg-white/80 h-2 w-2 rounded-full animate-pulse" />
-              <span className="text-xs text-white select-none">LOADING</span>
-            </Broadcast.StatusIndicator>
-            <Broadcast.StatusIndicator matcher="idle" className="flex gap-2 items-center">
-              <div className="bg-white/80 h-2 w-2 rounded-full" />
-              <span className="text-xs text-white select-none">IDLE</span>
-            </Broadcast.StatusIndicator>
-          </div>
-        </Broadcast.LoadingIndicator>
-
-        {/* Control buttons - only shown when broadcast is enabled */}
-        <Broadcast.EnabledIndicator asChild>
-          <Broadcast.Controls className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black/80 px-4 py-2 rounded-full">
-            <Broadcast.EnabledTrigger className="w-10 h-10 hover:scale-105 flex-shrink-0 transition-transform">
-              <Broadcast.EnabledIndicator asChild matcher={true}>
-                <StopIcon className="w-full h-full text-red-500" />
-              </Broadcast.EnabledIndicator>
-            </Broadcast.EnabledTrigger>
-          </Broadcast.Controls>
         </Broadcast.EnabledIndicator>
       </Broadcast.Container>
     </Broadcast.Root>

@@ -55,15 +55,17 @@ serve(async (req: Request) => {
     const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
     const streamKey = payload.streamKey;
     
-    // Use playbackId for HLS URL - works for both RTMP and WebRTC streams
-    // Note: Stream must be actively receiving data for HLS to work
-    const playbackUrl = playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null;
+    // Use the playbackUrl directly from Livepeer's response if available (includes regional CDN)
+    // Otherwise fall back to constructing it from playbackId
+    const playbackUrl = payload.playbackUrl || 
+                       (playbackId ? `https://livepeercdn.studio/hls/${playbackId}/index.m3u8` : null);
     
     console.log('[livepeer-create-stream] Generated URLs:', {
       streamId,
       playbackId,
       playbackUrl,
-      ingestUrl
+      ingestUrl,
+      hasDirectPlaybackUrl: !!payload.playbackUrl
     });
 
     return new Response(JSON.stringify({ streamId, playbackId, ingestUrl, streamKey, playbackUrl }), {
