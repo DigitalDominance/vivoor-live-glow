@@ -755,23 +755,29 @@ const Watch = () => {
                   <>
                     {streamPlayback.hlsUrl ? (
                       streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser' ? (
-                        <BrowserStreamPlayer
-                          playbackUrl={streamPlayback.hlsUrl}
-                          autoPlay
-                          poster={streamData.thumbnail_url || undefined}
-                          onStreamReady={() => console.log('Browser stream ready')}
-                        />
+                        <>
+                          {console.log('🎬 [Watch Page] Using BrowserStreamPlayer for browser stream')}
+                          <BrowserStreamPlayer
+                            playbackUrl={streamPlayback.hlsUrl}
+                            autoPlay
+                            poster={streamData.thumbnail_url || undefined}
+                            onStreamReady={() => console.log('Browser stream ready on watch page')}
+                          />
+                        </>
                       ) : (
-                        <HlsPlayer
-                          src={streamPlayback.hlsUrl}
-                          autoPlay
-                          controls={false}
-                          poster={streamData.thumbnail_url || undefined}
-                          onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                          onQualityChange={qualityChangeRef}
-                          isLiveStream={true}
-                          videoRef={videoRef}
-                        />
+                        <>
+                          {console.log('🎬 [Watch Page] Using HlsPlayer for RTMP stream')}
+                          <HlsPlayer
+                            src={streamPlayback.hlsUrl}
+                            autoPlay
+                            controls={false}
+                            poster={streamData.thumbnail_url || undefined}
+                            onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                            onQualityChange={qualityChangeRef}
+                            isLiveStream={true}
+                            videoRef={videoRef}
+                          />
+                        </>
                       )
                     ) : null}
                     

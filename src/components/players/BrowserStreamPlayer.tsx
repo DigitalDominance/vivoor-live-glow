@@ -68,7 +68,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
     video.addEventListener('error', onError);
     video.addEventListener('playing', onPlaying);
 
-    // Custom XHR loader that rewrites ALL URLs
+    // Custom XHR loader that rewrites ALL URLs including segments from manifests
     class CustomXhrLoader extends Hls.DefaultConfig.loader {
       load(context: any, config: any, callbacks: any) {
         // Rewrite the URL before loading
@@ -81,6 +81,33 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
         
         // Call parent load with rewritten URL
         super.load(context, config, callbacks);
+      }
+    }
+    
+    // Manifest loader to rewrite segment URLs inside the manifest itself
+    class ManifestRewritingLoader extends CustomXhrLoader {
+      load(context: any, config: any, callbacks: any) {
+        const originalOnSuccess = callbacks.onSuccess;
+        
+        // Wrap onSuccess to rewrite manifest content
+        const wrappedCallbacks = {
+          ...callbacks,
+          onSuccess: (response: any, stats: any, context: any, networkDetails: any) => {
+            // If this is a manifest (playlist), rewrite segment URLs in the response
+            if (context.type === 'manifest' || context.type === 'level') {
+              const data = response.data;
+              if (typeof data === 'string' && data.includes('playback.livepeer.studio')) {
+                console.log('🎬 Rewriting manifest content - found playback.livepeer.studio references');
+                // Replace all instances of playback.livepeer.studio with livepeercdn.studio
+                response.data = data.replace(/playback\.livepeer\.studio/g, 'livepeercdn.studio');
+                console.log('🎬 Manifest content rewritten');
+              }
+            }
+            originalOnSuccess(response, stats, context, networkDetails);
+          }
+        };
+        
+        super.load(context, config, wrappedCallbacks);
       }
     }
 
@@ -99,7 +126,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
         liveMaxLatencyDurationCount: 5,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        loader: CustomXhrLoader, // Use our custom loader
+        loader: ManifestRewritingLoader, // Use our manifest-rewriting loader
       });
 
       hlsRef.current = hls;

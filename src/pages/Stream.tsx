@@ -340,13 +340,19 @@ const Stream = () => {
             {/* Stream content - HLS playback for all stream types */}
             {playbackUrl ? (
               streamingMode === 'browser' || streamData?.stream_type === 'browser' ? (
-                <BrowserStreamPlayer
-                  playbackUrl={playbackUrl}
-                  autoPlay
-                  onStreamReady={() => console.log('Browser stream ready')}
-                />
+                <>
+                  {console.log('🎬 [Stream Page] Using BrowserStreamPlayer for browser stream')}
+                  <BrowserStreamPlayer
+                    playbackUrl={playbackUrl}
+                    autoPlay
+                    onStreamReady={() => console.log('Browser stream ready')}
+                  />
+                </>
               ) : (
-                <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+                <>
+                  {console.log('🎬 [Stream Page] Using HlsPlayer for RTMP stream')}
+                  <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+                </>
               )
             ) : (
               <PlayerPlaceholder />
