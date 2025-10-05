@@ -74,14 +74,15 @@ const TipModal: React.FC<{
         // If it's a string, it might be JSON or just the txid
         try {
           const parsed = JSON.parse(txResponse);
-          txid = parsed.id || parsed.transaction_id || parsed.txid;
+          // Try multiple possible field names for the transaction ID
+          txid = parsed.txid || parsed.id || parsed.transaction_id || parsed.transactionId;
         } catch {
           // If parsing fails, assume it's the txid directly
           txid = txResponse;
         }
       } else if (txResponse && typeof txResponse === 'object') {
-        // If it's an object, extract the id
-        txid = (txResponse as any).id || (txResponse as any).transaction_id || (txResponse as any).txid;
+        // If it's an object, extract the txid (try multiple field names)
+        txid = (txResponse as any).txid || (txResponse as any).id || (txResponse as any).transaction_id || (txResponse as any).transactionId;
       } else {
         console.error('Unexpected transaction response format:', txResponse);
         throw new Error('Invalid transaction response format');

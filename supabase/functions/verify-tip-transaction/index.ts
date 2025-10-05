@@ -106,9 +106,9 @@ serve(async (req) => {
       )
     }
 
-    // Wait 10 seconds initially to allow transaction to propagate to Kaspa network
-    console.log('Waiting 10 seconds for transaction to propagate to network...')
-    await new Promise(resolve => setTimeout(resolve, 10000))
+    // Wait 3 seconds initially to allow transaction to propagate to Kaspa network
+    console.log('Waiting 3 seconds for transaction to propagate to network...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
     
     // Fetch transaction from Kaspa API with progressive retry logic
     const maxRetries = 8
