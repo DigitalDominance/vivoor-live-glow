@@ -129,8 +129,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
         <>
           <div className="w-full bg-black/50 rounded-xl overflow-hidden border border-white/10 aspect-video">
             <LivepeerBroadcast
+              key={streamKey}
               streamKey={streamKey}
-              source="camera"
               onStreamStart={handleStreamStart}
               onStreamEnd={handleStreamEnd}
               onError={handleStreamError}

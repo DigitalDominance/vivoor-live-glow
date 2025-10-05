@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useMemo, useCallback } from 'react';
 import * as Broadcast from '@livepeer/react/broadcast';
 import { getIngest } from '@livepeer/react/external';
 import { useBrowserStreaming } from '@/context/BrowserStreamingContext';
@@ -7,15 +7,13 @@ import { toast } from 'sonner';
 
 interface LivepeerBroadcastProps {
   streamKey: string;
-  source: 'camera';
   onStreamStart?: () => void;
   onStreamEnd?: () => void;
   onError?: (error: Error) => void;
 }
 
-export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
+export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
   streamKey,
-  source,
   onStreamStart,
   onStreamEnd,
   onError,
@@ -30,11 +28,50 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasStartedRef = useRef(false);
-  const ingestUrl = getIngest(streamKey);
+  
+  // Stabilize ingest URL to prevent re-renders
+  const ingestUrl = useMemo(() => getIngest(streamKey), [streamKey]);
 
-  console.log('[LivepeerBroadcast] Initializing with stream key:', streamKey);
+  console.log('[LivepeerBroadcast] Render with stream key:', streamKey);
   console.log('[LivepeerBroadcast] Ingest URL:', ingestUrl);
-  console.log('[LivepeerBroadcast] Source:', source);
+
+  // Memoize error handler to prevent re-renders
+  const handleError = useCallback((error: any) => {
+    console.error('[LivepeerBroadcast] Broadcast error:', error);
+    
+    // Only handle permissions errors - Livepeer handles reconnection automatically
+    if (error?.type === 'permissions') {
+      toast.error('Camera/microphone access denied');
+      onError?.(new Error('Permissions denied. Please allow access and try again.'));
+    }
+  }, [onError]);
+
+  // Memoize video play handler
+  const handleCanPlay = useCallback(() => {
+    console.log('[LivepeerBroadcast] Video can play');
+    
+    if (!hasStartedRef.current) {
+      hasStartedRef.current = true;
+      setIsStreaming(true);
+      setIsPreviewing(true);
+      onStreamStart?.();
+    }
+    
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      mediaStreamRef.current = stream;
+      
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      setHasVideo(videoTracks.length > 0);
+      setHasAudio(audioTracks.length > 0);
+      
+      console.log('[LivepeerBroadcast] Video tracks:', videoTracks.length);
+      console.log('[LivepeerBroadcast] Audio tracks:', audioTracks.length);
+      console.log('[LivepeerBroadcast] Video track label:', videoTracks[0]?.label);
+    }
+  }, [onStreamStart, setIsStreaming, setIsPreviewing, setHasVideo, setHasAudio, mediaStreamRef]);
 
   if (!ingestUrl) {
     console.error('[LivepeerBroadcast] Invalid stream key');
@@ -48,54 +85,14 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
   return (
     <Broadcast.Root 
       ingestUrl={ingestUrl}
-      onError={(error) => {
-        console.error('[LivepeerBroadcast] Broadcast error:', error);
-        console.error('[LivepeerBroadcast] Error type:', error?.type);
-        console.error('[LivepeerBroadcast] Error message:', error?.message);
-        
-        if (error?.type === 'permissions') {
-          toast.error('Camera/microphone access denied');
-          onError?.(new Error('Permissions denied. Please allow access and try again.'));
-        } else {
-          toast.error('Connection to streaming server failed');
-          onError?.(new Error('Broadcast connection failed. The stream endpoint may not be ready yet. Please wait a moment and try again.'));
-        }
-      }}
+      onError={handleError}
     >
       <Broadcast.Container className="w-full h-full bg-black/50 rounded-xl overflow-hidden relative">
         <Broadcast.Video
           ref={videoRef}
           title="Live stream"
           className="w-full h-full object-cover"
-          onCanPlay={() => {
-            console.log('[LivepeerBroadcast] Video can play');
-            
-            if (!hasStartedRef.current) {
-              hasStartedRef.current = true;
-              setIsStreaming(true);
-              setIsPreviewing(true);
-              onStreamStart?.();
-            }
-            
-            if (videoRef.current?.srcObject) {
-              const stream = videoRef.current.srcObject as MediaStream;
-              mediaStreamRef.current = stream;
-              
-              const videoTracks = stream.getVideoTracks();
-              const audioTracks = stream.getAudioTracks();
-              
-              setHasVideo(videoTracks.length > 0);
-              setHasAudio(audioTracks.length > 0);
-              
-              console.log('[LivepeerBroadcast] Video tracks:', videoTracks.length);
-              console.log('[LivepeerBroadcast] Audio tracks:', audioTracks.length);
-              console.log('[LivepeerBroadcast] Video track label:', videoTracks[0]?.label);
-            }
-          }}
-          onError={() => {
-            console.error('[LivepeerBroadcast] Video error');
-            onError?.(new Error('Video playback error'));
-          }}
+          onCanPlay={handleCanPlay}
         />
         
         {/* Start broadcast button */}
@@ -154,4 +151,4 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
       </Broadcast.Container>
     </Broadcast.Root>
   );
-};
+});
