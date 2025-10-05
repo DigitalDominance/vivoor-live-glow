@@ -18,6 +18,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const retryCountRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,35 +120,65 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 5,
+        maxBufferLength: 10, // Reduced for live streams
+        maxMaxBufferLength: 20,
+        liveSyncDurationCount: 2, // Stay closer to live edge
+        liveMaxLatencyDurationCount: 10, // More tolerance
         liveDurationInfinity: true,
-        highBufferWatchdogPeriod: 2,
+        highBufferWatchdogPeriod: 1,
+        maxFragLookUpTolerance: 0.5,
+        startFragPrefetch: true,
+        testBandwidth: false, // Disable bandwidth testing for faster start
         loader: ManifestRewritingLoader, // Use our manifest-rewriting loader
       });
 
       hlsRef.current = hls;
 
+      const maxRetries = 3;
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
         
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('🎬 Network error, attempting recovery...');
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('🎬 Media error, attempting recovery...');
-              hls.recoverMediaError();
-              break;
-            default:
-              setError('Stream error - please refresh');
-              break;
-          }
+        // Don't retry on non-fatal errors
+        if (!data.fatal) {
+          return;
         }
+        
+        // Limit retries to prevent infinite loops
+        if (retryCountRef.current >= maxRetries) {
+          console.error('🎬 Max retries reached, stopping');
+          setError('Stream unavailable - please refresh');
+          setLoading(false);
+          return;
+        }
+        
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            console.log(`🎬 Network error, retry ${retryCountRef.current + 1}/${maxRetries}`);
+            retryCountRef.current++;
+            setTimeout(() => {
+              if (hlsRef.current) {
+                hls.startLoad();
+              }
+            }, 1000 * retryCountRef.current); // Exponential backoff
+            break;
+            
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.log('🎬 Media error, attempting recovery...');
+            retryCountRef.current++;
+            hls.recoverMediaError();
+            break;
+            
+          default:
+            setError('Stream error - please refresh');
+            setLoading(false);
+            break;
+        }
+      });
+
+      // Reset retry count on successful playback
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        retryCountRef.current = 0;
       });
 
       hls.on(Hls.Events.MANIFEST_LOADED, () => {
