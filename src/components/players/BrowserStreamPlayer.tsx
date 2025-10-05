@@ -5,6 +5,7 @@ interface BrowserStreamPlayerProps {
   playbackUrl: string;
   poster?: string;
   autoPlay?: boolean;
+  controls?: boolean;
   className?: string;
   onStreamReady?: () => void;
 }
@@ -13,6 +14,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
   playbackUrl,
   poster,
   autoPlay = true,
+  controls = true,
   className,
   onStreamReady,
 }) => {
@@ -220,7 +222,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
         <video
           ref={videoRef}
           poster={poster}
-          controls={true}
+          controls={controls}
           autoPlay={autoPlay}
           muted
           playsInline

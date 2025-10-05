@@ -760,6 +760,7 @@ const Watch = () => {
                           <BrowserStreamPlayer
                             playbackUrl={streamPlayback.hlsUrl}
                             autoPlay
+                            controls={false}
                             poster={streamData.thumbnail_url || undefined}
                             onStreamReady={() => console.log('Browser stream ready on watch page')}
                           />

@@ -188,12 +188,7 @@ const Stream = () => {
 
   // Auto-end stream after 1 minute of disconnection and heartbeat monitoring
   React.useEffect(() => {
-    if (!streamData?.id || !isOwnStream) return;
-
-    // Skip heartbeat for browser streams - they use update_browser_stream_heartbeat via BrowserStreaming component
-    if (streamData.stream_type === 'browser') {
-      return;
-    }
+    if (!streamData?.id || !isOwnStream || !identity?.address) return;
 
     let heartbeatInterval: number;
     let disconnectTimer: number;
@@ -201,7 +196,22 @@ const Stream = () => {
 
     const sendHeartbeat = async () => {
       try {
-        await supabase.rpc('update_stream_heartbeat', { stream_id: streamData.id });
+        // Use appropriate heartbeat function based on stream type
+        if (streamData.stream_type === 'browser') {
+          // For browser streams, use the wallet-based heartbeat with session token
+          const sessionToken = localStorage.getItem('wallet_session_token');
+          if (sessionToken) {
+            await supabase.rpc('update_browser_stream_heartbeat', {
+              session_token_param: sessionToken,
+              wallet_address_param: identity.address,
+              stream_id_param: streamData.id,
+              is_live_param: true
+            });
+          }
+        } else {
+          // For RTMP streams, use the regular heartbeat
+          await supabase.rpc('update_stream_heartbeat', { stream_id: streamData.id });
+        }
         lastHeartbeat = Date.now();
         setConnectionStatus('connected');
       } catch (error) {
@@ -213,11 +223,16 @@ const Stream = () => {
     const checkAndEndStream = async () => {
       const timeSinceLastHeartbeat = Date.now() - lastHeartbeat;
       
-      if (timeSinceLastHeartbeat > 60000) { // 1 minute
-        console.log('Auto-ending stream due to 1 minute disconnection');
+      // Use longer timeout for browser streams (2 minutes) vs RTMP streams (1 minute)
+      const timeout = streamData.stream_type === 'browser' ? 120000 : 60000;
+      
+      if (timeSinceLastHeartbeat > timeout) {
+        console.log(`Auto-ending stream due to ${timeout/60000} minute disconnection`);
         
         try {
-          await supabase.rpc('auto_end_disconnected_streams', { timeout_minutes: 1 });
+          await supabase.rpc('auto_end_disconnected_streams', { 
+            timeout_minutes: streamData.stream_type === 'browser' ? 2 : 1 
+          });
           
           // Clear local storage
           localStorage.removeItem('currentIngestUrl');
@@ -226,7 +241,7 @@ const Stream = () => {
           localStorage.removeItem('streamStartTime');
           localStorage.removeItem('currentStreamId');
           
-          toast.error('Stream ended due to 1 minute disconnection');
+          toast.error(`Stream ended due to ${timeout/60000} minute disconnection`);
           navigate('/app');
         } catch (error) {
           console.error('Failed to auto-end stream:', error);
@@ -234,9 +249,9 @@ const Stream = () => {
       }
     };
 
-    // Send heartbeat every 30 seconds
+    // Send heartbeat every 15 seconds (more frequent for browser streams)
     sendHeartbeat(); // Initial heartbeat
-    heartbeatInterval = window.setInterval(sendHeartbeat, 30000);
+    heartbeatInterval = window.setInterval(sendHeartbeat, 15000);
     
     // Check for disconnection every 30 seconds
     disconnectTimer = window.setInterval(checkAndEndStream, 30000);
@@ -245,7 +260,7 @@ const Stream = () => {
       clearInterval(heartbeatInterval);
       clearInterval(disconnectTimer);
     };
-  }, [streamData?.id, isOwnStream, navigate]);
+  }, [streamData?.id, streamData?.stream_type, isOwnStream, identity?.address, navigate]);
 
   React.useEffect(() => {
     const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
