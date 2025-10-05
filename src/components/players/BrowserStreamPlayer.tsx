@@ -136,7 +136,7 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
 
       hlsRef.current = hls;
 
-      const maxRetries = 3;
+      const maxRetries = Infinity; // Unlimited retries for live streams
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('🎬 HLS error:', event, data);
@@ -146,34 +146,40 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
           return;
         }
         
-        // Limit retries to prevent infinite loops
-        if (retryCountRef.current >= maxRetries) {
-          console.error('🎬 Max retries reached, stopping');
-          setError('Stream unavailable - please refresh');
-          setLoading(false);
-          return;
-        }
-        
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
-            console.log(`🎬 Network error, retry ${retryCountRef.current + 1}/${maxRetries}`);
+            console.log(`🎬 Network error, retrying in 10 seconds...`);
             retryCountRef.current++;
+            setError(`Stream loading... (attempt ${retryCountRef.current})`);
             setTimeout(() => {
               if (hlsRef.current) {
+                console.log('🎬 Retrying stream load...');
+                setError(null);
                 hls.startLoad();
               }
-            }, 1000 * retryCountRef.current); // Exponential backoff
+            }, 10000); // Retry every 10 seconds
             break;
             
           case Hls.ErrorTypes.MEDIA_ERROR:
             console.log('🎬 Media error, attempting recovery...');
             retryCountRef.current++;
-            hls.recoverMediaError();
+            setError('Stream recovery in progress...');
+            setTimeout(() => {
+              hls.recoverMediaError();
+            }, 2000);
             break;
             
           default:
-            setError('Stream error - please refresh');
-            setLoading(false);
+            console.log('🎬 Unknown error, retrying in 10 seconds...');
+            retryCountRef.current++;
+            setError(`Stream loading... (attempt ${retryCountRef.current})`);
+            setTimeout(() => {
+              if (hlsRef.current) {
+                console.log('🎬 Retrying stream load...');
+                setError(null);
+                hls.loadSource(rewriteUrl(playbackUrl));
+              }
+            }, 10000); // Retry every 10 seconds
             break;
         }
       });
