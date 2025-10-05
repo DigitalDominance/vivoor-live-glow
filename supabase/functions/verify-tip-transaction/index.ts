@@ -110,8 +110,12 @@ serve(async (req) => {
     const maxRetries = 5
     let tx: KaspaTx | null = null
     
+    // Give the transaction time to propagate to the API (initial 3 second delay)
+    console.log('Waiting 3 seconds for transaction to propagate to Kaspa API...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const retryDelay = attempt * 1000 // Progressive delay: 1s, 2s, 3s, 4s, 5s
+      const retryDelay = attempt * 2000 // Progressive delay: 2s, 4s, 6s, 8s, 10s
       try {
         console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}):`, cleanTxid)
         const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${cleanTxid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)

@@ -94,11 +94,15 @@ const TipModal: React.FC<{
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
       
+      // Give transaction time to propagate before verifying (initial 5 second delay)
+      console.log('Waiting 5 seconds for transaction to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
       // Now verify the transaction with our backend (with progressive retry logic)
       const maxRetries = 5;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const retryDelay = attempt * 1000; // Progressive delay: 1s, 2s, 3s, 4s, 5s
+        const retryDelay = attempt * 2000; // Progressive delay: 2s, 4s, 6s, 8s, 10s
         try {
           console.log(`Tip verification attempt ${attempt}/${maxRetries} for txid:`, txid);
           
@@ -129,8 +133,8 @@ const TipModal: React.FC<{
             if (attempt === maxRetries) {
               toast.error(`Tip verification failed: ${result.error}`);
             } else {
-              console.log(`Verification failed on attempt ${attempt}, retrying in ${attempt * 1000}ms...`);
-              await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+              console.log(`Verification failed on attempt ${attempt}, retrying in ${attempt * 2000}ms...`);
+              await new Promise(resolve => setTimeout(resolve, attempt * 2000));
             }
           }
         } catch (verificationError) {
@@ -138,8 +142,8 @@ const TipModal: React.FC<{
           if (attempt === maxRetries) {
             toast.warning('Tip sent but verification failed - it may take a moment to appear.');
           } else {
-            console.log(`Verification error on attempt ${attempt}, retrying in ${attempt * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+            console.log(`Verification error on attempt ${attempt}, retrying in ${attempt * 2000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
           }
         }
       }
