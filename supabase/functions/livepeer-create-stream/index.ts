@@ -55,21 +55,38 @@ serve(async (req: Request) => {
     const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
     const streamKey = payload.streamKey;
     
-    // CRITICAL: Use the playback URL that Livepeer provides in their response
-    // They return regional CDN URLs that work properly (e.g., mdw-prod-catalyst-0.lp-playback.studio)
-    // Check multiple possible fields where Livepeer might return the playback URL
+    // IMPORTANT: Fetch the actual playback URL from Livepeer's stream endpoint
+    // This will give us the regional CDN URL that actually works
     let playbackUrl = null;
     
-    if (payload.playbackUrl) {
-      playbackUrl = payload.playbackUrl;
-      console.log('[livepeer-create-stream] Using playbackUrl from payload:', playbackUrl);
-    } else if (payload.playback?.hls) {
-      playbackUrl = payload.playback.hls;
-      console.log('[livepeer-create-stream] Using playback.hls from payload:', playbackUrl);
-    } else if (playbackId) {
-      // Fallback: construct URL if Livepeer doesn't provide one
+    try {
+      const streamInfoRes = await fetch(`https://livepeer.studio/api/stream/${streamId}`, {
+        headers: {
+          "Authorization": `Bearer ${API_KEY}`,
+        },
+      });
+      
+      if (streamInfoRes.ok) {
+        const streamInfo: any = await streamInfoRes.json();
+        console.log('[livepeer-create-stream] Stream info response:', JSON.stringify(streamInfo, null, 2));
+        
+        // Try to get playback URL from various possible fields
+        if (streamInfo.playbackUrl) {
+          playbackUrl = streamInfo.playbackUrl;
+          console.log('[livepeer-create-stream] Using playbackUrl from stream info');
+        } else if (streamInfo.playback?.hls) {
+          playbackUrl = streamInfo.playback.hls;
+          console.log('[livepeer-create-stream] Using playback.hls from stream info');
+        }
+      }
+    } catch (error) {
+      console.error('[livepeer-create-stream] Failed to fetch stream info:', error);
+    }
+    
+    // Fallback to constructed URL if we couldn't get it from API
+    if (!playbackUrl && playbackId) {
       playbackUrl = `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-      console.log('[livepeer-create-stream] Constructed fallback URL:', playbackUrl);
+      console.log('[livepeer-create-stream] Using constructed fallback URL');
     }
     
     console.log('[livepeer-create-stream] Final URLs:', {

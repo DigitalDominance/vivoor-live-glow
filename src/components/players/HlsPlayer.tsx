@@ -129,7 +129,6 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         liveMaxLatencyDurationCount: 5,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        // Ensure we follow redirects and use the CDN URLs as returned
         xhrSetup: (xhr: XMLHttpRequest, url: string) => {
           console.log('🎬 HLS.js loading URL:', url);
         }
