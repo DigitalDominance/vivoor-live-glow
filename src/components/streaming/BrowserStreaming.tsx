@@ -32,6 +32,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     isStreamPreserved,
     startHeartbeat,
     stopHeartbeat,
+    setIsBroadcastActive,
   } = useBrowserStreaming();
 
   const { sessionToken, identity } = useWallet();
@@ -81,6 +82,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     setBroadcastSource(null);
     setIsStreaming(false);
     setIsPreviewing(false);
+    setIsBroadcastActive(false); // Mark broadcast as inactive
     
     // Stop the global heartbeat
     stopHeartbeat();

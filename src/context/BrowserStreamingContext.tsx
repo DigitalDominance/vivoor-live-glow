@@ -13,6 +13,7 @@ interface BrowserStreamingContextType {
   hasVideo: boolean;
   hasAudio: boolean;
   isPreviewMuted: boolean;
+  isBroadcastActive: boolean;
   
   // Actions
   setIsStreaming: (value: boolean) => void;
@@ -24,6 +25,7 @@ interface BrowserStreamingContextType {
   setHasVideo: (value: boolean) => void;
   setHasAudio: (value: boolean) => void;
   setIsPreviewMuted: (value: boolean) => void;
+  setIsBroadcastActive: (value: boolean) => void;
   
   // Stream management
   preserveStream: () => void;
@@ -52,6 +54,7 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
   const [hasAudio, setHasAudio] = useState(false);
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
   const [isStreamPreserved, setIsStreamPreserved] = useState(false);
+  const [isBroadcastActive, setIsBroadcastActive] = useState(false);
 
   const preserveStream = useCallback(() => {
     console.log('[BrowserStreamingContext] Preserving stream state across navigation');
@@ -73,8 +76,14 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
       const data = heartbeatDataRef.current;
       if (!data) return;
       
+      // Only send heartbeat if broadcast is actually active
+      if (!isBroadcastActive) {
+        console.log('[BrowserStreamingContext] Skipping heartbeat - broadcast not active');
+        return;
+      }
+      
       try {
-        console.log('[BrowserStreamingContext] Sending heartbeat');
+        console.log('[BrowserStreamingContext] Sending heartbeat (broadcast active)');
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
           session_token_param: data.sessionToken,
           wallet_address_param: data.walletAddress,
@@ -163,6 +172,7 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
     hasVideo,
     hasAudio,
     isPreviewMuted,
+    isBroadcastActive,
     setIsStreaming,
     setIsPreviewing,
     setStreamingMode,
@@ -172,6 +182,7 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
     setHasVideo,
     setHasAudio,
     setIsPreviewMuted,
+    setIsBroadcastActive,
     preserveStream,
     releaseStream,
     isStreamPreserved,

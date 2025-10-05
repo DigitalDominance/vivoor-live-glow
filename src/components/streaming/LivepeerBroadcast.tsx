@@ -24,6 +24,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
     setIsPreviewing,
     setHasVideo,
     setHasAudio,
+    setIsBroadcastActive,
   } = useBrowserStreaming();
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -54,6 +55,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
       hasStartedRef.current = true;
       setIsStreaming(true);
       setIsPreviewing(true);
+      setIsBroadcastActive(true); // Mark broadcast as active
       onStreamStart?.();
     }
     
@@ -71,7 +73,7 @@ export const LivepeerBroadcast = React.memo<LivepeerBroadcastProps>(({
       console.log('[LivepeerBroadcast] Audio tracks:', audioTracks.length);
       console.log('[LivepeerBroadcast] Video track label:', videoTracks[0]?.label);
     }
-  }, [onStreamStart, setIsStreaming, setIsPreviewing, setHasVideo, setHasAudio, mediaStreamRef]);
+  }, [onStreamStart, setIsStreaming, setIsPreviewing, setHasVideo, setHasAudio, setIsBroadcastActive, mediaStreamRef]);
 
   if (!ingestUrl) {
     console.error('[LivepeerBroadcast] Invalid stream key');
