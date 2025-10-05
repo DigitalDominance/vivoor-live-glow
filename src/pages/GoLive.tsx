@@ -41,6 +41,7 @@ const GoLive = () => {
   const [createdStreamId, setCreatedStreamId] = React.useState<string | null>(null);
   const [cameraReady, setCameraReady] = React.useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
+  const [streamReady, setStreamReady] = React.useState(false);
 
 
   // Get current user profile for display using secure function
@@ -159,14 +160,16 @@ const GoLive = () => {
       return;
     }
     
-    console.log('Generating stream details...');
+    console.log('[GoLive] Generating stream details...');
+    setStreamReady(false);
+    
     try {
       setDebugInfo('Creating Livepeer stream...');
       
       const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
       
-      console.log('Livepeer response:', lp);
-      console.log('Livepeer error:', lpErr);
+      console.log('[GoLive] Livepeer response:', lp);
+      console.log('[GoLive] Livepeer error:', lpErr);
       
       if (lpErr || !lp) {
         setDebugInfo(`Error: ${lpErr?.message || 'Failed to create stream'}`);
@@ -179,18 +182,23 @@ const GoLive = () => {
       setLivepeerStreamId(lp.streamId || null);
       setLivepeerPlaybackId(lp.playbackId || null);
       
-      console.log('Stream details set:', {
+      console.log('[GoLive] Stream details set:', {
         streamId: lp.streamId,
         ingestUrl: lp.ingestUrl,
         streamKey: lp.streamKey ? '***' : null,
         playbackUrl: lp.playbackUrl
       });
       
+      // Wait 2 seconds for Livepeer to provision the stream endpoint
+      console.log('[GoLive] Waiting for Livepeer stream to be ready...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setStreamReady(true);
       setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
-      toast.success('RTMP details ready');
+      toast.success('Stream ready! You can now connect your camera.');
       return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
-      console.error('Stream generation error:', e);
+      console.error('[GoLive] Stream generation error:', e);
       setDebugInfo(`Error: ${e?.message || 'Failed to create stream'}`);
       toast.error(e?.message || 'Failed to create stream');
       throw e;
@@ -618,7 +626,7 @@ const GoLive = () => {
             </div>
 
             {/* Browser Streaming Setup Section - Show immediately when browser mode is selected */}
-            {streamingMode === 'browser' && streamKey && (
+            {streamingMode === 'browser' && streamKey && streamReady && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
@@ -646,7 +654,17 @@ const GoLive = () => {
                 <div className="text-xs text-gray-400 mt-2">
                   {cameraReady 
                     ? 'Camera is ready! Click the "Go Live & Pay 1.2 KAS" button below to start broadcasting.'
-                    : 'Click "Start Camera Stream" above to connect your camera and microphone.'}
+                    : 'Click "Start Camera" above to connect your camera and microphone.'}
+                </div>
+              </div>
+            )}
+            
+            {/* Loading state while stream is being prepared */}
+            {streamingMode === 'browser' && streamKey && !streamReady && (
+              <div className="mb-8">
+                <div className="bg-white/5 border border-white/20 rounded-xl p-6 flex items-center justify-center gap-3">
+                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-white">Preparing stream endpoint...</span>
                 </div>
               </div>
             )}

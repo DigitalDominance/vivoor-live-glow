@@ -50,10 +50,15 @@ export const LivepeerBroadcast: React.FC<LivepeerBroadcastProps> = ({
       ingestUrl={ingestUrl}
       onError={(error) => {
         console.error('[LivepeerBroadcast] Broadcast error:', error);
+        console.error('[LivepeerBroadcast] Error type:', error?.type);
+        console.error('[LivepeerBroadcast] Error message:', error?.message);
+        
         if (error?.type === 'permissions') {
+          toast.error('Camera/microphone access denied');
           onError?.(new Error('Permissions denied. Please allow access and try again.'));
         } else {
-          onError?.(new Error('Broadcast failed. Please try again.'));
+          toast.error('Connection to streaming server failed');
+          onError?.(new Error('Broadcast connection failed. The stream endpoint may not be ready yet. Please wait a moment and try again.'));
         }
       }}
     >

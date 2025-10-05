@@ -89,18 +89,21 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     setBroadcastSource(null);
     setIsStreaming(false);
     setIsPreviewing(false);
-    toast.info('Browser stream ended');
     onStreamEnd?.();
 
     // Mark stream as ended using secure RPC function
     if (!isPreviewMode && sessionToken && identity?.address && streamId) {
       console.log('[BrowserStreaming] Marking stream as ended');
-      await supabase.rpc('update_browser_stream_heartbeat', {
-        session_token_param: sessionToken,
-        wallet_address_param: identity.address,
-        stream_id_param: streamId,
-        is_live_param: false
-      });
+      try {
+        await supabase.rpc('update_browser_stream_heartbeat', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
+          stream_id_param: streamId,
+          is_live_param: false
+        });
+      } catch (error) {
+        console.error('[BrowserStreaming] Error marking stream as ended:', error);
+      }
     }
   };
 
@@ -117,7 +120,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   const handleStreamError = (error: Error) => {
     console.error('[BrowserStreaming] Livepeer stream error:', error);
-    toast.error(`Stream error: ${error.message}`);
     stopBroadcast();
   };
 
