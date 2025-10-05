@@ -11,7 +11,7 @@ interface TipVerificationRequest {
   streamId: string;
   expectedAmount: number; // in sompi
   recipientAddress: string;
-  senderWalletAddress: string; // Full Kaspa wallet address to query transactions
+  senderAddress?: string;
   senderName?: string;
   senderAvatar?: string;
   tipMessage?: string;
@@ -20,16 +20,18 @@ interface TipVerificationRequest {
 interface KaspaTx {
   transaction_id: string;
   accepting_block_blue_score: number;
-  accepting_block_time: number;
   block_time: number;
   is_accepted: boolean;
   payload?: string;
   inputs: Array<{
-    transaction_id: string;
-    index: number;
-    previous_outpoint_hash: string;
-    previous_outpoint_index: string;
     signature_script?: string | null;
+    utxo?: {
+      address: string;
+      amount: string;
+      script_public_key: string;
+      block_daa_score: string;
+      is_coinbase: boolean;
+    };
   }>;
   outputs: Array<{
     transaction_id: string;
@@ -58,7 +60,7 @@ serve(async (req) => {
       streamId, 
       expectedAmount, 
       recipientAddress, 
-      senderWalletAddress,
+      senderAddress,
       senderName,
       senderAvatar,
       tipMessage
@@ -68,8 +70,7 @@ serve(async (req) => {
       txid: typeof txid === 'string' ? txid : 'INVALID_TYPE',
       streamId, 
       expectedAmount, 
-      recipientAddress,
-      senderWalletAddress
+      recipientAddress 
     })
 
     // Validate txid format - ensure it's a string and proper length
@@ -105,49 +106,35 @@ serve(async (req) => {
       )
     }
 
-    // Wait 2 seconds initially to allow transaction to propagate to Kaspa network
-    console.log('Waiting 2 seconds for transaction to propagate to network...')
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // Wait 3 seconds initially to allow transaction to propagate to Kaspa network
+    console.log('Waiting 3 seconds for transaction to propagate to network...')
+    await new Promise(resolve => setTimeout(resolve, 3000))
     
-    // Fetch transactions from sender's address with progressive retry logic
-    const maxRetries = 6
+    // Fetch transaction from Kaspa API with progressive retry logic
+    const maxRetries = 8
     let tx: KaspaTx | null = null
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const retryDelay = attempt * 3000 // Progressive delay: 3s, 6s, 9s, 12s, 15s, 18s
+      const retryDelay = attempt * 5000 // Progressive delay: 5s, 10s, 15s, 20s, 25s, 30s, 35s, 40s
       try {
-        console.log(`Fetching transactions for address (attempt ${attempt}/${maxRetries}):`, senderWalletAddress)
-        const kaspaResponse = await fetch(
-          `https://api.kaspa.org/addresses/${encodeURIComponent(senderWalletAddress)}/full-transactions-page?limit=50&before=0&after=0&resolve_previous_outpoints=no`
-        )
+        console.log(`Fetching transaction from Kaspa API (attempt ${attempt}/${maxRetries}):`, cleanTxid)
+        const kaspaResponse = await fetch(`https://api.kaspa.org/transactions/${cleanTxid}?inputs=true&outputs=true&resolve_previous_outpoints=no`)
         
         if (!kaspaResponse.ok) {
           const errorText = await kaspaResponse.text()
           console.error(`Kaspa API error (attempt ${attempt}):`, kaspaResponse.status, errorText)
           
           if (attempt === maxRetries) {
-            throw new Error(`Failed to fetch transactions after ${maxRetries} attempts: ${kaspaResponse.status}`)
+            throw new Error(`Failed to fetch transaction after ${maxRetries} attempts: ${kaspaResponse.status}`)
           } else {
-            await new Promise(resolve => setTimeout(resolve, retryDelay))
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
             continue
           }
         }
 
-        const transactions: KaspaTx[] = await kaspaResponse.json()
-        console.log(`Fetched ${transactions.length} transactions, searching for txid:`, cleanTxid)
-        
-        // Find the matching transaction by txid
-        tx = transactions.find(t => t.transaction_id === cleanTxid) || null
-        
-        if (tx) {
-          console.log('Found matching transaction in address transactions')
-          break // Success, exit retry loop
-        } else {
-          console.log(`Transaction not found in attempt ${attempt}, will retry...`)
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay))
-          }
-        }
+        tx = await kaspaResponse.json()
+        console.log('Successfully fetched transaction data')
+        break // Success, exit retry loop
         
       } catch (error) {
         console.error(`Error on attempt ${attempt}:`, error)
@@ -160,7 +147,7 @@ serve(async (req) => {
     }
 
     if (!tx) {
-      throw new Error('Transaction not found in sender address transactions after multiple retries')
+      throw new Error('Failed to fetch transaction data')
     }
 
     // Verify transaction is accepted
@@ -215,7 +202,7 @@ serve(async (req) => {
       .from('tips')
       .insert({
         stream_id: streamId,
-        sender_address: senderWalletAddress, // Use the wallet address from the request
+        sender_address: tx.inputs[0]?.utxo?.address || senderAddress || 'unknown', // Use actual sender from transaction inputs
         recipient_address: recipientAddress,
         amount_sompi: outputToRecipient.amount,
         txid: cleanTxid,

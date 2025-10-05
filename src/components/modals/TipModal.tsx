@@ -68,17 +68,30 @@ const TipModal: React.FC<{
       
       // Extract transaction ID from response
       // Kasware returns an object with an "id" field containing the transaction ID
-      console.log('Kasware sendKaspa response:', JSON.stringify(txResponse, null, 2));
+      let txid: string;
+      console.log('Kasware response:', txResponse);
       
-      // The response is always an object with an "id" field
-      const txid = (txResponse as any)?.id;
+      if (typeof txResponse === 'string') {
+        // If it's a JSON string, parse it first
+        try {
+          const parsed = JSON.parse(txResponse);
+          txid = parsed.id;
+        } catch {
+          // If not JSON, assume it's the txid directly
+          txid = txResponse;
+        }
+      } else if (txResponse && typeof txResponse === 'object') {
+        // Use the top-level "id" field which is the actual transaction ID
+        txid = (txResponse as any).id;
+      } else {
+        console.error('Unexpected transaction response format:', txResponse);
+        throw new Error('Invalid transaction response format');
+      }
       
       if (!txid || typeof txid !== 'string') {
         console.error('Could not extract transaction ID from response:', txResponse);
         throw new Error('Failed to extract transaction ID');
       }
-      
-      console.log('Extracted txid:', txid);
       
       toast.success(`Tip sent! Transaction: ${txid.slice(0, 8)}...`);
       
@@ -90,14 +103,6 @@ const TipModal: React.FC<{
         try {
           console.log(`Tip verification attempt ${attempt}/${maxRetries} for txid:`, txid);
           
-          // Get sender's wallet address
-          const senderWalletAddress = await window.kasware.getAccounts().then(accounts => accounts[0]);
-          if (!senderWalletAddress) {
-            throw new Error('Could not get sender wallet address');
-          }
-          
-          console.log('Sender wallet address:', senderWalletAddress);
-          
           const response = await fetch(`https://qcowmxypihinteajhnjw.supabase.co/functions/v1/verify-tip-transaction`, {
             method: 'POST',
             headers: {
@@ -105,14 +110,14 @@ const TipModal: React.FC<{
               'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjb3dteHlwaWhpbnRlYWpobmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDI4MTMsImV4cCI6MjA3MDYxODgxM30.KrSQYsOzPPhErffzdLzMS_4pC2reuONNc134tdtVPbA`
             },
             body: JSON.stringify({
-              txid: txid,
+              txid: txid, // Send only the transaction ID string
               streamId,
               expectedAmount: sompi,
               recipientAddress: toAddress,
-              senderWalletAddress: senderWalletAddress,
+              senderAddress: senderHandle || 'Anonymous',
               senderName: senderProfile?.display_name || senderProfile?.handle || senderHandle || 'Anonymous',
               senderAvatar: senderProfile?.avatar_url,
-              tipMessage: cleanText(currentMessage || "Thanks for the stream!")
+              tipMessage: cleanText(currentMessage || "Thanks for the stream!") // Clean the message before storing
             })
           });
           
