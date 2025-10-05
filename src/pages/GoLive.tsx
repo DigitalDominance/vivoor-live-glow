@@ -492,6 +492,11 @@ const GoLive = () => {
                       return;
                     }
                     
+                    if (!title.trim()) {
+                      toast.error('Please enter a stream title first');
+                      return;
+                    }
+                    
                     // Clear existing stream data when switching modes
                     setIngestUrl(null);
                     setStreamKey(null);
@@ -507,10 +512,12 @@ const GoLive = () => {
                     // Generate stream details for browser streaming
                     toast.info('Setting up browser streaming...');
                     try {
-                      await generateStreamDetails();
-                      toast.success('Ready! Now connect your camera below.');
+                      const details = await generateStreamDetails();
+                      console.log('[GoLive] Stream details generated:', details);
+                      toast.success('Ready! Connect your camera below to continue.');
                     } catch (error) {
-                      console.error('Failed to generate stream details:', error);
+                      console.error('[GoLive] Failed to generate stream details:', error);
+                      toast.error('Failed to setup streaming. Please try again.');
                     }
                   }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 ${
@@ -625,13 +632,14 @@ const GoLive = () => {
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={true}
                     onStreamStart={() => {
-                      console.log('Camera connected successfully');
+                      console.log('[GoLive] Camera connected successfully');
                       setCameraReady(true);
-                      toast.success('Camera connected! Click "Go Live" to start broadcasting.');
+                      toast.success('✅ Camera ready! Click "Go Live & Pay 1.2 KAS" below to start broadcasting.');
                     }}
                     onStreamEnd={() => {
-                      console.log('Camera disconnected');
+                      console.log('[GoLive] Camera disconnected');
                       setCameraReady(false);
+                      toast.info('Camera disconnected');
                     }}
                   />
                 </div>
@@ -644,15 +652,15 @@ const GoLive = () => {
             )}
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* For both RTMP and Browser, we need to generate stream details first */}
-              {!streamKey && (
+              {/* For RTMP only - show generate button if stream not created */}
+              {streamingMode === 'rtmp' && !streamKey && (
                 <Button 
                   variant="outline" 
                   onClick={generateStreamDetails} 
                   disabled={!title || !kaspaAddress}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-purple-400/50"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : `Generate ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream`}
+                  {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Stream'}
                 </Button>
               )}
               
@@ -679,6 +687,15 @@ const GoLive = () => {
                    !previewReady ? 'Waiting for Stream...' :
                    'Setup RTMP Stream & Pay Fee (1.2 KAS)'}
                 </Button>
+              )}
+              
+              {/* Browser mode status when camera is not ready yet */}
+              {streamingMode === 'browser' && streamKey && !cameraReady && (
+                <div className="flex-1 px-6 py-3 rounded-lg bg-white/5 border border-white/20 text-center">
+                  <p className="text-sm text-white/80">
+                    ⬆️ Connect your camera above to continue
+                  </p>
+                </div>
               )}
             </div>
 
