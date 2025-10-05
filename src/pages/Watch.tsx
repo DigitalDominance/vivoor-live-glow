@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
+import BrowserStreamPlayer from "@/components/players/BrowserStreamPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import CustomVideoControls from "@/components/players/CustomVideoControls";
 import TipModal from "@/components/modals/TipModal";
@@ -753,16 +754,25 @@ const Watch = () => {
                 streamPlayback ? (
                   <>
                     {streamPlayback.hlsUrl ? (
-                      <HlsPlayer
-                        src={streamPlayback.hlsUrl}
-                        autoPlay
-                        controls={false}
-                        poster={streamData.thumbnail_url || undefined}
-                        onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                        onQualityChange={qualityChangeRef}
-                        isLiveStream={true}
-                        videoRef={videoRef}
-                      />
+                      streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser' ? (
+                        <BrowserStreamPlayer
+                          playbackUrl={streamPlayback.hlsUrl}
+                          autoPlay
+                          poster={streamData.thumbnail_url || undefined}
+                          onStreamReady={() => console.log('Browser stream ready')}
+                        />
+                      ) : (
+                        <HlsPlayer
+                          src={streamPlayback.hlsUrl}
+                          autoPlay
+                          controls={false}
+                          poster={streamData.thumbnail_url || undefined}
+                          onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                          onQualityChange={qualityChangeRef}
+                          isLiveStream={true}
+                          videoRef={videoRef}
+                        />
+                      )
                     ) : null}
                     
                     {showControls && (

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import HlsPlayer from "@/components/players/HlsPlayer";
+import BrowserStreamPlayer from "@/components/players/BrowserStreamPlayer";
 import PlayerPlaceholder from "@/components/streams/PlayerPlaceholder";
 import BrowserStreaming from "@/components/streaming/BrowserStreaming";
 import TipModal from "@/components/modals/TipModal";
@@ -338,7 +339,15 @@ const Stream = () => {
           <div className="relative">
             {/* Stream content - HLS playback for all stream types */}
             {playbackUrl ? (
-              <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+              streamingMode === 'browser' || streamData?.stream_type === 'browser' ? (
+                <BrowserStreamPlayer
+                  playbackUrl={playbackUrl}
+                  autoPlay
+                  onStreamReady={() => console.log('Browser stream ready')}
+                />
+              ) : (
+                <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+              )
             ) : (
               <PlayerPlaceholder />
             )}
