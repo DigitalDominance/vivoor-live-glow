@@ -49,7 +49,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
     }
   }, []);
 
-  // Send heartbeat to mark stream as live
+  // Send heartbeat to mark stream as live - more frequent for browser streams
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
@@ -57,6 +57,7 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
       if (isPreviewMode || !sessionToken || !identity?.address || !streamId) return;
 
       try {
+        console.log('[BrowserStreaming] Sending heartbeat - isStreaming:', isStreaming);
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
           session_token_param: sessionToken,
           wallet_address_param: identity.address,
@@ -69,19 +70,23 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
           if (error.code !== 'PGRST301' && !error.message?.includes('session')) {
             console.error('[BrowserStreaming] Heartbeat error:', error);
           }
+        } else {
+          console.log('[BrowserStreaming] Heartbeat sent successfully');
         }
       } catch (err) {
-        // Silently handle heartbeat failures to avoid spam
+        console.error('[BrowserStreaming] Heartbeat exception:', err);
       }
     };
 
-    if (isStreaming) {
-      sendHeartbeat();
-      heartbeatInterval = setInterval(sendHeartbeat, 5000);
+    if (isStreaming && !isPreviewMode) {
+      console.log('[BrowserStreaming] Starting heartbeat interval');
+      sendHeartbeat(); // Send immediately
+      heartbeatInterval = setInterval(sendHeartbeat, 15000); // Send every 15 seconds (well under 60s threshold)
     }
 
     return () => {
       if (heartbeatInterval) {
+        console.log('[BrowserStreaming] Clearing heartbeat interval');
         clearInterval(heartbeatInterval);
       }
     };
@@ -124,6 +129,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   const handleStreamStart = () => {
     console.log('[BrowserStreaming] Livepeer stream started');
+    setIsStreaming(true); // Set streaming state to start heartbeat
+    setIsPreviewing(false);
     toast.success('Camera connected!');
     onStreamStart?.();
   };
