@@ -13,7 +13,7 @@ import ProfileModal from "@/components/modals/ProfileModal";
 import DonationsHistoryModal from "@/components/modals/DonationsHistoryModal";
 import TipDisplay from "@/components/TipDisplay";
 import { useWallet } from "@/context/WalletContext";
-import { useTipMonitoring } from "@/hooks/useTipMonitoring";
+import { useRealtimeTips } from '@/hooks/useRealtimeTips';
 import { toast } from "sonner";
 import { DollarSign } from "lucide-react";
 import * as Player from "@livepeer/react/player";
@@ -105,6 +105,17 @@ const Stream = () => {
   const streamingMode = (streamData as any)?.streaming_mode || localStreamData.streamingMode || 'rtmp';
 
   const isOwnStream = streamData?.user_id === identity?.id;
+  const [playerKey, setPlayerKey] = React.useState(0);
+
+  // Refresh player after 5 seconds to ensure stream is activated
+  React.useEffect(() => {
+    const refreshTimer = setTimeout(() => {
+      console.log('[Stream] Refreshing player after 5 seconds');
+      setPlayerKey(prev => prev + 1);
+    }, 5000);
+
+    return () => clearTimeout(refreshTimer);
+  }, []);
 
   // Store donations in localStorage
   const DONATIONS_STORAGE_KEY = `stream_donations_${streamData?.id}`;
@@ -118,11 +129,9 @@ const Stream = () => {
     }
   });
 
-  // Monitor tips for this stream (only if it's own stream)
-  const { tips: allTips, totalAmountReceived } = useTipMonitoring({
+  // Monitor tips for this stream using realtime subscription
+  const { tips: allTips, totalAmountReceived } = useRealtimeTips({
     streamId: streamData?.id,
-    kaspaAddress: kaspaAddress, // Use the actual wallet address, not user ID
-    streamStartBlockTime: streamData?.treasury_block_time,
     onNewTip: (tip) => {
       if (!shownTipIds.has(tip.id)) {
         setNewTips(prev => [...prev, tip]);
@@ -358,6 +367,7 @@ const Stream = () => {
                 <>
                   {console.log('🎬 [Stream Page] Using BrowserStreamPlayer for browser stream')}
                   <BrowserStreamPlayer
+                    key={playerKey}
                     playbackUrl={playbackUrl}
                     autoPlay
                   />
@@ -365,7 +375,7 @@ const Stream = () => {
               ) : (
                 <>
                   {console.log('🎬 [Stream Page] Using HlsPlayer for RTMP stream')}
-                  <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
+                  <HlsPlayer key={playerKey} src={playbackUrl} autoPlay isLiveStream />
                 </>
               )
             ) : (
