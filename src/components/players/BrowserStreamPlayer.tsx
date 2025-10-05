@@ -111,10 +111,9 @@ const BrowserStreamPlayer: React.FC<BrowserStreamPlayerProps> = ({
       }
     }
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      console.log('🎬 Using native HLS support');
-      video.src = rewriteUrl(playbackUrl);
-    } else if (Hls.isSupported()) {
+    // ALWAYS use HLS.js for browser streams to ensure URL rewriting works
+    // Native HLS doesn't support our manifest rewriting
+    if (Hls.isSupported()) {
       console.log('🎬 Using HLS.js with custom loader');
       
       const hls = new Hls({
