@@ -15,6 +15,7 @@ import { useWallet } from "@/context/WalletContext";
 import { useTipMonitoring } from "@/hooks/useTipMonitoring";
 import { toast } from "sonner";
 import { DollarSign } from "lucide-react";
+import * as Player from "@livepeer/react/player";
 
 const Stream = () => {
   const { streamId } = useParams();
@@ -330,7 +331,7 @@ const Stream = () => {
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">
           <div className="relative">
-            {/* Stream content - Always use HLS for playback, even for browser streams */}
+            {/* Stream content - HLS playback for all stream types */}
             {playbackUrl ? (
               <HlsPlayer src={playbackUrl} autoPlay isLiveStream />
             ) : (
