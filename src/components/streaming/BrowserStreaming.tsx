@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,6 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   const { sessionToken, identity } = useWallet();
   const [broadcastSource, setBroadcastSource] = useState<'camera' | null>(null);
-  const navigate = useNavigate();
 
   // Send heartbeat to mark stream as live
   useEffect(() => {
@@ -108,16 +106,8 @@ const BrowserStreaming: React.FC<BrowserStreamingProps> = ({
 
   const handleStreamStart = () => {
     console.log('[BrowserStreaming] Livepeer stream started');
-    toast.success('Browser stream is now live!');
+    toast.success('Camera connected!');
     onStreamStart?.();
-    
-    // Navigate to stream page after successful connection
-    const pendingStreamId = localStorage.getItem('pendingBrowserStreamId');
-    if (pendingStreamId) {
-      console.log('[BrowserStreaming] Navigating to stream page:', pendingStreamId);
-      localStorage.removeItem('pendingBrowserStreamId');
-      navigate(`/stream/${pendingStreamId}`);
-    }
   };
 
   const handleStreamEnd = () => {

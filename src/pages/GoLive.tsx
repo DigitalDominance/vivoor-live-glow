@@ -39,6 +39,8 @@ const GoLive = () => {
   const [playerKey, setPlayerKey] = React.useState(0);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
   const [createdStreamId, setCreatedStreamId] = React.useState<string | null>(null);
+  const [cameraReady, setCameraReady] = React.useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
 
 
   // Get current user profile for display using secure function
@@ -195,29 +197,125 @@ const GoLive = () => {
     }
   };
 
-  const sendTreasuryFee = async (): Promise<string | null> => {
-    if (!window.kasware?.sendKaspa) {
-      throw new Error("Kasware wallet not available");
+  const handleGoLive = async () => {
+    if (!kaspaAddress || !sessionToken || !identity?.address) {
+      toast.error('Please connect wallet first');
+      return;
     }
-    
-    const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
-    const feeAmountSompi = 120000000; // 1.2 KAS in sompi
+    if (!cameraReady) {
+      toast.error('Please wait for camera to connect');
+      return;
+    }
+    if (!streamKey || !playbackUrl) {
+      toast.error('Stream details not ready');
+      return;
+    }
+
+    setIsProcessingPayment(true);
     
     try {
-      const txid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
+      // Send treasury fee
+      toast.info('Processing payment (1.2 KAS)...');
+      const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
+      const feeAmountSompi = 120000000; // 1.2 KAS
+      
+      const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
         priorityFee: 10000,
         payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
       });
       
-      return txid;
+      console.log('Treasury fee paid:', treasuryTxid);
+      toast.success('Payment confirmed!');
+      
+      // Wait a moment for transaction
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // End any existing active streams
+      try {
+        const { data: existingStreams } = await supabase
+          .from('streams')
+          .select('id')
+          .eq('user_id', identity.id)
+          .eq('is_live', true);
+        
+        if (existingStreams && existingStreams.length > 0) {
+          await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
+        }
+      } catch (error) {
+        console.error('Failed to end existing streams:', error);
+      }
+
+      // Handle thumbnail upload
+      let thumbnailUrl = null;
+      if (thumbnailFile) {
+        try {
+          const fileExt = thumbnailFile.name.split('.').pop();
+          const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('thumbnails')
+            .upload(fileName, thumbnailFile);
+          
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('thumbnails')
+              .getPublicUrl(fileName);
+            thumbnailUrl = publicUrl;
+          }
+        } catch (error) {
+          console.error('Thumbnail upload failed:', error);
+        }
+      } else if (category) {
+        thumbnailUrl = getCategoryThumbnail(category);
+      }
+
+      // Create stream in database
+      const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        title_param: title || 'Live Stream',
+        category_param: category,
+        livepeer_stream_id_param: livepeerStreamId || null,
+        livepeer_playback_id_param: livepeerPlaybackId || null,
+        streaming_mode_param: 'browser',
+        is_live_param: true,
+        playback_url_param: playbackUrl,
+        treasury_txid_param: treasuryTxid,
+        treasury_block_time_param: Date.now(),
+        stream_type_param: 'browser',
+        thumbnail_url_param: thumbnailUrl
+      });
+
+      if (error || !streamId) {
+        throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
+      }
+
+      console.log('Stream created successfully with ID:', streamId);
+      
+      // Store stream data
+      localStorage.setItem('currentIngestUrl', ingestUrl || '');
+      localStorage.setItem('currentStreamKey', streamKey || '');
+      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
+      localStorage.setItem('streamStartTime', new Date().toISOString());
+      localStorage.setItem('currentStreamingMode', 'browser');
+      localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
+      
+      toast.success('Going live!');
+      
+      // Preserve stream and navigate
+      preserveStream();
+      navigate(`/stream/${streamId}`);
+      
     } catch (error) {
-      console.error('Treasury fee payment failed:', error);
-      throw error;
+      console.error('Failed to go live:', error);
+      toast.error(`Failed to go live: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
-  const handleStart = async () => {
-    if (!kaspaAddress) {
+  const handleStartRTMP = async () => {
+    if (!kaspaAddress || !sessionToken || !identity?.address) {
       toast.error('Connect wallet first');
       return;
     }
@@ -225,162 +323,88 @@ const GoLive = () => {
       toast.error('Please enter a stream title');
       return;
     }
-    if (streamingMode === 'rtmp' && !previewReady) {
+    if (!previewReady) {
       toast.error('Please wait for stream preview to be ready');
       return;
     }
     
     try {
-      console.log('Starting stream creation process...');
-      
-      // First, end any existing active streams for this user
+      // End any existing active streams
       try {
-        if (identity?.id) {
-          const { data: existingStreams } = await supabase
-            .from('streams')
-            .select('id')
-            .eq('user_id', identity.id)
-            .eq('is_live', true);
-          
-          if (existingStreams && existingStreams.length > 0) {
-            console.log(`Ending ${existingStreams.length} existing active streams`);
-            await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
-            toast.success('Ended previous active streams');
-          }
+        const { data: existingStreams } = await supabase
+          .from('streams')
+          .select('id')
+          .eq('user_id', identity.id)
+          .eq('is_live', true);
+        
+        if (existingStreams && existingStreams.length > 0) {
+          await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
         }
       } catch (error) {
         console.error('Failed to end existing streams:', error);
       }
 
-      // Generate stream details first if not already done
-      let currentIngestUrl = ingestUrl;
-      let currentStreamKey = streamKey;
-      let currentPlaybackUrl = playbackUrl;
-      let currentLivepeerStreamId = livepeerStreamId;
-      let currentLivepeerPlaybackId = livepeerPlaybackId;
-
-      if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
-        console.log('Generating stream details...');
-        toast.info('Creating stream...');
-        
-        const streamDetails = await generateStreamDetails();
-        currentIngestUrl = streamDetails.ingestUrl;
-        currentStreamKey = streamDetails.streamKey;
-        currentPlaybackUrl = streamDetails.playbackUrl;
-        currentLivepeerStreamId = streamDetails.streamId; // This is the actual Livepeer stream ID
-        // Extract playback ID from response
-        if (streamDetails && 'playbackId' in streamDetails) {
-          currentLivepeerPlaybackId = (streamDetails as any).playbackId;
-        }
-        
-        if (!currentIngestUrl || !currentStreamKey || !currentPlaybackUrl) {
-          throw new Error('Failed to generate valid stream details');
-        }
-      }
-      
       // Send treasury fee
       toast.info('Processing treasury fee (1.2 KAS)...');
-      const treasuryTxid = await sendTreasuryFee();
-      console.log('Treasury fee paid:', treasuryTxid);
+      const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
+      const feeAmountSompi = 120000000;
       
-      // Wait a moment for transaction to be confirmed
+      const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
+        priorityFee: 10000,
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+      });
+      
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Profile will be ensured by create_stream_secure RPC function
-      console.log('Profile will be handled by stream creation...');
 
       // Handle thumbnail upload
       let thumbnailUrl = null;
       if (thumbnailFile) {
-        console.log('Uploading custom thumbnail...');
         try {
           const fileExt = thumbnailFile.name.split('.').pop();
           const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('thumbnails').upload(fileName, thumbnailFile);
           
-          const { error: uploadError } = await supabase.storage
-            .from('thumbnails')  // Use dedicated thumbnails bucket
-            .upload(fileName, thumbnailFile);
-          
-          if (uploadError) {
-            console.error('Error uploading thumbnail:', uploadError);
-            throw new Error(`Thumbnail upload failed: ${uploadError.message}`);
-          } else {
-            const { data: { publicUrl } } = supabase.storage
-              .from('thumbnails')
-              .getPublicUrl(fileName);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('thumbnails').getPublicUrl(fileName);
             thumbnailUrl = publicUrl;
-            console.log('Thumbnail uploaded successfully:', thumbnailUrl);
           }
         } catch (error) {
-          console.error('Thumbnail upload process failed:', error);
-          throw error;
+          console.error('Thumbnail upload failed:', error);
         }
       } else if (category) {
-        // Use category-based thumbnail if no custom thumbnail uploaded
         thumbnailUrl = getCategoryThumbnail(category);
-        console.log('Using category thumbnail:', thumbnailUrl);
       }
 
-      // Save stream to Supabase with treasury transaction info using JWT
-      console.log('Creating stream in database...');
-      try {
-        if (!sessionToken || !identity?.address) {
-          throw new Error('Authentication required - please reconnect your wallet');
-        }
+      // Create stream in database
+      const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
+        session_token_param: sessionToken,
+        wallet_address_param: identity.address,
+        title_param: title || 'Live Stream',
+        category_param: category,
+        livepeer_stream_id_param: livepeerStreamId || null,
+        livepeer_playback_id_param: livepeerPlaybackId || null,
+        streaming_mode_param: 'rtmp',
+        is_live_param: false,
+        playback_url_param: playbackUrl,
+        treasury_txid_param: treasuryTxid,
+        treasury_block_time_param: Date.now(),
+        stream_type_param: 'livepeer',
+        thumbnail_url_param: thumbnailUrl
+      });
 
-        const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          title_param: title || 'Live Stream',
-          category_param: category,
-          livepeer_stream_id_param: currentLivepeerStreamId || null,
-          livepeer_playback_id_param: currentLivepeerPlaybackId || null,
-          streaming_mode_param: streamingMode,
-          is_live_param: streamingMode === 'browser' ? true : false,
-          playback_url_param: currentPlaybackUrl,
-          treasury_txid_param: treasuryTxid,
-          treasury_block_time_param: Date.now(),
-          stream_type_param: streamingMode === 'browser' ? 'browser' : 'livepeer',
-          thumbnail_url_param: thumbnailUrl
-        });
-
-        if (error || !streamId) {
-          console.error('Failed to create stream in database:', error);
-          throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
-        }
-
-        console.log('Stream created successfully with ID:', streamId);
-        
-        // Store stream data for persistence (used by RTMP streams and initial browser setup)
-        localStorage.setItem('currentIngestUrl', currentIngestUrl || '');
-        localStorage.setItem('currentStreamKey', currentStreamKey || '');
-        localStorage.setItem('currentPlaybackUrl', currentPlaybackUrl || '');
-        localStorage.setItem('streamStartTime', new Date().toISOString());
-        localStorage.setItem('currentStreamingMode', streamingMode);
-        localStorage.setItem('currentLivepeerPlaybackId', currentLivepeerPlaybackId || '');
-        localStorage.setItem('pendingBrowserStreamId', streamId); // Store for navigation after broadcast starts
-        
-        // Store streamId in state to pass as prop to BrowserStreaming component
-        setCreatedStreamId(streamId);
-        
-        if (streamingMode === 'browser') {
-          toast.success('Browser stream created! Click "Start Camera Stream" below to go live.');
-        } else {
-          toast.success('Stream started! Use the RTMP details below in OBS.');
-          navigate(`/stream/${streamId}`);
-        }
-        
-        console.log('Stream ready, details:', {
-          mode: streamingMode,
-          ingestUrl: currentIngestUrl,
-          streamKey: currentStreamKey ? '***HIDDEN***' : null,
-          playbackUrl: currentPlaybackUrl,
-          playbackId: currentLivepeerPlaybackId
-        });
-        } catch (streamError) {
-        console.error('Stream creation error:', streamError);
-        throw streamError;
+      if (error || !streamId) {
+        throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
       }
+
+      localStorage.setItem('currentIngestUrl', ingestUrl || '');
+      localStorage.setItem('currentStreamKey', streamKey || '');
+      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
+      localStorage.setItem('streamStartTime', new Date().toISOString());
+      localStorage.setItem('currentStreamingMode', 'rtmp');
+      localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
+      
+      toast.success('Stream started! Use the RTMP details below in OBS.');
+      navigate(`/stream/${streamId}`);
     } catch (error) {
       console.error('Failed to start stream:', error);
       toast.error(`Failed to start stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -475,14 +499,16 @@ const GoLive = () => {
                     setLivepeerStreamId(null);
                     setLivepeerPlaybackId(null);
                     setPreviewReady(false);
+                    setCameraReady(false);
                     
-                    // Set browser streaming mode with camera as default
+                    // Set browser streaming mode
                     setStreamingMode('browser');
                     
-                    // Generate stream details for camera
+                    // Generate stream details for browser streaming
                     toast.info('Setting up browser streaming...');
                     try {
                       await generateStreamDetails();
+                      toast.success('Ready! Now connect your camera below.');
                     } catch (error) {
                       console.error('Failed to generate stream details:', error);
                     }
@@ -584,38 +610,35 @@ const GoLive = () => {
               </div>
             </div>
 
-            {/* Browser Streaming Setup Section - Show preview with actual stream key after payment/setup */}
-            {streamingMode === 'browser' && createdStreamId && streamKey && (
+            {/* Browser Streaming Setup Section - Show immediately when browser mode is selected */}
+            {streamingMode === 'browser' && streamKey && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                  Browser Stream Ready - Start Broadcasting
+                  {cameraReady ? 'Camera Ready - Ready to Go Live!' : 'Connect Your Camera'}
                 </h3>
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6">
                   <BrowserStreaming
                     key={browserSource}
                     streamKey={streamKey}
-                    streamId={createdStreamId || undefined}
+                    streamId={undefined}
                     playbackId={livepeerPlaybackId || undefined}
-                    isPreviewMode={false}
+                    isPreviewMode={true}
                     onStreamStart={() => {
-                      console.log('Browser stream started - user is now broadcasting');
-                      toast.success('Broadcasting started! Redirecting to stream page...');
-                      // Wait 2 seconds then navigate
-                      setTimeout(() => {
-                        if (createdStreamId) {
-                          preserveStream(); // Preserve the stream state
-                          navigate(`/stream/${createdStreamId}`);
-                        }
-                      }, 2000);
+                      console.log('Camera connected successfully');
+                      setCameraReady(true);
+                      toast.success('Camera connected! Click "Go Live" to start broadcasting.');
                     }}
                     onStreamEnd={() => {
-                      console.log('Browser stream ended');
+                      console.log('Camera disconnected');
+                      setCameraReady(false);
                     }}
                   />
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
-                  Click "Stream Camera" or "Share Screen" above to start broadcasting. You'll automatically be redirected to your stream page.
+                  {cameraReady 
+                    ? 'Camera is ready! Click the "Go Live & Pay 1.2 KAS" button below to start broadcasting.'
+                    : 'Click "Start Camera Stream" above to connect your camera and microphone.'}
                 </div>
               </div>
             )}
@@ -633,16 +656,28 @@ const GoLive = () => {
                 </Button>
               )}
               
-              {/* Only show Start button after stream is generated */}
-              {streamKey && (
+              {/* For browser streaming, show Go Live button only when camera is ready */}
+              {streamingMode === 'browser' && streamKey && cameraReady && (
                 <Button 
-                  onClick={handleStart} 
-                  disabled={!kaspaAddress || !title.trim()}
+                  onClick={handleGoLive} 
+                  disabled={!kaspaAddress || !title.trim() || isProcessingPayment}
+                  className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  {isProcessingPayment ? 'Processing Payment...' : 'Go Live & Pay 1.2 KAS 🚀'}
+                </Button>
+              )}
+              
+              {/* For RTMP streaming, show Setup button after stream is generated */}
+              {streamingMode === 'rtmp' && streamKey && (
+                <Button 
+                  onClick={handleStartRTMP} 
+                  disabled={!kaspaAddress || !title.trim() || !previewReady}
                   className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   {!kaspaAddress ? 'Connect Wallet First' : 
-                   !title.trim() ? 'Enter Title First' : 
-                   `Setup ${streamingMode === 'browser' ? 'Browser' : 'RTMP'} Stream & Pay Fee (1.2 KAS)`}
+                   !title.trim() ? 'Enter Title First' :
+                   !previewReady ? 'Waiting for Stream...' :
+                   'Setup RTMP Stream & Pay Fee (1.2 KAS)'}
                 </Button>
               )}
             </div>
