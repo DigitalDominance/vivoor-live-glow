@@ -133,18 +133,19 @@ const Stream = () => {
   const { tips: allTips, totalAmountReceived } = useRealtimeTips({
     streamId: streamData?.id,
     onNewTip: (tip) => {
-      if (!shownTipIds.has(tip.id)) {
-        setNewTips(prev => [...prev, tip]);
-        toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
-      }
+      // Always add new tips to display queue (same as watch page)
+      setNewTips(prev => [...prev, tip]);
+      toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
     }
   });
 
   const handleTipProcessed = (tip: { id: string; sender: string; senderAvatar?: string; amount: number; message?: string; timestamp: number }) => {
+    console.log('[Stream] Adding tip to donation history:', tip);
     setAllStoredDonations(prev => {
       const updated = [...prev, tip];
       try {
         localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
+        console.log('[Stream] Saved donation to localStorage, total donations:', updated.length);
       } catch (e) {
         console.warn('Failed to save donation to localStorage:', e);
       }
