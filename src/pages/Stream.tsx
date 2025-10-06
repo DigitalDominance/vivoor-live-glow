@@ -103,7 +103,8 @@ const Stream = () => {
 
   // Get streaming mode with proper fallback
   const streamingMode = (streamData as any)?.streaming_mode || localStreamData.streamingMode || 'rtmp';
-  const streamType = streamData?.stream_type || 'livepeer';
+  // Check stream_type but use streaming_mode as fallback to avoid defaulting browser streams to 'livepeer'
+  const streamType = streamData?.stream_type || (streamingMode === 'browser' ? 'browser' : 'livepeer');
 
   const isOwnStream = streamData?.user_id === identity?.id;
   const [playerKey, setPlayerKey] = React.useState(0);
@@ -359,6 +360,19 @@ const Stream = () => {
   return (
     <main className="container mx-auto px-4 py-6">
       <h1 className="sr-only">Live Stream</h1>
+      
+      {/* Hidden BrowserStreaming component for browser streams - keeps broadcast active */}
+      {(streamingMode === 'browser' || streamType === 'browser') && localStreamData.streamKey && (
+        <div className="hidden">
+          <BrowserStreaming 
+            streamKey={localStreamData.streamKey}
+            streamId={streamData?.id}
+            onStreamStart={() => {
+              console.log('[Stream] Browser broadcast started');
+            }}
+          />
+        </div>
+      )}
       
       <section className="grid lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2">

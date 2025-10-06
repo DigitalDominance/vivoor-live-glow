@@ -362,7 +362,7 @@ const GoLive = () => {
           livepeer_stream_id_param: currentLivepeerStreamId || null,
           livepeer_playback_id_param: currentLivepeerPlaybackId || null,
           streaming_mode_param: streamingMode,
-          is_live_param: streamingMode === 'browser' ? true : false,
+          is_live_param: false, // Don't mark as live yet - will be set to true when broadcasting actually starts
           playback_url_param: currentPlaybackUrl,
           treasury_txid_param: treasuryTxid,
           treasury_block_time_param: Date.now(),
