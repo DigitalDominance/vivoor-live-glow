@@ -115,9 +115,11 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
 
-    // CRITICAL: Always prefer HLS.js over native HLS for Livepeer streams
-    // This ensures our custom CDN rewriter loader handles ALL requests including segments
-    const shouldUseHlsJs = Hls.isSupported() && (src.includes('livepeer') || src.includes('livepeercdn'));
+    // Determine if we should use HLS.js
+    // For Livepeer streams: Always use HLS.js with custom CDN rewriter
+    // For other HLS streams: Use native HLS if available, otherwise HLS.js
+    const isLivepeerStream = src.includes('livepeer') || src.includes('livepeercdn');
+    const shouldUseHlsJs = Hls.isSupported() && (isLivepeerStream || !video.canPlayType('application/vnd.apple.mpegurl'));
     
     if (shouldUseHlsJs) {
       console.log('🎬 Using HLS.js library');
