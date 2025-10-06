@@ -115,14 +115,11 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      console.log('🎬 Using native HLS support');
-      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-      if (rewrittenSrc !== src) {
-        console.log('🎬 Rewriting native HLS URL:', src, '→', rewrittenSrc);
-      }
-      video.src = rewrittenSrc;
-    } else if (Hls.isSupported()) {
+    // CRITICAL: Always prefer HLS.js over native HLS for Livepeer streams
+    // This ensures our custom CDN rewriter loader handles ALL requests including segments
+    const shouldUseHlsJs = Hls.isSupported() && (src.includes('livepeer') || src.includes('livepeercdn'));
+    
+    if (shouldUseHlsJs) {
       console.log('🎬 Using HLS.js library');
       
       // Rewrite source URL to use correct CDN
@@ -255,6 +252,13 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       console.log('🎬 Loading HLS source:', rewrittenSrc);
       hls.loadSource(rewrittenSrc);
       hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      console.log('🎬 Using native HLS support (non-Livepeer stream)');
+      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
+      if (rewrittenSrc !== src) {
+        console.log('🎬 Rewriting native HLS URL:', src, '→', rewrittenSrc);
+      }
+      video.src = rewrittenSrc;
     } else {
       console.log('🎬 Using fallback direct source');
       const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
