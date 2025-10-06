@@ -117,7 +117,11 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       console.log('🎬 Using native HLS support');
-      video.src = src;
+      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
+      if (rewrittenSrc !== src) {
+        console.log('🎬 Rewriting native HLS URL:', src, '→', rewrittenSrc);
+      }
+      video.src = rewrittenSrc;
     } else if (Hls.isSupported()) {
       console.log('🎬 Using HLS.js library');
       
@@ -253,7 +257,11 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       hls.attachMedia(video);
     } else {
       console.log('🎬 Using fallback direct source');
-      video.src = src;
+      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
+      if (rewrittenSrc !== src) {
+        console.log('🎬 Rewriting fallback URL:', src, '→', rewrittenSrc);
+      }
+      video.src = rewrittenSrc;
     }
 
     return () => {

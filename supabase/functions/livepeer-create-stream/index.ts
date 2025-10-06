@@ -89,6 +89,12 @@ serve(async (req: Request) => {
       console.log('[livepeer-create-stream] Using constructed fallback URL');
     }
     
+    // CRITICAL: Always rewrite any playback.livepeer.studio URLs to livepeercdn.studio
+    if (playbackUrl && playbackUrl.includes('playback.livepeer.studio')) {
+      playbackUrl = playbackUrl.replace('playback.livepeer.studio', 'livepeercdn.studio');
+      console.log('[livepeer-create-stream] Rewrote playback URL to use CDN:', playbackUrl);
+    }
+    
     console.log('[livepeer-create-stream] Final URLs:', {
       streamId,
       playbackId,
