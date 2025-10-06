@@ -46,7 +46,7 @@ const Watch = () => {
   const [newTips, setNewTips] = React.useState<any[]>([]);
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
-  const [newMessage, setNewMessage] = React.useState('');
+  const [newMessage, setNewMessage] = React.useState("");
   const [volume, setVolume] = React.useState(1);
   const [isMuted, setIsMuted] = React.useState(true); // Start muted for autoplay, will unmute immediately
   const [showControls, setShowControls] = React.useState(true);
@@ -56,76 +56,71 @@ const Watch = () => {
   const playerContainerRef = React.useRef<HTMLDivElement>(null);
   const tipButtonRef = React.useRef<HTMLButtonElement>(null);
   const qualityChangeRef = React.useRef<((qualityLevel: number) => void) | null>(null);
-  const [qualityLevels, setQualityLevels] = React.useState<Array<{label: string, value: number}>>([]);
+  const [qualityLevels, setQualityLevels] = React.useState<Array<{ label: string; value: number }>>([]);
   const [currentQuality, setCurrentQuality] = React.useState<number>(-1); // -1 for auto
 
   // WebSocket chat
-  const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || '');
+  const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || "");
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
-    queryKey: ['stream', streamId],
+    queryKey: ["stream", streamId],
     queryFn: async () => {
       if (!streamId) return null;
-      const { data } = await supabase
-        .from('streams')
-        .select('*')
-        .eq('id', streamId)
-        .maybeSingle();
+      const { data } = await supabase.from("streams").select("*").eq("id", streamId).maybeSingle();
       return data;
     },
     enabled: !!streamId,
-    refetchInterval: 10000 // Refetch every 10 seconds to check if stream is still live
+    refetchInterval: 10000, // Refetch every 10 seconds to check if stream is still live
   });
 
   // All streams use HLS for compatibility (browser capture produces B-frames incompatible with WebRTC)
   const streamPlayback = React.useMemo(() => {
     if (!streamData) return null;
-    
-    console.log('[Watch] Stream playback data:', {
+
+    console.log("[Watch] Stream playback data:", {
       playback_url: streamData.playback_url,
       streaming_mode: streamData.streaming_mode,
       stream_type: streamData.stream_type,
       is_live: streamData.is_live,
       livepeer_playback_id: streamData.livepeer_playback_id,
-      will_use_browser_player: streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser',
-      will_use_hls_player: streamData.stream_type !== 'browser' && streamData.streaming_mode !== 'browser'
     });
-    
-    if (!streamData.playback_url) {
-      console.warn('[Watch] No playback URL available');
-      return null;
-    }
-    
+
     return {
-      hlsUrl: streamData.playback_url
+      hlsUrl: streamData.playback_url,
     };
-  }, [streamData?.playback_url, streamData?.streaming_mode, streamData?.stream_type, streamData?.is_live, streamData?.livepeer_playback_id]);
+  }, [
+    streamData?.playback_url,
+    streamData?.streaming_mode,
+    streamData?.stream_type,
+    streamData?.is_live,
+    streamData?.livepeer_playback_id,
+  ]);
 
   // Fetch streamer profile using secure function
   const { data: streamerProfile } = useQuery({
-    queryKey: ['streamer-profile', streamData?.user_id],
+    queryKey: ["streamer-profile", streamData?.user_id],
     queryFn: async () => {
       if (!streamData?.user_id) return null;
-      const { data } = await supabase.rpc('get_profile_with_stats', { 
-        _user_id: streamData.user_id 
+      const { data } = await supabase.rpc("get_profile_with_stats", {
+        _user_id: streamData.user_id,
       });
       return data?.[0] || null;
     },
-    enabled: !!streamData?.user_id
+    enabled: !!streamData?.user_id,
   });
 
   // Fetch current user's profile for chat display
   const { data: currentUserProfile } = useQuery({
-    queryKey: ['current-user-profile', identity?.id],
+    queryKey: ["current-user-profile", identity?.id],
     queryFn: async () => {
       if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_profile_with_stats', { 
-        _user_id: identity.id 
+      const { data } = await supabase.rpc("get_profile_with_stats", {
+        _user_id: identity.id,
       });
       return data?.[0] || null;
     },
-    enabled: !!identity?.id
+    enabled: !!identity?.id,
   });
 
   // Check if user already likes/follows this stream/user
@@ -134,27 +129,27 @@ const Watch = () => {
 
     const checkLikeStatus = async () => {
       const { data } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('user_id', identity.id)
-        .eq('stream_id', streamData.id)
+        .from("likes")
+        .select("id")
+        .eq("user_id", identity.id)
+        .eq("stream_id", streamData.id)
         .maybeSingle();
       setLiked(!!data);
     };
 
     const checkFollowStatus = async () => {
       const { data } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_id', identity.id)
-        .eq('following_id', streamData.user_id)
+        .from("follows")
+        .select("id")
+        .eq("follower_id", identity.id)
+        .eq("following_id", streamData.user_id)
         .maybeSingle();
       setFollowed(!!data);
     };
 
     const getLikeCount = async () => {
-      const { data } = await supabase.rpc('get_stream_like_count', { 
-        stream_id_param: streamData.id 
+      const { data } = await supabase.rpc("get_stream_like_count", {
+        stream_id_param: streamData.id,
       });
       setLikeCount(data || 0);
     };
@@ -173,23 +168,23 @@ const Watch = () => {
   // Get streamer's Kaspa address directly from their profile
   // Get tip address securely using new function for live streams
   const { data: streamerKaspaAddress } = useQuery({
-    queryKey: ['streamer-kaspa-address', streamData?.id],
+    queryKey: ["streamer-kaspa-address", streamData?.id],
     queryFn: async () => {
       if (!streamData?.id) return null;
-      const { data } = await supabase
-        .rpc('get_live_stream_tip_address', { stream_id: streamData.id });
+      const { data } = await supabase.rpc("get_live_stream_tip_address", { stream_id: streamData.id });
       return data;
     },
-    enabled: !!streamData?.id
+    enabled: !!streamData?.id,
   });
 
   // Fetch suggested streams
   const { data: suggestedStreams } = useQuery({
-    queryKey: ['suggested-streams', streamData?.category],
+    queryKey: ["suggested-streams", streamData?.category],
     queryFn: async () => {
       const { data } = await supabase
-        .from('streams')
-        .select(`
+        .from("streams")
+        .select(
+          `
           id,
           title,
           category,
@@ -198,72 +193,77 @@ const Watch = () => {
           user_id,
           thumbnail_url,
           started_at
-        `)
-        .eq('is_live', true)
-        .neq('id', streamId || '')
+        `,
+        )
+        .eq("is_live", true)
+        .neq("id", streamId || "")
         .limit(6)
-        .order('viewers', { ascending: false });
-      
+        .order("viewers", { ascending: false });
+
       if (!data) return [];
-      
+
       // Fetch profile data separately for each stream
       const streamsWithProfiles = await Promise.all(
         data.map(async (stream) => {
-          const { data: profileData } = await supabase.rpc('get_public_profile_display', { 
-            user_id: stream.user_id 
+          const { data: profileData } = await supabase.rpc("get_public_profile_display", {
+            user_id: stream.user_id,
           });
           const profile = profileData?.[0];
-          
+
           return {
             id: stream.id,
             title: stream.title,
-            category: stream.category || 'IRL',
+            category: stream.category || "IRL",
             live: stream.is_live,
             viewers: stream.viewers || 0,
-            username: profile?.handle || profile?.display_name || 'Unknown',
+            username: profile?.handle || profile?.display_name || "Unknown",
             userId: stream.user_id,
-            thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || 'IRL'),
+            thumbnail: stream.thumbnail_url || getCategoryThumbnail(stream.category || "IRL"),
             startedAt: stream.started_at,
           };
-        })
+        }),
       );
-      
+
       return streamsWithProfiles;
     },
-    enabled: !!streamData
+    enabled: !!streamData,
   });
 
   // Transform WebSocket messages to chat format
   const chatMessages = React.useMemo(() => {
     return wsMessages
-      .filter(msg => msg.type === 'chat') // Only show chat messages
-      .map(msg => ({
+      .filter((msg) => msg.type === "chat") // Only show chat messages
+      .map((msg) => ({
         id: `${msg.serverTs}-${msg.user.id}`,
         user: {
           id: msg.user.id,
           name: msg.user.name,
-          avatar: msg.user.avatar
+          avatar: msg.user.avatar,
         },
         text: msg.text,
-        time: new Date(msg.serverTs).toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        })
+        time: new Date(msg.serverTs).toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
       }));
   }, [wsMessages]);
 
   const [watchStartTime, setWatchStartTime] = React.useState<number>(Date.now());
 
   // Monitor tips for this stream using real-time Supabase
-  const { tips: allTips, totalAmountReceived, isConnected: tipConnected } = useRealtimeTips({
+  const {
+    tips: allTips,
+    totalAmountReceived,
+    isConnected: tipConnected,
+  } = useRealtimeTips({
     streamId: streamData?.id,
     onNewTip: (tip) => {
       // Only show tips that occurred after the user started watching
       if (tip.timestamp >= watchStartTime) {
-        setNewTips(prev => [...prev, tip]);
+        setNewTips((prev) => [...prev, tip]);
       }
-    }
+    },
   });
 
   // Show previous tips when user first arrives, then only new ones
@@ -271,9 +271,9 @@ const Watch = () => {
     if (allTips.length > 0 && shownTipIds.size === 0) {
       // First time loading - show recent tips from before they started watching
       const recentTips = allTips.slice(-3); // Show last 3 tips
-      setNewTips(prev => {
-        const existingIds = new Set(prev.map(t => t.id));
-        const newTipsToAdd = recentTips.filter(tip => !existingIds.has(tip.id));
+      setNewTips((prev) => {
+        const existingIds = new Set(prev.map((t) => t.id));
+        const newTipsToAdd = recentTips.filter((tip) => !existingIds.has(tip.id));
         return [...prev, ...newTipsToAdd];
       });
     }
@@ -286,45 +286,44 @@ const Watch = () => {
     const interval = setInterval(async () => {
       try {
         const { data: recentTips, error } = await supabase
-          .from('tips')
-          .select('*')
-          .eq('stream_id', streamData.id)
-          .gte('created_at', new Date(watchStartTime).toISOString())
-          .order('created_at', { ascending: false })
+          .from("tips")
+          .select("*")
+          .eq("stream_id", streamData.id)
+          .gte("created_at", new Date(watchStartTime).toISOString())
+          .order("created_at", { ascending: false })
           .limit(5);
 
         if (error) {
-          console.error('Error fetching recent tips:', error);
+          console.error("Error fetching recent tips:", error);
           return;
         }
 
         if (recentTips) {
-          const processedTips = recentTips.map(tip => ({
+          const processedTips = recentTips.map((tip) => ({
             id: tip.id,
             amount: Math.round(tip.amount_sompi / 100000000),
-            sender: tip.sender_name || 'Anonymous',
+            sender: tip.sender_name || "Anonymous",
             message: tip.tip_message,
             timestamp: new Date(tip.created_at).getTime(),
             txid: tip.txid,
-            created_at: tip.created_at // Keep original created_at for filtering
+            created_at: tip.created_at, // Keep original created_at for filtering
           }));
 
           // Add any new tips that aren't already shown and occurred after watch start
-          const newUnshownTips = processedTips.filter(tip => 
-            !shownTipIds.has(tip.id) && 
-            new Date(tip.created_at).getTime() >= watchStartTime
+          const newUnshownTips = processedTips.filter(
+            (tip) => !shownTipIds.has(tip.id) && new Date(tip.created_at).getTime() >= watchStartTime,
           );
-          
+
           if (newUnshownTips.length > 0) {
-            setNewTips(prev => {
-              const existingIds = new Set(prev.map(t => t.id));
-              const newTipsToAdd = newUnshownTips.filter(tip => !existingIds.has(tip.id));
+            setNewTips((prev) => {
+              const existingIds = new Set(prev.map((t) => t.id));
+              const newTipsToAdd = newUnshownTips.filter((tip) => !existingIds.has(tip.id));
               return [...prev, ...newTipsToAdd];
             });
           }
         }
       } catch (error) {
-        console.error('Error in tip polling:', error);
+        console.error("Error in tip polling:", error);
       }
     }, 5000); // Poll every 5 seconds
 
@@ -333,23 +332,19 @@ const Watch = () => {
 
   // Use new stream status tracking
   const { isLive: livepeerIsLive, isConnected: streamConnected } = useStreamStatus(
-    streamData?.id || null, 
-    streamData?.livepeer_stream_id
+    streamData?.id || null,
+    streamData?.livepeer_stream_id,
   );
 
   // Use secure viewer count that doesn't expose personal data
   const { viewerCount } = useSecureViewerCount(streamData?.id || null);
 
   // Use improved viewer tracking with unique session ID
-  useViewerTracking(
-    streamData?.id || null,
-    livepeerIsLive,
-    identity?.id || null
-  );
+  useViewerTracking(streamData?.id || null, livepeerIsLive, identity?.id || null);
 
   const handleTipShown = (tipId: string) => {
-    setShownTipIds(prev => new Set([...prev, tipId]));
-    setNewTips(prev => prev.filter(tip => tip.id !== tipId));
+    setShownTipIds((prev) => new Set([...prev, tipId]));
+    setNewTips((prev) => prev.filter((tip) => tip.id !== tipId));
   };
 
   // Set up realtime subscription for chat messages
@@ -360,11 +355,11 @@ const Watch = () => {
   // Handle stream tracking and elapsed time calculation
   React.useEffect(() => {
     if (!streamData?.started_at || !streamData?.id) return;
-    
+
     // Start tracking this stream in local storage
-    const livepeerPlaybackId = streamData.playback_url?.split('/').pop();
+    const livepeerPlaybackId = streamData.playback_url?.split("/").pop();
     startStreamTracking(streamData.id, livepeerPlaybackId);
-    
+
     const startTime = new Date(streamData.started_at);
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000));
@@ -387,28 +382,28 @@ const Watch = () => {
 
   const handleSendMessage = () => {
     if (!identity?.id || !newMessage.trim()) {
-      toast.error('Please connect your wallet to chat');
+      toast.error("Please connect your wallet to chat");
       return;
     }
 
     // Check for bad words
     if (containsBadWords(newMessage.trim())) {
-      toast.error('Your message contains inappropriate language');
+      toast.error("Your message contains inappropriate language");
       return;
     }
 
     const user = {
       id: identity.id,
       name: currentUserProfile?.display_name || currentUserProfile?.handle || `User ${identity.id.slice(0, 8)}`,
-      avatar: currentUserProfile?.avatar_url
+      avatar: currentUserProfile?.avatar_url,
     };
 
     sendChat(newMessage.trim(), user);
-    setNewMessage('');
+    setNewMessage("");
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -422,22 +417,17 @@ const Watch = () => {
 
     try {
       if (followed) {
-        await supabase
-          .from('follows')
-          .delete()
-          .match({ follower_id: identity.id, following_id: streamData.user_id });
-        setFollowerCount(prev => Math.max(0, prev - 1));
+        await supabase.from("follows").delete().match({ follower_id: identity.id, following_id: streamData.user_id });
+        setFollowerCount((prev) => Math.max(0, prev - 1));
       } else {
-        await supabase
-          .from('follows')
-          .insert({ follower_id: identity.id, following_id: streamData.user_id });
-        setFollowerCount(prev => prev + 1);
+        await supabase.from("follows").insert({ follower_id: identity.id, following_id: streamData.user_id });
+        setFollowerCount((prev) => prev + 1);
       }
       setFollowed(!followed);
-      toast.success(followed ? 'Unfollowed' : 'Followed!');
+      toast.success(followed ? "Unfollowed" : "Followed!");
     } catch (error) {
-      console.error('Follow error:', error);
-      toast.error('Failed to update follow status');
+      console.error("Follow error:", error);
+      toast.error("Failed to update follow status");
     }
   };
 
@@ -448,27 +438,27 @@ const Watch = () => {
     }
 
     try {
-      const { data, error } = await supabase.rpc('toggle_stream_like_secure', {
+      const { data, error } = await supabase.rpc("toggle_stream_like_secure", {
         session_token_param: sessionToken,
         wallet_address_param: identity.address,
-        stream_id_param: streamData.id
+        stream_id_param: streamData.id,
       });
 
       if (error) throw error;
 
       const result = data?.[0];
       if (result) {
-        setLiked(result.action === 'liked');
+        setLiked(result.action === "liked");
         setLikeCount(result.new_count);
       }
     } catch (error) {
-      console.error('Like error:', error);
-      toast.error('Failed to update like status');
+      console.error("Like error:", error);
+      toast.error("Failed to update like status");
     }
   };
 
   const onRequireLogin = () => {
-    toast.error('Please connect your wallet to continue');
+    toast.error("Please connect your wallet to continue");
   };
 
   const formatTime = (seconds: number) => {
@@ -488,9 +478,9 @@ const Watch = () => {
 
   const handleFullscreen = () => {
     if (!playerContainerRef.current) return;
-    
+
     const container = playerContainerRef.current;
-    
+
     if (!isFullscreen) {
       // Try modern fullscreen API first
       if (container.requestFullscreen) {
@@ -583,7 +573,7 @@ const Watch = () => {
       // Try to play the video
       video.play().catch(() => {
         // If autoplay fails, that's fine - user will need to interact
-        console.log('Autoplay prevented by browser');
+        console.log("Autoplay prevented by browser");
       });
     };
 
@@ -596,18 +586,18 @@ const Watch = () => {
       }
     };
 
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('volumechange', handleVolumeChange);
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('click', handleClick);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("volumechange", handleVolumeChange);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("click", handleClick);
 
     return () => {
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('volumechange', handleVolumeChange);
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('click', handleClick);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("volumechange", handleVolumeChange);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("click", handleClick);
     };
   }, [volume]);
 
@@ -624,23 +614,23 @@ const Watch = () => {
     };
 
     // Add listeners for all browser variants
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
     };
   }, []);
 
   // Hide controls after inactivity
   React.useEffect(() => {
     let timeout: NodeJS.Timeout;
-    
+
     const resetTimeout = () => {
       setShowControls(true);
       clearTimeout(timeout);
@@ -651,11 +641,12 @@ const Watch = () => {
     const handleMouseLeave = (e: MouseEvent) => {
       // Check if mouse is moving to a popover/dropdown
       const relatedTarget = e.relatedTarget as Element;
-      if (relatedTarget && (
-        relatedTarget.closest('[data-radix-popper-content-wrapper]') ||
-        relatedTarget.closest('[data-radix-popover-content]') ||
-        relatedTarget.closest('[role="dialog"]')
-      )) {
+      if (
+        relatedTarget &&
+        (relatedTarget.closest("[data-radix-popper-content-wrapper]") ||
+          relatedTarget.closest("[data-radix-popover-content]") ||
+          relatedTarget.closest('[role="dialog"]'))
+      ) {
         return; // Don't hide controls if moving to a popover
       }
       clearTimeout(timeout);
@@ -663,16 +654,16 @@ const Watch = () => {
     };
 
     if (playerContainerRef.current) {
-      playerContainerRef.current.addEventListener('mousemove', handleMouseMove);
-      playerContainerRef.current.addEventListener('mouseleave', handleMouseLeave);
+      playerContainerRef.current.addEventListener("mousemove", handleMouseMove);
+      playerContainerRef.current.addEventListener("mouseleave", handleMouseLeave);
       resetTimeout();
     }
 
     return () => {
       clearTimeout(timeout);
       if (playerContainerRef.current) {
-        playerContainerRef.current.removeEventListener('mousemove', handleMouseMove);
-        playerContainerRef.current.removeEventListener('mouseleave', handleMouseLeave);
+        playerContainerRef.current.removeEventListener("mousemove", handleMouseMove);
+        playerContainerRef.current.removeEventListener("mouseleave", handleMouseLeave);
       }
     };
   }, []);
@@ -698,7 +689,7 @@ const Watch = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="text-center">
           <div className="text-lg font-medium">Stream not found</div>
-          <Button onClick={() => navigate('/app')} className="mt-4">
+          <Button onClick={() => navigate("/app")} className="mt-4">
             Back to Directory
           </Button>
         </div>
@@ -718,47 +709,43 @@ const Watch = () => {
         {/* Main content */}
         <div className="lg:col-span-3 space-y-4">
           {/* Video player */}
-          <div 
+          <div
             ref={playerContainerRef}
             className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 p-1"
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamPlayback && streamPlayback.hlsUrl ? (
+                streamPlayback ? (
                   <>
-                    {console.log('[Watch] Rendering player:', {
-                      streamType: streamData.stream_type,
-                      streamingMode: streamData.streaming_mode,
-                      hlsUrl: streamPlayback.hlsUrl,
-                      useBrowserPlayer: streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser'
-                    })}
-                    {streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser' ? (
-                      <>
-                        {console.log('🎬 [Watch Page] Using BrowserStreamPlayer')}
-                        <BrowserStreamPlayer
-                          playbackUrl={streamPlayback.hlsUrl}
-                          autoPlay
-                          controls={false}
-                          poster={streamData.thumbnail_url || undefined}
-                          onStreamReady={() => console.log('Browser stream ready on watch page')}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        {console.log('🎬 [Watch Page] Using HlsPlayer')}
-                        <HlsPlayer
-                          src={streamPlayback.hlsUrl}
-                          autoPlay
-                          controls={false}
-                          poster={streamData.thumbnail_url || undefined}
-                          onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                          onQualityChange={qualityChangeRef}
-                          isLiveStream={true}
-                          videoRef={videoRef}
-                        />
-                      </>
-                    )}
-                    
+                    {streamPlayback.hlsUrl ? (
+                      streamData.stream_type === "browser" || streamData.streaming_mode === "browser" ? (
+                        <>
+                          {console.log("🎬 [Watch Page] Using BrowserStreamPlayer for browser stream")}
+                          <BrowserStreamPlayer
+                            playbackUrl={streamPlayback.hlsUrl}
+                            autoPlay
+                            controls={false}
+                            poster={streamData.thumbnail_url || undefined}
+                            onStreamReady={() => console.log("Browser stream ready on watch page")}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          {console.log("🎬 [Watch Page] Using HlsPlayer for RTMP stream")}
+                          <HlsPlayer
+                            src={streamPlayback.hlsUrl}
+                            autoPlay
+                            controls={false}
+                            poster={streamData.thumbnail_url || undefined}
+                            onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                            onQualityChange={qualityChangeRef}
+                            isLiveStream={true}
+                            videoRef={videoRef}
+                          />
+                        </>
+                      )
+                    ) : null}
+
                     {showControls && (
                       <CustomVideoControls
                         isPlaying={isPlaying}
@@ -784,11 +771,9 @@ const Watch = () => {
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                     <div className="text-center space-y-4">
                       <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                        Loading Stream...
+                        Stream Offline
                       </div>
-                      <div className="text-gray-400">
-                        Preparing playback
-                      </div>
+                      <div className="text-gray-400">This stream is not currently available</div>
                     </div>
                   </div>
                 )
@@ -796,17 +781,15 @@ const Watch = () => {
                 <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                   <div className="text-center space-y-4">
                     <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                      {!streamConnected ? 'Connecting...' : 'Stream Ended'}
+                      {!streamConnected ? "Connecting..." : "Stream Ended"}
                     </div>
                     <div className="text-gray-400">
-                      {!streamConnected ? 'Establishing connection to stream...' : 'Thanks for watching! Stream is no longer live.'}
+                      {!streamConnected
+                        ? "Establishing connection to stream..."
+                        : "Thanks for watching! Stream is no longer live."}
                     </div>
                     {!livepeerIsLive && streamConnected && (
-                      <Button 
-                        onClick={() => navigate('/app')}
-                        variant="hero"
-                        className="mt-4"
-                      >
+                      <Button onClick={() => navigate("/app")} variant="hero" className="mt-4">
                         Browse Other Streams
                       </Button>
                     )}
@@ -815,7 +798,12 @@ const Watch = () => {
               )}
 
               {/* Tip notifications positioned within player */}
-              <TipDisplay newTips={newTips} onTipShown={handleTipShown} isFullscreen={isFullscreen} userJoinedAt={userJoinedAt} />
+              <TipDisplay
+                newTips={newTips}
+                onTipShown={handleTipShown}
+                isFullscreen={isFullscreen}
+                userJoinedAt={userJoinedAt}
+              />
             </div>
           </div>
 
@@ -826,24 +814,22 @@ const Watch = () => {
                 <Avatar className="size-10 sm:size-12 flex-shrink-0">
                   <AvatarImage src={streamerProfile?.avatar_url || undefined} />
                   <AvatarFallback>
-                    {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
+                    {(streamerProfile?.display_name || streamerProfile?.handle || "S").slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <h1 className="text-base sm:text-lg font-semibold truncate">{streamData.title}</h1>
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => setProfileOpen(true)}
                     >
-                      @{streamerProfile?.handle || 'streamer'}
+                      @{streamerProfile?.handle || "streamer"}
                     </button>
                     {streamerProfile?.id && <ClipVerifiedBadge userId={streamerProfile.id} size="sm" />}
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs px-2 py-1 rounded-full bg-muted">
-                      {streamData.category || 'IRL'}
-                    </span>
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted">{streamData.category || "IRL"}</span>
                     {livepeerIsLive && streamConnected && (
                       <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
                         LIVE
@@ -857,7 +843,7 @@ const Watch = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant={liked ? "hero" : "ghost"}
@@ -882,18 +868,18 @@ const Watch = () => {
                   onClick={handleFollow}
                   className="flex-1 sm:flex-none"
                 >
-                  {followed ? 'Following' : 'Follow'}
+                  {followed ? "Following" : "Follow"}
                 </Button>
                 <Button
                   ref={tipButtonRef}
                   variant="gradientOutline"
                   size="sm"
                   onClick={() => {
-                    console.log('Tip button values:', { 
-                      identity: !!identity, 
-                      streamerKaspaAddress, 
+                    console.log("Tip button values:", {
+                      identity: !!identity,
+                      streamerKaspaAddress,
                       livepeerIsLive,
-                      disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
+                      disabled: !identity || !streamerKaspaAddress || !livepeerIsLive,
                     });
                     setTipOpen(true);
                   }}
@@ -936,53 +922,49 @@ const Watch = () => {
             onSendMessage={handleSendMessage}
           />
           {!chatConnected && (
-            <div className="text-xs text-muted-foreground mt-2 text-center">
-              Connecting to chat...
-            </div>
+            <div className="text-xs text-muted-foreground mt-2 text-center">Connecting to chat...</div>
           )}
         </div>
       </div>
 
       {/* Modals */}
-            {streamerProfile && (
-              <ProfileModal
-                open={profileOpen}
-                onOpenChange={setProfileOpen}
-                profile={{
-                  id: streamerProfile.id,
-                  handle: streamerProfile.handle || 'streamer',
-                  displayName: streamerProfile.display_name || streamerProfile.handle || 'Streamer',
-                  bio: streamerProfile.bio || '',
-                  followers: streamerProfile.follower_count || 0,
-                  following: streamerProfile.following_count || 0,
-                  tags: [],
-                  avatar: streamerProfile.avatar_url || ''
-                }}
-                isLoggedIn={!!identity?.id}
-                onRequireLogin={() => toast.error('Please connect your wallet to continue')}
-              />
-            )}
-      
-      <TipModal 
-        open={tipOpen} 
-        onOpenChange={setTipOpen} 
-        isLoggedIn={!!identity} 
-        onRequireLogin={onRequireLogin} 
+      {streamerProfile && (
+        <ProfileModal
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          profile={{
+            id: streamerProfile.id,
+            handle: streamerProfile.handle || "streamer",
+            displayName: streamerProfile.display_name || streamerProfile.handle || "Streamer",
+            bio: streamerProfile.bio || "",
+            followers: streamerProfile.follower_count || 0,
+            following: streamerProfile.following_count || 0,
+            tags: [],
+            avatar: streamerProfile.avatar_url || "",
+          }}
+          isLoggedIn={!!identity?.id}
+          onRequireLogin={() => toast.error("Please connect your wallet to continue")}
+        />
+      )}
+
+      <TipModal
+        open={tipOpen}
+        onOpenChange={setTipOpen}
+        isLoggedIn={!!identity}
+        onRequireLogin={onRequireLogin}
         toAddress={streamerKaspaAddress}
-        senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)} 
+        senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)}
         streamId={streamData?.id}
         senderProfile={currentUserProfile}
         triggerRef={tipButtonRef}
       />
-      
-      
-      
+
       {/* Clip Creator Modal */}
       {livepeerIsLive && streamData?.playback_url && (
         <LivepeerClipCreator
           open={clipModalOpen}
           onOpenChange={setClipModalOpen}
-          livepeerPlaybackId={streamData.playback_url.match(/\/hls\/([^\/]+)\//)?.[1] || ''}
+          livepeerPlaybackId={streamData.playback_url.match(/\/hls\/([^\/]+)\//)?.[1] || ""}
           streamTitle={streamData.title}
         />
       )}
@@ -995,7 +977,7 @@ const Watch = () => {
           streamId={streamData.id}
           streamTitle={streamData.title}
           reportedUserId={streamData.user_id}
-          reportedUserHandle={streamerProfile.handle || 'streamer'}
+          reportedUserHandle={streamerProfile.handle || "streamer"}
         />
       )}
     </main>
