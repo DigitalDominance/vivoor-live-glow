@@ -115,12 +115,14 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      console.log('🎬 Using native HLS support');
-      video.src = src;
-    } else if (Hls.isSupported()) {
-      console.log('🎬 Using HLS.js library');
-      // Create custom loader that rewrites URLs
+    // CRITICAL: Check if this is a Livepeer stream FIRST
+    // For Livepeer streams, ALWAYS use HLS.js (not native) so the custom CDN rewriter works
+    // Native Safari HLS will try to use playback.livepeer.studio URLs which 404
+    const isLivepeerStream = src.includes('livepeer') || src.includes('livepeercdn');
+    
+    if (isLivepeerStream && Hls.isSupported()) {
+      console.log('🎬 Using HLS.js for Livepeer stream with CDN rewriter');
+      // Create custom loader that rewrites URLs from playback.livepeer.studio to livepeercdn.studio
       class CustomLoader extends Hls.DefaultConfig.loader {
         constructor(config: any) {
           super(config);
@@ -246,6 +248,26 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
       });
       
       console.log('🎬 Loading HLS source:', src);
+      hls.loadSource(src);
+      hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Use native HLS for non-Livepeer streams on Safari
+      console.log('🎬 Using native HLS support (non-Livepeer stream)');
+      video.src = src;
+    } else if (Hls.isSupported()) {
+      // Fallback to HLS.js for non-Livepeer streams
+      console.log('🎬 Using HLS.js library (fallback)');
+      hls = new Hls({ 
+        enableWorker: true, 
+        lowLatencyMode: true,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 5,
+        liveDurationInfinity: true,
+        highBufferWatchdogPeriod: 2
+      });
+      hlsRef.current = hls;
       hls.loadSource(src);
       hls.attachMedia(video);
     } else {
