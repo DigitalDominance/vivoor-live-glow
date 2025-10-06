@@ -43,6 +43,19 @@ const GoLive = () => {
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
   const [streamReady, setStreamReady] = React.useState(false);
 
+  // Debug RTMP playback
+  React.useEffect(() => {
+    if (playbackUrl && streamingMode === 'rtmp') {
+      console.log('[GoLive] RTMP Preview Debug:', {
+        playbackUrl,
+        streamingMode,
+        previewReady,
+        streamKey: streamKey ? 'SET' : 'NOT SET',
+        ingestUrl: ingestUrl ? 'SET' : 'NOT SET'
+      });
+    }
+  }, [playbackUrl, streamingMode, previewReady, streamKey, ingestUrl]);
+
 
   // Get current user profile for display using secure function
   const { data: profile } = useQuery({
@@ -793,14 +806,14 @@ const GoLive = () => {
                         key={playerKey}
                         src={playbackUrl} 
                         autoPlay 
+                        isLiveStream
                       />
                     </div>
-                    {!previewReady && (
+                    {!previewReady ? (
                       <div className="text-xs text-gray-400 mt-2">
                         {debugInfo || "Waiting for stream signal... Start streaming in OBS with the settings above. Preview appears in 10-60 seconds."}
                       </div>
-                    )}
-                    {previewReady && (
+                    ) : (
                       <div className="text-xs text-green-400 mt-2 flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                         Stream is live and ready!

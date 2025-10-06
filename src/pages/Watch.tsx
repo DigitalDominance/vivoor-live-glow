@@ -87,8 +87,15 @@ const Watch = () => {
       streaming_mode: streamData.streaming_mode,
       stream_type: streamData.stream_type,
       is_live: streamData.is_live,
-      livepeer_playback_id: streamData.livepeer_playback_id
+      livepeer_playback_id: streamData.livepeer_playback_id,
+      will_use_browser_player: streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser',
+      will_use_hls_player: streamData.stream_type !== 'browser' && streamData.streaming_mode !== 'browser'
     });
+    
+    if (!streamData.playback_url) {
+      console.warn('[Watch] No playback URL available');
+      return null;
+    }
     
     return {
       hlsUrl: streamData.playback_url
@@ -717,36 +724,40 @@ const Watch = () => {
           >
             <div className="relative rounded-lg overflow-hidden bg-black">
               {streamData.is_live ? (
-                streamPlayback ? (
+                streamPlayback && streamPlayback.hlsUrl ? (
                   <>
-                    {streamPlayback.hlsUrl ? (
-                      streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser' ? (
-                        <>
-                          {console.log('🎬 [Watch Page] Using BrowserStreamPlayer for browser stream')}
-                          <BrowserStreamPlayer
-                            playbackUrl={streamPlayback.hlsUrl}
-                            autoPlay
-                            controls={false}
-                            poster={streamData.thumbnail_url || undefined}
-                            onStreamReady={() => console.log('Browser stream ready on watch page')}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          {console.log('🎬 [Watch Page] Using HlsPlayer for RTMP stream')}
-                          <HlsPlayer
-                            src={streamPlayback.hlsUrl}
-                            autoPlay
-                            controls={false}
-                            poster={streamData.thumbnail_url || undefined}
-                            onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
-                            onQualityChange={qualityChangeRef}
-                            isLiveStream={true}
-                            videoRef={videoRef}
-                          />
-                        </>
-                      )
-                    ) : null}
+                    {console.log('[Watch] Rendering player:', {
+                      streamType: streamData.stream_type,
+                      streamingMode: streamData.streaming_mode,
+                      hlsUrl: streamPlayback.hlsUrl,
+                      useBrowserPlayer: streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser'
+                    })}
+                    {streamData.stream_type === 'browser' || streamData.streaming_mode === 'browser' ? (
+                      <>
+                        {console.log('🎬 [Watch Page] Using BrowserStreamPlayer')}
+                        <BrowserStreamPlayer
+                          playbackUrl={streamPlayback.hlsUrl}
+                          autoPlay
+                          controls={false}
+                          poster={streamData.thumbnail_url || undefined}
+                          onStreamReady={() => console.log('Browser stream ready on watch page')}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {console.log('🎬 [Watch Page] Using HlsPlayer')}
+                        <HlsPlayer
+                          src={streamPlayback.hlsUrl}
+                          autoPlay
+                          controls={false}
+                          poster={streamData.thumbnail_url || undefined}
+                          onQualityLevelsUpdate={(levels) => setQualityLevels(levels)}
+                          onQualityChange={qualityChangeRef}
+                          isLiveStream={true}
+                          videoRef={videoRef}
+                        />
+                      </>
+                    )}
                     
                     {showControls && (
                       <CustomVideoControls
@@ -773,10 +784,10 @@ const Watch = () => {
                   <div className="aspect-video bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
                     <div className="text-center space-y-4">
                       <div className="text-2xl font-bold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent">
-                        Stream Offline
+                        Loading Stream...
                       </div>
                       <div className="text-gray-400">
-                        This stream is not currently available
+                        Preparing playback
                       </div>
                     </div>
                   </div>
