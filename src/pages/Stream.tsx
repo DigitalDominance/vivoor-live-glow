@@ -103,8 +103,6 @@ const Stream = () => {
 
   // Get streaming mode with proper fallback
   const streamingMode = (streamData as any)?.streaming_mode || localStreamData.streamingMode || 'rtmp';
-  // Check stream_type but use streaming_mode as fallback to avoid defaulting browser streams to 'livepeer'
-  const streamType = streamData?.stream_type || (streamingMode === 'browser' ? 'browser' : 'livepeer');
 
   const isOwnStream = streamData?.user_id === identity?.id;
   const [playerKey, setPlayerKey] = React.useState(0);
@@ -325,14 +323,6 @@ const Stream = () => {
 
   const playbackUrl = displayStreamData.playback_url || localStreamData.playbackUrl;
   
-  console.log('[Stream] Stream mode info:', {
-    streamingMode,
-    streamType,
-    playbackUrl,
-    will_use_browser_player: streamingMode === 'browser' || streamType === 'browser',
-    will_use_hls_player: streamingMode !== 'browser' && streamType !== 'browser'
-  });
-  
   console.log('[Stream] Playback URL:', playbackUrl);
   console.log('[Stream] Streaming mode:', streamingMode);
   console.log('[Stream] Stream data:', streamData);
@@ -366,9 +356,9 @@ const Stream = () => {
           <div className="relative">
             {/* Stream content - HLS playback for all stream types */}
             {playbackUrl ? (
-              (streamingMode === 'browser' || streamType === 'browser') ? (
+              streamingMode === 'browser' || streamData?.stream_type === 'browser' ? (
                 <>
-                  {console.log('🎬 [Stream Page] Using BrowserStreamPlayer', { streamingMode, streamType, playbackUrl })}
+                  {console.log('🎬 [Stream Page] Using BrowserStreamPlayer for browser stream')}
                   <BrowserStreamPlayer
                     key={playerKey}
                     playbackUrl={playbackUrl}
@@ -377,7 +367,7 @@ const Stream = () => {
                 </>
               ) : (
                 <>
-                  {console.log('🎬 [Stream Page] Using HlsPlayer', { streamingMode, streamType, playbackUrl })}
+                  {console.log('🎬 [Stream Page] Using HlsPlayer for RTMP stream')}
                   <HlsPlayer key={playerKey} src={playbackUrl} autoPlay isLiveStream />
                 </>
               )

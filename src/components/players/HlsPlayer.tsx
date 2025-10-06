@@ -115,29 +115,25 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
 
-    // Determine if we should use HLS.js
-    // For Livepeer streams: Always use HLS.js with custom CDN rewriter
-    // For other HLS streams: Use native HLS if available, otherwise HLS.js
-    const isLivepeerStream = src.includes('livepeer') || src.includes('livepeercdn');
-    const shouldUseHlsJs = Hls.isSupported() && (isLivepeerStream || !video.canPlayType('application/vnd.apple.mpegurl'));
-    
-    if (shouldUseHlsJs) {
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      console.log('🎬 Using native HLS support');
+      video.src = src;
+    } else if (Hls.isSupported()) {
       console.log('🎬 Using HLS.js library');
-      
-      // Rewrite source URL to use correct CDN
-      let rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-      if (rewrittenSrc !== src) {
-        console.log('🎬 Rewriting main source URL:', src, '→', rewrittenSrc);
-      }
-      
-      // Custom loader to rewrite all segment URLs
-      class CDNRewriteLoader extends Hls.DefaultConfig.loader {
+      // Create custom loader that rewrites URLs
+      class CustomLoader extends Hls.DefaultConfig.loader {
+        constructor(config: any) {
+          super(config);
+        }
+        
         load(context: any, config: any, callbacks: any) {
-          // Rewrite any playback.livepeer.studio URLs to livepeercdn.studio
+          // Rewrite playback.livepeer.studio to livepeercdn.studio
           if (context.url && context.url.includes('playback.livepeer.studio')) {
             const originalUrl = context.url;
-            context.url = context.url.replace(/playback\.livepeer\.studio/g, 'livepeercdn.studio');
-            console.log('🎬 Rewriting segment URL:', originalUrl, '→', context.url);
+            context.url = context.url.replace('playback.livepeer.studio', 'livepeercdn.studio');
+            console.log('🎬 Rewriting URL:', originalUrl, '→', context.url);
+          } else {
+            console.log('🎬 Loading URL:', context.url);
           }
           super.load(context, config, callbacks);
         }
@@ -152,7 +148,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         liveMaxLatencyDurationCount: 5,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        loader: CDNRewriteLoader
+        loader: CustomLoader
       });
       
       // Store hls reference for quality control
@@ -176,11 +172,10 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
           setError('Stream is transcoding (this can take 10-15 seconds)...');
           setRetryCount(prev => prev + 1);
           if (retryCount < 20) { // Increased from 10 to 20 attempts
-                retryTimeoutRef.current = setTimeout(() => {
-                  console.log('🎬 Retrying stream connection...');
-                  const retrySrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-                  hls?.loadSource(retrySrc);
-                }, 5000); // Increased from 3 to 5 seconds
+            retryTimeoutRef.current = setTimeout(() => {
+              console.log('🎬 Retrying stream connection...');
+              hls?.loadSource(src);
+            }, 5000); // Increased from 3 to 5 seconds
           } else {
             setError('Stream unavailable - please refresh the page');
           }
@@ -195,8 +190,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
                 setRetryCount(prev => prev + 1);
                 retryTimeoutRef.current = setTimeout(() => {
                   console.log('🎬 Retrying HLS connection...');
-                  const retrySrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-                  hls?.loadSource(retrySrc);
+                  hls?.loadSource(src);
                 }, 5000); // Increased retry interval
               } else {
                 setError('Stream Ended or Unavailable');
@@ -251,23 +245,12 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({ src, poster, autoPlay = true, con
         console.log('🎬 HLS: Level loaded');
       });
       
-      console.log('🎬 Loading HLS source:', rewrittenSrc);
-      hls.loadSource(rewrittenSrc);
+      console.log('🎬 Loading HLS source:', src);
+      hls.loadSource(src);
       hls.attachMedia(video);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      console.log('🎬 Using native HLS support (non-Livepeer stream)');
-      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-      if (rewrittenSrc !== src) {
-        console.log('🎬 Rewriting native HLS URL:', src, '→', rewrittenSrc);
-      }
-      video.src = rewrittenSrc;
     } else {
       console.log('🎬 Using fallback direct source');
-      const rewrittenSrc = src.replace('playback.livepeer.studio', 'livepeercdn.studio');
-      if (rewrittenSrc !== src) {
-        console.log('🎬 Rewriting fallback URL:', src, '→', rewrittenSrc);
-      }
-      video.src = rewrittenSrc;
+      video.src = src;
     }
 
     return () => {

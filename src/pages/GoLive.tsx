@@ -18,7 +18,7 @@ const GoLive = () => {
   const navigate = useNavigate();
   const { identity, profile: walletProfile, sessionToken } = useWallet();
   const { preserveStream, isPreviewing } = useBrowserStreaming();
-  const kaspaAddress = identity?.id; // The kaspa wallet address from wallet identity
+  const kaspaAddress = identity?.address; // The kaspa wallet address from wallet identity
   
   const [title, setTitle] = React.useState('');
   const [category, setCategory] = React.useState('IRL');
@@ -42,19 +42,6 @@ const GoLive = () => {
   const [cameraReady, setCameraReady] = React.useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
   const [streamReady, setStreamReady] = React.useState(false);
-
-  // Debug RTMP playback
-  React.useEffect(() => {
-    if (playbackUrl && streamingMode === 'rtmp') {
-      console.log('[GoLive] RTMP Preview Debug:', {
-        playbackUrl,
-        streamingMode,
-        previewReady,
-        streamKey: streamKey ? 'SET' : 'NOT SET',
-        ingestUrl: ingestUrl ? 'SET' : 'NOT SET'
-      });
-    }
-  }, [playbackUrl, streamingMode, previewReady, streamKey, ingestUrl]);
 
 
   // Get current user profile for display using secure function
@@ -208,34 +195,13 @@ const GoLive = () => {
       
       setStreamReady(true);
       setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
-      toast.success(streamingMode === 'browser' ? 'Stream ready! You can now connect your camera.' : 'RTMP details ready');
+      toast.success('Stream ready! You can now connect your camera.');
       return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
     } catch (e:any) {
       console.error('[GoLive] Stream generation error:', e);
       setDebugInfo(`Error: ${e?.message || 'Failed to create stream'}`);
       toast.error(e?.message || 'Failed to create stream');
       throw e;
-    }
-  };
-
-  const sendTreasuryFee = async (): Promise<string | null> => {
-    if (!window.kasware?.sendKaspa) {
-      throw new Error("Kasware wallet not available");
-    }
-    
-    const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
-    const feeAmountSompi = 120000000; // 1.2 KAS in sompi
-    
-    try {
-      const txid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
-        priorityFee: 10000,
-        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
-      });
-      
-      return txid;
-    } catch (error) {
-      console.error('Treasury fee payment failed:', error);
-      throw error;
     }
   };
 
@@ -258,7 +224,13 @@ const GoLive = () => {
     try {
       // Send treasury fee
       toast.info('Processing payment (1.2 KAS)...');
-      const treasuryTxid = await sendTreasuryFee();
+      const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
+      const feeAmountSompi = 120000000; // 1.2 KAS
+      
+      const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
+        priorityFee: 10000,
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+      });
       
       console.log('Treasury fee paid:', treasuryTxid);
       toast.success('Payment confirmed!');
@@ -333,7 +305,6 @@ const GoLive = () => {
       localStorage.setItem('currentStreamKey', streamKey || '');
       localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
       localStorage.setItem('streamStartTime', new Date().toISOString());
-      localStorage.setItem('currentStreamId', streamId);
       localStorage.setItem('currentStreamingMode', 'browser');
       localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
       
@@ -383,7 +354,13 @@ const GoLive = () => {
 
       // Send treasury fee
       toast.info('Processing treasury fee (1.2 KAS)...');
-      const treasuryTxid = await sendTreasuryFee();
+      const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
+      const feeAmountSompi = 120000000;
+      
+      const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
+        priorityFee: 10000,
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+      });
       
       await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -431,7 +408,6 @@ const GoLive = () => {
       localStorage.setItem('currentStreamKey', streamKey || '');
       localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
       localStorage.setItem('streamStartTime', new Date().toISOString());
-      localStorage.setItem('currentStreamId', streamId);
       localStorage.setItem('currentStreamingMode', 'rtmp');
       localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
       
@@ -649,7 +625,7 @@ const GoLive = () => {
               </div>
             </div>
 
-            {/* Browser Streaming Setup Section - Show when stream key is ready */}
+            {/* Browser Streaming Setup Section - Show immediately when browser mode is selected */}
             {streamingMode === 'browser' && streamKey && streamReady && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -819,11 +795,12 @@ const GoLive = () => {
                         autoPlay 
                       />
                     </div>
-                    {!previewReady ? (
+                    {!previewReady && (
                       <div className="text-xs text-gray-400 mt-2">
                         {debugInfo || "Waiting for stream signal... Start streaming in OBS with the settings above. Preview appears in 10-60 seconds."}
                       </div>
-                    ) : (
+                    )}
+                    {previewReady && (
                       <div className="text-xs text-green-400 mt-2 flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                         Stream is live and ready!
