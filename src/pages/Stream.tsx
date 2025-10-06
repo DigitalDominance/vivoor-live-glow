@@ -136,29 +136,21 @@ const Stream = () => {
       if (!shownTipIds.has(tip.id)) {
         setNewTips(prev => [...prev, tip]);
         toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
-        
-        // Store in localStorage for donations history
-        const donation = {
-          id: tip.id,
-          sender: tip.sender,
-          senderAvatar: undefined,
-          amount: tip.amount,
-          message: tip.message,
-          timestamp: tip.timestamp
-        };
-        
-        setAllStoredDonations(prev => {
-          const updated = [...prev, donation];
-          try {
-            localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
-          } catch (e) {
-            console.warn('Failed to save donation to localStorage:', e);
-          }
-          return updated;
-        });
       }
     }
   });
+
+  const handleTipProcessed = (tip: { id: string; sender: string; senderAvatar?: string; amount: number; message?: string; timestamp: number }) => {
+    setAllStoredDonations(prev => {
+      const updated = [...prev, tip];
+      try {
+        localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to save donation to localStorage:', e);
+      }
+      return updated;
+    });
+  };
 
   const handleTipShown = (tipId: string) => {
     setShownTipIds(prev => new Set([...prev, tipId]));
@@ -383,7 +375,7 @@ const Stream = () => {
             )}
             
             {/* Tip notifications overlay positioned over the video player */}
-            <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} />
+            <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} onTipProcessed={handleTipProcessed} />
           </div>
           
           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">

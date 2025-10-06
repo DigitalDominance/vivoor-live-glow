@@ -9,9 +9,10 @@ interface TipDisplayProps {
   onTipShown: (tipId: string) => void;
   isFullscreen?: boolean;
   userJoinedAt: Date;
+  onTipProcessed?: (tip: { id: string; sender: string; senderAvatar?: string; amount: number; message?: string; timestamp: number }) => void;
 }
 
-const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false, userJoinedAt }) => {
+const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscreen = false, userJoinedAt, onTipProcessed }) => {
   const [activeTips, setActiveTips] = useState<TipNotificationData[]>([]);
   const MAX_TIPS = 3; // Maximum 3 tips displayed at once
 
@@ -73,6 +74,18 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
 
         console.log('Created notification:', notification);
 
+        // Notify parent with full tip info including sender details
+        if (onTipProcessed) {
+          onTipProcessed({
+            id: tip.id,
+            sender: finalSenderName,
+            senderAvatar: finalSenderAvatar,
+            amount: tip.amount,
+            message: notification.message,
+            timestamp: tip.timestamp ? new Date(tip.timestamp).getTime() : Date.now()
+          });
+        }
+
         setActiveTips(prev => {
           // Check if this tip is already being shown
           if (prev.some(t => t.id === notification.id)) {
@@ -91,7 +104,7 @@ const TipDisplay: React.FC<TipDisplayProps> = ({ newTips, onTipShown, isFullscre
     if (newTips.length > 0) {
       processNewTips();
     }
-  }, [newTips, onTipShown, userJoinedAt]);
+  }, [newTips, onTipShown, userJoinedAt, onTipProcessed]);
 
   const handleTipComplete = (tipId: string) => {
     setActiveTips(prev => prev.filter(tip => tip.id !== tipId));
