@@ -74,12 +74,17 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
     
     const sendHeartbeat = async () => {
       const data = heartbeatDataRef.current;
-      if (!data) return;
+      if (!data) {
+        console.warn('[BrowserStreamingContext] No heartbeat data available');
+        return;
+      }
       
       // Always send heartbeat for browser streams - they manage their own lifecycle
-      // The backend will handle the 3-minute timeout if no heartbeats are received
+      // The backend will handle the 2-minute timeout if no heartbeats are received (same as RTMP)
       try {
-        console.log('[BrowserStreamingContext] Sending browser stream heartbeat');
+        const startTime = performance.now();
+        console.log('[BrowserStreamingContext] Sending browser stream heartbeat for stream:', data.streamId);
+        
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
           session_token_param: data.sessionToken,
           wallet_address_param: data.walletAddress,
@@ -87,8 +92,22 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
           is_live_param: true
         });
         
-        if (error && error.code !== 'PGRST301' && !error.message?.includes('session')) {
-          console.error('[BrowserStreamingContext] Heartbeat error:', error);
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+        
+        if (error) {
+          // Only log meaningful errors (not session errors which are expected)
+          if (error.code !== 'PGRST301' && !error.message?.includes('session')) {
+            console.error('[BrowserStreamingContext] Heartbeat error:', {
+              code: error.code,
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              duration: `${duration}ms`
+            });
+          }
+        } else {
+          console.log(`[BrowserStreamingContext] ✓ Heartbeat sent successfully (${duration}ms)`);
         }
       } catch (err) {
         console.error('[BrowserStreamingContext] Heartbeat exception:', err);
