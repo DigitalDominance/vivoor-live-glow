@@ -525,7 +525,18 @@ const DocsPage = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Creating Your First Stream</h3>
+                  <h3 className="text-lg font-semibold mb-3">Streaming Options</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Vivoor offers two ways to go live: RTMP streaming with professional software (OBS) or direct In Browser streaming using your camera and microphone.
+                  </p>
+                </div>
+
+                {/* RTMP Streaming */}
+                <div className="border border-brand-iris/20 rounded-lg p-6 bg-brand-iris/5">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Video className="w-5 h-5 text-brand-iris" />
+                    RTMP Streaming (OBS & Professional Software)
+                  </h3>
                   <div className="space-y-4">
                     <div className="flex gap-4">
                       <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
@@ -556,26 +567,74 @@ const DocsPage = () => {
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-3">OBS Studio Setup</h4>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="font-medium mb-2">Stream Settings</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Service: Custom...</li>
+                          <li>• Server: Your provided Ingest URL</li>
+                          <li>• Stream Key: Your unique stream key</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className="font-medium mb-2">Recommended Output</h5>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Encoder: x264 or NVENC H.264</li>
+                          <li>• Bitrate: 3500-6000 Kbps (1080p)</li>
+                          <li>• Keyframe Interval: 2 seconds</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">OBS Studio Setup</h3>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-medium mb-2">Stream Settings</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Service: Custom...</li>
-                        <li>• Server: Your provided Ingest URL</li>
-                        <li>• Stream Key: Your unique stream key</li>
-                      </ul>
+                {/* In Browser Streaming */}
+                <div className="border border-brand-cyan/20 rounded-lg p-6 bg-brand-cyan/5">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-brand-cyan" />
+                    In Browser Streaming (Camera & Audio Only)
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Stream directly from your browser using your webcam and microphone - no additional software required!
+                  </p>
+                  <div className="space-y-4">
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                      <div>
+                        <p className="font-medium">Go to "Go Live" Page</p>
+                        <p className="text-sm text-muted-foreground">Navigate to /go-live to begin setting up your stream</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium mb-2">Recommended Output</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Encoder: x264 or NVENC H.264</li>
-                        <li>• Bitrate: 3500-6000 Kbps (1080p)</li>
-                        <li>• Keyframe Interval: 2 seconds</li>
-                      </ul>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-iris text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                      <div>
+                        <p className="font-medium">Enter Stream Title & Thumbnail</p>
+                        <p className="text-sm text-muted-foreground">Choose a compelling title and upload a custom thumbnail for your stream</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-pink text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                      <div>
+                        <p className="font-medium">Click "Start Camera Stream"</p>
+                        <p className="text-sm text-muted-foreground">Grant camera and microphone permissions when prompted by your browser</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                      <div>
+                        <p className="font-medium">Start Camera & Pay Fee</p>
+                        <p className="text-sm text-muted-foreground">Click start camera and pay the 1.2 KAS treasury fee to begin your broadcast</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-iris text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">5</span>
+                      <div>
+                        <p className="font-medium">Enjoy Streaming!</p>
+                        <p className="text-sm text-muted-foreground">You're now live! Interact with your viewers and receive tips directly</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -588,12 +647,12 @@ const DocsPage = () => {
                       <p className="text-sm text-muted-foreground">Track viewer count, stream health, and tip notifications in real-time</p>
                     </div>
                     <div className="p-4 border border-border rounded-lg">
-                      <h4 className="font-medium mb-2">Auto-End Protection</h4>
-                      <p className="text-sm text-muted-foreground">Streams automatically end after 1 minute of disconnection</p>
+                      <h4 className="font-medium mb-2">Donations History</h4>
+                      <p className="text-sm text-muted-foreground">View all donations during your stream by clicking the $ button on your stream page</p>
                     </div>
                     <div className="p-4 border border-border rounded-lg">
-                      <h4 className="font-medium mb-2">Instant Replays</h4>
-                      <p className="text-sm text-muted-foreground">Your streams are automatically saved for later viewing</p>
+                      <h4 className="font-medium mb-2">Auto-End Protection</h4>
+                      <p className="text-sm text-muted-foreground">Streams automatically end after 1 minute of disconnection</p>
                     </div>
                   </div>
                 </div>
