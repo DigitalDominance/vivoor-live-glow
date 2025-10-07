@@ -19,100 +19,101 @@ const GoLive = () => {
   const { identity, profile: walletProfile, sessionToken } = useWallet();
   const { preserveStream, isPreviewing } = useBrowserStreaming();
   const kaspaAddress = identity?.address; // The kaspa wallet address from wallet identity
-  
-  const [title, setTitle] = React.useState('');
-  const [category, setCategory] = React.useState('IRL');
+
+  const [title, setTitle] = React.useState("");
+  const [category, setCategory] = React.useState("IRL");
   const [thumbnailFile, setThumbnailFile] = React.useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = React.useState<string | null>(null);
-  
+
   // Streaming mode: 'rtmp' or 'browser'
-  const [streamingMode, setStreamingMode] = React.useState<'rtmp' | 'browser'>('rtmp');
-  const [browserSource] = React.useState<'camera' | 'screen'>('camera');
-  
+  const [streamingMode, setStreamingMode] = React.useState<"rtmp" | "browser">("rtmp");
+  const [browserSource] = React.useState<"camera" | "screen">("camera");
+
   const [ingestUrl, setIngestUrl] = React.useState<string | null>(null);
   const [streamKey, setStreamKey] = React.useState<string | null>(null);
   const [playbackUrl, setPlaybackUrl] = React.useState<string | null>(null);
   const [livepeerStreamId, setLivepeerStreamId] = React.useState<string | null>(null);
   const [livepeerPlaybackId, setLivepeerPlaybackId] = React.useState<string | null>(null);
-  
+
   const [previewReady, setPreviewReady] = React.useState(false);
   const [playerKey, setPlayerKey] = React.useState(0);
-  const [debugInfo, setDebugInfo] = React.useState<string>('');
+  const [debugInfo, setDebugInfo] = React.useState<string>("");
   const [createdStreamId, setCreatedStreamId] = React.useState<string | null>(null);
   const [cameraReady, setCameraReady] = React.useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
   const [streamReady, setStreamReady] = React.useState(false);
 
-
   // Get current user profile for display using secure function
   const { data: profile } = useQuery({
-    queryKey: ['profile', identity?.id],
+    queryKey: ["profile", identity?.id],
     queryFn: async () => {
       if (!identity?.id) return null;
-      const { data } = await supabase.rpc('get_public_profile_display', { user_id: identity.id });
+      const { data } = await supabase.rpc("get_public_profile_display", { user_id: identity.id });
       return data?.[0] || null;
     },
-    enabled: !!identity?.id
+    enabled: !!identity?.id,
   });
 
   // Check if stream is ready periodically (when playback URL exists)
   React.useEffect(() => {
     if (!playbackUrl) return;
-    
+
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
     let checkCount = 0;
-    
+
     const checkStream = async () => {
       if (cancelled) return;
       checkCount++;
-      
+
       try {
         const controller = new AbortController();
         setTimeout(() => controller.abort(), 8000);
-        
+
         const response = await fetch(playbackUrl, { signal: controller.signal });
-        
+
         if (!response.ok) {
           setDebugInfo(`Stream not ready (HTTP ${response.status}, attempt ${checkCount})`);
           return;
         }
-        
+
         const text = await response.text();
-        
-        if (text.includes('#EXT-X-STREAM-INF')) {
+
+        if (text.includes("#EXT-X-STREAM-INF")) {
           // Master playlist with multiple renditions
-          const lines = text.split('\n');
-          let renditionUrl = '';
-          
+          const lines = text.split("\n");
+          let renditionUrl = "";
+
           for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes('#EXT-X-STREAM-INF')) {
-              renditionUrl = lines[i + 1]?.trim() || '';
+            if (lines[i].includes("#EXT-X-STREAM-INF")) {
+              renditionUrl = lines[i + 1]?.trim() || "";
               break;
             }
           }
-          
-          if (renditionUrl && !renditionUrl.startsWith('http')) {
+
+          if (renditionUrl && !renditionUrl.startsWith("http")) {
             // Construct full URL for rendition
-            const baseUrl = playbackUrl.substring(0, playbackUrl.lastIndexOf('/') + 1);
+            const baseUrl = playbackUrl.substring(0, playbackUrl.lastIndexOf("/") + 1);
             renditionUrl = baseUrl + renditionUrl;
-            
+
             try {
               const renditionRes = await fetch(renditionUrl, { signal: controller.signal });
               if (renditionRes.ok) {
                 const renditionText = await renditionRes.text();
-                console.log('Rendition playlist:', renditionText.substring(0, 300));
-                
-                if (renditionText.includes('.ts') || renditionText.includes('#EXTINF')) {
-                  console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+                console.log("Rendition playlist:", renditionText.substring(0, 300));
+
+                if (renditionText.includes(".ts") || renditionText.includes("#EXTINF")) {
+                  console.log("🎉 Stream segments found! Stopping polling and showing preview.");
                   cancelled = true; // Stop any further checks
                   if (intervalId) clearInterval(intervalId);
                   setPreviewReady(true);
-                  setPlayerKey(prev => prev + 1); // Refresh player once when ready
-                  setDebugInfo('Stream ready! HLS segments found in rendition.');
+                  setPlayerKey((prev) => prev + 1); // Refresh player once when ready
+                  setDebugInfo("Stream ready! HLS segments found in rendition.");
                   return;
                 } else {
-                  setDebugInfo(`Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`);
+                  setDebugInfo(
+                    `Stream starting... (rendition playlist exists but no segments yet, attempt ${checkCount})`,
+                  );
                 }
               } else {
                 setDebugInfo(`Stream starting... (rendition not ready, attempt ${checkCount})`);
@@ -121,20 +122,20 @@ const GoLive = () => {
               setDebugInfo(`Stream starting... (checking rendition, attempt ${checkCount})`);
             }
           }
-        } else if (text.includes('.ts') || text.includes('#EXTINF')) {
+        } else if (text.includes(".ts") || text.includes("#EXTINF")) {
           // Direct playlist with segments
-          console.log('🎉 Stream segments found! Stopping polling and showing preview.');
+          console.log("🎉 Stream segments found! Stopping polling and showing preview.");
           cancelled = true; // Stop any further checks
           if (intervalId) clearInterval(intervalId);
           setPreviewReady(true);
-          setPlayerKey(prev => prev + 1); // Refresh player once when ready
-          setDebugInfo('Stream ready! HLS segments found.');
+          setPlayerKey((prev) => prev + 1); // Refresh player once when ready
+          setDebugInfo("Stream ready! HLS segments found.");
           return;
         } else {
           setDebugInfo(`Stream starting... (playlist exists but no segments yet, attempt ${checkCount})`);
         }
       } catch (error: any) {
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
           setDebugInfo(`Stream not ready (timeout, attempt ${checkCount})`);
         } else {
           setDebugInfo(`Stream not ready (${error.message}, attempt ${checkCount})`);
@@ -144,10 +145,10 @@ const GoLive = () => {
 
     // Initial check
     checkStream();
-    
+
     // Then check every 3 seconds if not ready
     intervalId = setInterval(checkStream, 3000);
-    
+
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
@@ -156,167 +157,171 @@ const GoLive = () => {
 
   const generateStreamDetails = async () => {
     if (!kaspaAddress) {
-      toast.error('Please connect wallet first');
+      toast.error("Please connect wallet first");
       return;
     }
-    
-    console.log('[GoLive] Generating stream details...');
+
+    console.log("[GoLive] Generating stream details...");
     setStreamReady(false);
-    
+
     try {
-      setDebugInfo('Creating Livepeer stream...');
-      
-      const { data: lp, error: lpErr } = await supabase.functions.invoke('livepeer-create-stream', { body: { name: title } });
-      
-      console.log('[GoLive] Livepeer response:', lp);
-      console.log('[GoLive] Livepeer error:', lpErr);
-      
+      setDebugInfo("Creating Livepeer stream...");
+
+      const { data: lp, error: lpErr } = await supabase.functions.invoke("livepeer-create-stream", {
+        body: { name: title },
+      });
+
+      console.log("[GoLive] Livepeer response:", lp);
+      console.log("[GoLive] Livepeer error:", lpErr);
+
       if (lpErr || !lp) {
-        setDebugInfo(`Error: ${lpErr?.message || 'Failed to create stream'}`);
-        throw new Error(lpErr?.message || 'Failed to create stream');
+        setDebugInfo(`Error: ${lpErr?.message || "Failed to create stream"}`);
+        throw new Error(lpErr?.message || "Failed to create stream");
       }
-      
+
       setIngestUrl(lp.ingestUrl || null);
       setStreamKey(lp.streamKey || null);
       setPlaybackUrl(lp.playbackUrl || null);
       setLivepeerStreamId(lp.streamId || null);
       setLivepeerPlaybackId(lp.playbackId || null);
-      
-      console.log('[GoLive] Stream details set:', {
+
+      console.log("[GoLive] Stream details set:", {
         streamId: lp.streamId,
         ingestUrl: lp.ingestUrl,
-        streamKey: lp.streamKey ? '***' : null,
-        playbackUrl: lp.playbackUrl
+        streamKey: lp.streamKey ? "***" : null,
+        playbackUrl: lp.playbackUrl,
       });
-      
+
       // Wait 2 seconds for Livepeer to provision the stream endpoint
-      console.log('[GoLive] Waiting for Livepeer stream to be ready...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      console.log("[GoLive] Waiting for Livepeer stream to be ready...");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       setStreamReady(true);
-      setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || 'None'}`);
-      toast.success('Stream ready! You can now connect your camera.');
-      return lp as { streamId?: string; ingestUrl?: string | null; streamKey?: string | null; playbackUrl?: string | null };
-    } catch (e:any) {
-      console.error('[GoLive] Stream generation error:', e);
-      setDebugInfo(`Error: ${e?.message || 'Failed to create stream'}`);
-      toast.error(e?.message || 'Failed to create stream');
+      setDebugInfo(`Stream created. Playback URL: ${lp.playbackUrl || "None"}`);
+      toast.success("Stream ready! You can now connect your camera.");
+      return lp as {
+        streamId?: string;
+        ingestUrl?: string | null;
+        streamKey?: string | null;
+        playbackUrl?: string | null;
+      };
+    } catch (e: any) {
+      console.error("[GoLive] Stream generation error:", e);
+      setDebugInfo(`Error: ${e?.message || "Failed to create stream"}`);
+      toast.error(e?.message || "Failed to create stream");
       throw e;
     }
   };
 
   const handleGoLive = async () => {
     if (!kaspaAddress || !sessionToken || !identity?.address) {
-      toast.error('Please connect wallet first');
+      toast.error("Please connect wallet first");
       return;
     }
     if (!cameraReady) {
-      toast.error('Please wait for camera to connect');
+      toast.error("Please wait for camera to connect");
       return;
     }
     if (!streamKey || !playbackUrl) {
-      toast.error('Stream details not ready');
+      toast.error("Stream details not ready");
       return;
     }
 
     setIsProcessingPayment(true);
-    
+
     try {
       // Send treasury fee
-      toast.info('Processing payment (1.2 KAS)...');
+      toast.info("Processing payment (1.2 KAS)...");
       const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
       const feeAmountSompi = 120000000; // 1.2 KAS
-      
+
       const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
         priorityFee: 10000,
-        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`,
       });
-      
-      console.log('Treasury fee paid:', treasuryTxid);
-      toast.success('Payment confirmed!');
-      
+
+      console.log("Treasury fee paid:", treasuryTxid);
+      toast.success("Payment confirmed!");
+
       // Wait a moment for transaction
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // End any existing active streams
       try {
         const { data: existingStreams } = await supabase
-          .from('streams')
-          .select('id')
-          .eq('user_id', identity.id)
-          .eq('is_live', true);
-        
+          .from("streams")
+          .select("id")
+          .eq("user_id", identity.id)
+          .eq("is_live", true);
+
         if (existingStreams && existingStreams.length > 0) {
-          await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
+          await supabase.rpc("end_user_active_streams", { user_id_param: identity.id });
         }
       } catch (error) {
-        console.error('Failed to end existing streams:', error);
+        console.error("Failed to end existing streams:", error);
       }
 
       // Handle thumbnail upload
       let thumbnailUrl = null;
       if (thumbnailFile) {
         try {
-          const fileExt = thumbnailFile.name.split('.').pop();
+          const fileExt = thumbnailFile.name.split(".").pop();
           const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('thumbnails')
-            .upload(fileName, thumbnailFile);
-          
+
+          const { error: uploadError } = await supabase.storage.from("thumbnails").upload(fileName, thumbnailFile);
+
           if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from('thumbnails')
-              .getPublicUrl(fileName);
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("thumbnails").getPublicUrl(fileName);
             thumbnailUrl = publicUrl;
           }
         } catch (error) {
-          console.error('Thumbnail upload failed:', error);
+          console.error("Thumbnail upload failed:", error);
         }
       } else if (category) {
         thumbnailUrl = getCategoryThumbnail(category);
       }
 
       // Create stream in database
-      const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
+      const { data: streamId, error } = await supabase.rpc("create_stream_secure", {
         session_token_param: sessionToken,
         wallet_address_param: identity.address,
-        title_param: title || 'Live Stream',
+        title_param: title || "Live Stream",
         category_param: category,
         livepeer_stream_id_param: livepeerStreamId || null,
         livepeer_playback_id_param: livepeerPlaybackId || null,
-        streaming_mode_param: 'browser',
+        streaming_mode_param: "browser",
         is_live_param: true,
         playback_url_param: playbackUrl,
         treasury_txid_param: treasuryTxid,
         treasury_block_time_param: Date.now(),
-        stream_type_param: 'browser',
-        thumbnail_url_param: thumbnailUrl
+        stream_type_param: "browser",
+        thumbnail_url_param: thumbnailUrl,
       });
 
       if (error || !streamId) {
-        throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
+        throw new Error(`Database error: ${error?.message || "Failed to create stream"}`);
       }
 
-      console.log('Stream created successfully with ID:', streamId);
-      
+      console.log("Stream created successfully with ID:", streamId);
+
       // Store stream data
-      localStorage.setItem('currentIngestUrl', ingestUrl || '');
-      localStorage.setItem('currentStreamKey', streamKey || '');
-      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
-      localStorage.setItem('streamStartTime', new Date().toISOString());
-      localStorage.setItem('currentStreamingMode', 'browser');
-      localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
-      
-      toast.success('Going live!');
-      
+      localStorage.setItem("currentIngestUrl", ingestUrl || "");
+      localStorage.setItem("currentStreamKey", streamKey || "");
+      localStorage.setItem("currentPlaybackUrl", playbackUrl || "");
+      localStorage.setItem("streamStartTime", new Date().toISOString());
+      localStorage.setItem("currentStreamingMode", "browser");
+      localStorage.setItem("currentLivepeerPlaybackId", livepeerPlaybackId || "");
+
+      toast.success("Going live!");
+
       // Preserve stream and navigate
       preserveStream();
       navigate(`/stream/${streamId}`);
-      
     } catch (error) {
-      console.error('Failed to go live:', error);
-      toast.error(`Failed to go live: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Failed to go live:", error);
+      toast.error(`Failed to go live: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsProcessingPayment(false);
     }
@@ -324,98 +329,100 @@ const GoLive = () => {
 
   const handleStartRTMP = async () => {
     if (!kaspaAddress || !sessionToken || !identity?.address) {
-      toast.error('Connect wallet first');
+      toast.error("Connect wallet first");
       return;
     }
     if (!title.trim()) {
-      toast.error('Please enter a stream title');
+      toast.error("Please enter a stream title");
       return;
     }
     if (!previewReady) {
-      toast.error('Please wait for stream preview to be ready');
+      toast.error("Please wait for stream preview to be ready");
       return;
     }
-    
+
     try {
       // End any existing active streams
       try {
         const { data: existingStreams } = await supabase
-          .from('streams')
-          .select('id')
-          .eq('user_id', identity.id)
-          .eq('is_live', true);
-        
+          .from("streams")
+          .select("id")
+          .eq("user_id", identity.id)
+          .eq("is_live", true);
+
         if (existingStreams && existingStreams.length > 0) {
-          await supabase.rpc('end_user_active_streams', { user_id_param: identity.id });
+          await supabase.rpc("end_user_active_streams", { user_id_param: identity.id });
         }
       } catch (error) {
-        console.error('Failed to end existing streams:', error);
+        console.error("Failed to end existing streams:", error);
       }
 
       // Send treasury fee
-      toast.info('Processing treasury fee (1.2 KAS)...');
+      toast.info("Processing treasury fee (1.2 KAS)...");
       const treasuryAddress = "kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80";
       const feeAmountSompi = 120000000;
-      
+
       const treasuryTxid = await window.kasware.sendKaspa(treasuryAddress, feeAmountSompi, {
         priorityFee: 10000,
-        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`
+        payload: `VIVOOR_STREAMING_FEE:${kaspaAddress}:${Date.now()}`,
       });
-      
-      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Handle thumbnail upload
       let thumbnailUrl = null;
       if (thumbnailFile) {
         try {
-          const fileExt = thumbnailFile.name.split('.').pop();
+          const fileExt = thumbnailFile.name.split(".").pop();
           const fileName = `${kaspaAddress}-${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('thumbnails').upload(fileName, thumbnailFile);
-          
+          const { error: uploadError } = await supabase.storage.from("thumbnails").upload(fileName, thumbnailFile);
+
           if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage.from('thumbnails').getPublicUrl(fileName);
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("thumbnails").getPublicUrl(fileName);
             thumbnailUrl = publicUrl;
           }
         } catch (error) {
-          console.error('Thumbnail upload failed:', error);
+          console.error("Thumbnail upload failed:", error);
         }
       } else if (category) {
         thumbnailUrl = getCategoryThumbnail(category);
       }
 
       // Create stream in database
-      const { data: streamId, error } = await supabase.rpc('create_stream_secure', {
+      const { data: streamId, error } = await supabase.rpc("create_stream_secure", {
         session_token_param: sessionToken,
         wallet_address_param: identity.address,
-        title_param: title || 'Live Stream',
+        title_param: title || "Live Stream",
         category_param: category,
         livepeer_stream_id_param: livepeerStreamId || null,
         livepeer_playback_id_param: livepeerPlaybackId || null,
-        streaming_mode_param: 'rtmp',
+        streaming_mode_param: "rtmp",
         is_live_param: false,
         playback_url_param: playbackUrl,
         treasury_txid_param: treasuryTxid,
         treasury_block_time_param: Date.now(),
-        stream_type_param: 'livepeer',
-        thumbnail_url_param: thumbnailUrl
+        stream_type_param: "livepeer",
+        thumbnail_url_param: thumbnailUrl,
       });
 
       if (error || !streamId) {
-        throw new Error(`Database error: ${error?.message || 'Failed to create stream'}`);
+        throw new Error(`Database error: ${error?.message || "Failed to create stream"}`);
       }
 
-      localStorage.setItem('currentIngestUrl', ingestUrl || '');
-      localStorage.setItem('currentStreamKey', streamKey || '');
-      localStorage.setItem('currentPlaybackUrl', playbackUrl || '');
-      localStorage.setItem('streamStartTime', new Date().toISOString());
-      localStorage.setItem('currentStreamingMode', 'rtmp');
-      localStorage.setItem('currentLivepeerPlaybackId', livepeerPlaybackId || '');
-      
-      toast.success('Stream started! Use the RTMP details below in OBS.');
+      localStorage.setItem("currentIngestUrl", ingestUrl || "");
+      localStorage.setItem("currentStreamKey", streamKey || "");
+      localStorage.setItem("currentPlaybackUrl", playbackUrl || "");
+      localStorage.setItem("streamStartTime", new Date().toISOString());
+      localStorage.setItem("currentStreamingMode", "rtmp");
+      localStorage.setItem("currentLivepeerPlaybackId", livepeerPlaybackId || "");
+
+      toast.success("Stream started! Use the RTMP details below in OBS.");
       navigate(`/stream/${streamId}`);
     } catch (error) {
-      console.error('Failed to start stream:', error);
-      toast.error(`Failed to start stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Failed to start stream:", error);
+      toast.error(`Failed to start stream: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -440,7 +447,6 @@ const GoLive = () => {
       </Helmet>
 
       <h1 className="sr-only">Go Live</h1>
-      
 
       <section className="max-w-4xl mx-auto">
         {/* Hero Header */}
@@ -463,20 +469,19 @@ const GoLive = () => {
         <div className="relative">
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl blur-xl"></div>
-          
+
           {/* Black Glass Card */}
           <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-            
             {/* Streaming Mode Selection */}
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-white mb-4">Choose Your Streaming Method</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <button
-                  onClick={() => setStreamingMode('rtmp')}
+                  onClick={() => setStreamingMode("rtmp")}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 backdrop-blur-xl ${
-                    streamingMode === 'rtmp' 
-                      ? 'border-purple-400 bg-gradient-to-br from-purple-500/30 via-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/20' 
-                      : 'border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-gradient-to-br hover:from-purple-500/20 hover:via-purple-500/10 hover:to-pink-500/10'
+                    streamingMode === "rtmp"
+                      ? "border-purple-400 bg-gradient-to-br from-purple-500/30 via-purple-500/20 to-pink-500/20 shadow-lg shadow-purple-500/20"
+                      : "border-white/20 bg-white/5 hover:border-purple-400/50 hover:bg-gradient-to-br hover:from-purple-500/20 hover:via-purple-500/10 hover:to-pink-500/10"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -486,25 +491,25 @@ const GoLive = () => {
                   <p className="text-sm text-gray-300 text-left">
                     Professional streaming with OBS, Streamlabs, or other broadcasting software
                   </p>
-                  {streamingMode === 'rtmp' && (
+                  {streamingMode === "rtmp" && (
                     <div className="absolute top-3 right-3">
                       <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse shadow-lg shadow-purple-500/50"></div>
                     </div>
                   )}
                 </button>
-                
+
                 <button
                   onClick={async () => {
                     if (!kaspaAddress) {
-                      toast.error('Please connect wallet first');
+                      toast.error("Please connect wallet first");
                       return;
                     }
-                    
+
                     if (!title.trim()) {
-                      toast.error('Please enter a stream title first');
+                      toast.error("Please enter a stream title first");
                       return;
                     }
-                    
+
                     // Clear existing stream data when switching modes
                     setIngestUrl(null);
                     setStreamKey(null);
@@ -513,25 +518,25 @@ const GoLive = () => {
                     setLivepeerPlaybackId(null);
                     setPreviewReady(false);
                     setCameraReady(false);
-                    
+
                     // Set browser streaming mode
-                    setStreamingMode('browser');
-                    
+                    setStreamingMode("browser");
+
                     // Generate stream details for browser streaming
-                    toast.info('Setting up browser streaming...');
+                    toast.info("Setting up browser streaming...");
                     try {
                       const details = await generateStreamDetails();
-                      console.log('[GoLive] Stream details generated:', details);
-                      toast.success('Ready! Connect your camera below to continue.');
+                      console.log("[GoLive] Stream details generated:", details);
+                      toast.success("Ready! Connect your camera below to continue.");
                     } catch (error) {
-                      console.error('[GoLive] Failed to generate stream details:', error);
-                      toast.error('Failed to setup streaming. Please try again.');
+                      console.error("[GoLive] Failed to generate stream details:", error);
+                      toast.error("Failed to setup streaming. Please try again.");
                     }
                   }}
                   className={`relative p-6 rounded-xl border-2 transition-all duration-300 backdrop-blur-xl ${
-                    streamingMode === 'browser' 
-                      ? 'border-cyan-400 bg-gradient-to-br from-cyan-500/30 via-purple-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/20' 
-                      : 'border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-gradient-to-br hover:from-cyan-500/20 hover:via-purple-500/10 hover:to-blue-500/10'
+                    streamingMode === "browser"
+                      ? "border-cyan-400 bg-gradient-to-br from-cyan-500/30 via-purple-500/20 to-blue-500/20 shadow-lg shadow-cyan-500/20"
+                      : "border-white/20 bg-white/5 hover:border-cyan-400/50 hover:bg-gradient-to-br hover:from-cyan-500/20 hover:via-purple-500/10 hover:to-blue-500/10"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -539,9 +544,9 @@ const GoLive = () => {
                     <span className="font-semibold text-white">Browser Streaming</span>
                   </div>
                   <p className="text-sm text-gray-300 text-left">
-                    Stream directly from your browser using your camera, microphone, or screen
+                    Stream directly from your browser using your camera, and microphone.
                   </p>
-                  {streamingMode === 'browser' && (
+                  {streamingMode === "browser" && (
                     <div className="absolute top-3 right-3">
                       <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-pulse shadow-lg shadow-cyan-500/50"></div>
                     </div>
@@ -549,34 +554,36 @@ const GoLive = () => {
                 </button>
               </div>
             </div>
-        
+
             {/* Stream Details Form */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Stream Title</label>
-                  <input 
-                    className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none transition-colors" 
+                  <input
+                    className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none transition-colors"
                     placeholder="Enter your stream title..."
-                    value={title} 
-                    onChange={(e) => setTitle(e.target.value)} 
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Category</label>
-                  <select 
+                  <select
                     className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-white focus:border-purple-400 focus:outline-none transition-colors"
-                    value={category} 
+                    value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
-                    {['IRL', 'Music', 'Gaming', 'Talk', 'Sports', 'Crypto', 'Tech'].map(c => 
-                      <option key={c} value={c} className="bg-gray-900 text-white">{c}</option>
-                    )}
+                    {["IRL", "Music", "Gaming", "Talk", "Sports", "Crypto", "Tech"].map((c) => (
+                      <option key={c} value={c} className="bg-gray-900 text-white">
+                        {c}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-white mb-2">Stream Thumbnail</label>
                 <input
@@ -626,11 +633,11 @@ const GoLive = () => {
             </div>
 
             {/* Browser Streaming Setup Section - Show immediately when browser mode is selected */}
-            {streamingMode === 'browser' && streamKey && streamReady && (
+            {streamingMode === "browser" && streamKey && streamReady && (
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full animate-pulse shadow-lg shadow-cyan-500/50"></div>
-                  {cameraReady ? 'Camera Ready - Ready to Go Live!' : 'Connect Your Camera'}
+                  {cameraReady ? "Camera Ready - Ready to Go Live!" : "Connect Your Camera"}
                 </h3>
                 <div className="border-2 border-cyan-400/30 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl shadow-2xl shadow-cyan-500/20">
                   <BrowserStreaming
@@ -640,27 +647,27 @@ const GoLive = () => {
                     playbackId={livepeerPlaybackId || undefined}
                     isPreviewMode={true}
                     onStreamStart={() => {
-                      console.log('[GoLive] Camera connected successfully');
+                      console.log("[GoLive] Camera connected successfully");
                       setCameraReady(true);
                       toast.success('✅ Camera ready! Click "Go Live & Pay 1.2 KAS" below to start broadcasting.');
                     }}
                     onStreamEnd={() => {
-                      console.log('[GoLive] Camera disconnected');
+                      console.log("[GoLive] Camera disconnected");
                       setCameraReady(false);
-                      toast.info('Camera disconnected');
+                      toast.info("Camera disconnected");
                     }}
                   />
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
-                  {cameraReady 
+                  {cameraReady
                     ? 'Camera is ready! Click the "Go Live & Pay 1.2 KAS" button below to start broadcasting.'
                     : 'Click "Start Camera" above to connect your camera and microphone.'}
                 </div>
               </div>
             )}
-            
+
             {/* Loading state while stream is being prepared */}
-            {streamingMode === 'browser' && streamKey && !streamReady && (
+            {streamingMode === "browser" && streamKey && !streamReady && (
               <div className="mb-8">
                 <div className="bg-white/5 border border-white/20 rounded-xl p-6 flex items-center justify-center gap-3">
                   <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
@@ -671,83 +678,89 @@ const GoLive = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               {/* For RTMP only - show generate button if stream not created */}
-              {streamingMode === 'rtmp' && !streamKey && (
-                <Button 
-                  variant="outline" 
-                  onClick={generateStreamDetails} 
+              {streamingMode === "rtmp" && !streamKey && (
+                <Button
+                  variant="outline"
+                  onClick={generateStreamDetails}
                   disabled={!title || !kaspaAddress}
                   className="bg-gradient-to-r from-white/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl border-white/20 text-white hover:from-white/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/50 transition-all duration-300"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : 'Generate RTMP Stream'}
+                  {!kaspaAddress ? "Connect Wallet First" : "Generate RTMP Stream"}
                 </Button>
               )}
-              
+
               {/* For browser streaming, show Go Live button only when camera is ready */}
-              {streamingMode === 'browser' && streamKey && cameraReady && (
-                <Button 
-                  onClick={handleGoLive} 
+              {streamingMode === "browser" && streamKey && cameraReady && (
+                <Button
+                  onClick={handleGoLive}
                   disabled={!kaspaAddress || !title.trim() || isProcessingPayment}
                   className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-purple-500/30 border border-white/20 backdrop-blur-xl"
                 >
-                  {isProcessingPayment ? 'Processing Payment...' : 'Go Live & Pay 1.2 KAS 🚀'}
+                  {isProcessingPayment ? "Processing Payment..." : "Go Live & Pay 1.2 KAS 🚀"}
                 </Button>
               )}
-              
+
               {/* For RTMP streaming, show Setup button after stream is generated */}
-              {streamingMode === 'rtmp' && streamKey && (
-                <Button 
-                  onClick={handleStartRTMP} 
+              {streamingMode === "rtmp" && streamKey && (
+                <Button
+                  onClick={handleStartRTMP}
                   disabled={!kaspaAddress || !title.trim() || !previewReady}
                   className="flex-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-purple-500/30 border border-white/20 backdrop-blur-xl"
                 >
-                  {!kaspaAddress ? 'Connect Wallet First' : 
-                   !title.trim() ? 'Enter Title First' :
-                   !previewReady ? 'Waiting for Stream...' :
-                   'Setup RTMP Stream & Pay Fee (1.2 KAS)'}
+                  {!kaspaAddress
+                    ? "Connect Wallet First"
+                    : !title.trim()
+                      ? "Enter Title First"
+                      : !previewReady
+                        ? "Waiting for Stream..."
+                        : "Setup RTMP Stream & Pay Fee (1.2 KAS)"}
                 </Button>
               )}
-              
+
               {/* Browser mode status when camera is not ready yet */}
-              {streamingMode === 'browser' && streamKey && !cameraReady && (
+              {streamingMode === "browser" && streamKey && !cameraReady && (
                 <div className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-white/5 via-cyan-500/5 to-purple-500/5 backdrop-blur-xl border border-white/20 text-center">
-                  <p className="text-sm text-white/80">
-                    ⬆️ Connect your camera above to continue
-                  </p>
+                  <p className="text-sm text-white/80">⬆️ Connect your camera above to continue</p>
                 </div>
               )}
             </div>
 
-            
             {/* RTMP Details Section */}
-            {streamingMode === 'rtmp' && (ingestUrl || streamKey || playbackUrl) && (
+            {streamingMode === "rtmp" && (ingestUrl || streamKey || playbackUrl) && (
               <div className="mt-8 p-6 rounded-xl bg-white/5 border border-white/20">
                 <h3 className="text-lg font-semibold text-white mb-4">RTMP Stream Details</h3>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-gray-300 w-24">Ingest URL:</span>
                     <code className="flex-1 px-3 py-2 rounded bg-black/30 border border-white/10 text-cyan-400 text-sm">
-                      {ingestUrl ?? '—'}
+                      {ingestUrl ?? "—"}
                     </code>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => ingestUrl && navigator.clipboard.writeText(ingestUrl).then(() => toast.success('Copied ingest URL'))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        ingestUrl &&
+                        navigator.clipboard.writeText(ingestUrl).then(() => toast.success("Copied ingest URL"))
+                      }
                       className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                     >
                       Copy
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-gray-300 w-24">Stream Key:</span>
                     <code className="flex-1 px-3 py-2 rounded bg-black/30 border border-white/10 text-pink-400 text-sm">
-                      {streamKey ? '••••••••••••••••••••' : '—'}
+                      {streamKey ? "••••••••••••••••••••" : "—"}
                     </code>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => streamKey && navigator.clipboard.writeText(streamKey).then(() => toast.success('Copied stream key'))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        streamKey &&
+                        navigator.clipboard.writeText(streamKey).then(() => toast.success("Copied stream key"))
+                      }
                       className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                     >
                       Copy
@@ -755,7 +768,6 @@ const GoLive = () => {
                   </div>
                 </div>
 
-                
                 {/* Debug info */}
                 {debugInfo && (
                   <div className="mt-4 p-3 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs">
@@ -789,15 +801,12 @@ const GoLive = () => {
                   <div className="mt-6">
                     <div className="font-medium text-white mb-3">Live Preview</div>
                     <div className="rounded-lg overflow-hidden bg-black/50 border border-white/20">
-                      <HlsPlayer 
-                        key={playerKey}
-                        src={playbackUrl} 
-                        autoPlay 
-                      />
+                      <HlsPlayer key={playerKey} src={playbackUrl} autoPlay />
                     </div>
                     {!previewReady && (
                       <div className="text-xs text-gray-400 mt-2">
-                        {debugInfo || "Waiting for stream signal... Start streaming in OBS with the settings above. Preview appears in 10-60 seconds."}
+                        {debugInfo ||
+                          "Waiting for stream signal... Start streaming in OBS with the settings above. Preview appears in 10-60 seconds."}
                       </div>
                     )}
                     {previewReady && (
