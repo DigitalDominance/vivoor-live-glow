@@ -129,13 +129,16 @@ const Stream = () => {
     }
   });
 
+  const [userJoinedAt] = React.useState(new Date()); // Track when user started viewing
+
   // Monitor tips for this stream using realtime subscription
   const { tips: allTips, totalAmountReceived } = useRealtimeTips({
     streamId: streamData?.id,
     onNewTip: (tip) => {
-      // Always add new tips to display queue (same as watch page)
-      setNewTips(prev => [...prev, tip]);
-      toast.success(`New tip: ${tip.amount} KAS from ${tip.sender}`);
+      // Only show tips that occurred after the user started watching (same as Watch page)
+      if (tip.timestamp >= userJoinedAt.getTime()) {
+        setNewTips(prev => [...prev, tip]);
+      }
     }
   });
 
@@ -399,8 +402,14 @@ const Stream = () => {
               <PlayerPlaceholder />
             )}
             
-            {/* Tip notifications overlay positioned over the video player */}
-            <TipDisplay newTips={newTips} onTipShown={handleTipShown} userJoinedAt={new Date()} onTipProcessed={handleTipProcessed} />
+            {/* Tip notifications positioned within player container (same as Watch page) */}
+            <TipDisplay 
+              newTips={newTips} 
+              onTipShown={handleTipShown} 
+              isFullscreen={false}
+              userJoinedAt={userJoinedAt} 
+              onTipProcessed={handleTipProcessed} 
+            />
           </div>
           
           <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
