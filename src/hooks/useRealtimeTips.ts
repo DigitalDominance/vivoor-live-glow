@@ -67,6 +67,8 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
   useEffect(() => {
     if (!streamId) return;
 
+    console.log('[useRealtimeTips] Setting up realtime subscription for stream:', streamId);
+
     const channel = supabase
       .channel(`tips:stream_id=eq.${streamId}`)
       .on(
@@ -78,8 +80,11 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
           filter: `stream_id=eq.${streamId}`
         },
         (payload) => {
+          console.log('[useRealtimeTips] Received new tip:', payload);
           const newTipData = payload.new;
+          
           if (processedTipIds.has(newTipData.id)) {
+            console.log('[useRealtimeTips] Tip already processed, skipping:', newTipData.id);
             return;
           }
 
@@ -92,8 +97,14 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
             txid: newTipData.txid
           };
 
+          console.log('[useRealtimeTips] Processing new tip:', processedTip);
+
           // Add to tips list
-          setTips(prev => [processedTip, ...prev].slice(0, 50)); // Keep last 50 tips
+          setTips(prev => {
+            const updated = [processedTip, ...prev].slice(0, 50);
+            console.log('[useRealtimeTips] Updated tips list, total tips:', updated.length);
+            return updated;
+          });
           setProcessedTipIds(prev => new Set([...prev, processedTip.id]));
 
           // Show toast notification
@@ -104,14 +115,16 @@ export function useRealtimeTips({ streamId, onNewTip }: UseRealtimeTipsProps) {
         }
       )
       .subscribe((status) => {
+        console.log('[useRealtimeTips] Subscription status:', status);
         setIsConnected(status === 'SUBSCRIBED');
       });
 
     return () => {
+      console.log('[useRealtimeTips] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
       setIsConnected(false);
     };
-  }, [streamId, onNewTip]);
+  }, [streamId, onNewTip, processedTipIds]);
 
   return {
     tips,

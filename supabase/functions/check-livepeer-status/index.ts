@@ -22,57 +22,13 @@ serve(async (req) => {
       throw new Error('LIVEPEER_API_KEY not configured');
     }
 
-    // Check if this is a single stream check (for browser streams)
-    const body = await req.json().catch(() => ({}));
-    const singleStreamId = body.streamId;
-
-    if (singleStreamId) {
-      // For browser streams, check database heartbeat instead of Livepeer API
-      // Browser streams use WebRTC which Livepeer doesn't track accurately
-      console.log(`Checking browser stream status via database heartbeat`);
-      
-      const { data: streamData, error: streamError } = await supabaseClient
-        .from('streams')
-        .select('last_heartbeat, is_live, stream_type')
-        .eq('livepeer_stream_id', singleStreamId)
-        .single();
-
-      if (streamError || !streamData) {
-        console.error(`Failed to fetch stream from database:`, streamError);
-        return new Response(
-          JSON.stringify({ isActive: false, lastSeen: 0 }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Check if heartbeat is recent (within 60 seconds)
-      const now = new Date();
-      const lastHeartbeat = streamData.last_heartbeat ? new Date(streamData.last_heartbeat) : null;
-      const timeSinceHeartbeat = lastHeartbeat ? now.getTime() - lastHeartbeat.getTime() : Infinity;
-      const maxIdleTime = 60 * 1000; // 60 seconds
-      
-      // Stream is live if it has a recent heartbeat
-      const isActuallyLive = timeSinceHeartbeat < maxIdleTime;
-      
-      console.log(`Browser stream status: lastHeartbeat=${lastHeartbeat?.toISOString()}, timeSince=${timeSinceHeartbeat}ms, isLive=${isActuallyLive}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          isActive: isActuallyLive, 
-          lastSeen: lastHeartbeat ? lastHeartbeat.getTime() : 0 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Bulk check for all RTMP streams (original behavior)
+    // Check all streams with Livepeer IDs via Livepeer API
     const { data: streams, error: streamsError } = await supabaseClient
       .from('streams')
-      .select('id, livepeer_stream_id, user_id, title, is_live')
-      .neq('livepeer_stream_id', null)
-      .neq('stream_type', 'browser'); // Exclude browser streams from bulk check
+      .select('id, livepeer_stream_id, user_id, title, is_live, stream_type')
+      .neq('livepeer_stream_id', null);
 
-    console.log(`Found ${streams?.length || 0} RTMP streams with Livepeer IDs to check`);
+    console.log(`Found ${streams?.length || 0} streams with Livepeer IDs to check`);
 
     if (streamsError) {
       throw new Error(`Failed to fetch streams: ${streamsError.message}`);
@@ -80,7 +36,7 @@ serve(async (req) => {
 
     if (!streams || streams.length === 0) {
       return new Response(
-        JSON.stringify({ updated: 0, message: 'No RTMP streams with Livepeer IDs to check' }),
+        JSON.stringify({ updated: 0, message: 'No streams with Livepeer IDs to check' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
