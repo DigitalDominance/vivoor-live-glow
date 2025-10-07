@@ -76,14 +76,10 @@ export const BrowserStreamingProvider: React.FC<{ children: React.ReactNode }> =
       const data = heartbeatDataRef.current;
       if (!data) return;
       
-      // Only send heartbeat if broadcast is actually active
-      if (!isBroadcastActive) {
-        console.log('[BrowserStreamingContext] Skipping heartbeat - broadcast not active');
-        return;
-      }
-      
+      // Always send heartbeat for browser streams - they manage their own lifecycle
+      // The backend will handle the 3-minute timeout if no heartbeats are received
       try {
-        console.log('[BrowserStreamingContext] Sending heartbeat (broadcast active)');
+        console.log('[BrowserStreamingContext] Sending browser stream heartbeat');
         const { error } = await supabase.rpc('update_browser_stream_heartbeat', {
           session_token_param: data.sessionToken,
           wallet_address_param: data.walletAddress,
