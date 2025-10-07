@@ -58,7 +58,7 @@ const DonationsHistoryModal: React.FC<DonationsHistoryModalProps> = ({
                   className="p-4 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-cyan)_/_0.1)] via-[hsl(var(--brand-iris)_/_0.1)] to-[hsl(var(--brand-pink)_/_0.1)] border border-white/10 backdrop-blur-xl hover:border-white/30 transition-all shadow-lg"
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-[hsl(var(--brand-iris)_/_0.5)] mt-2 ml-1">
+                    <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-[hsl(var(--brand-iris)_/_0.5)] mt-3 ml-2">
                       <AvatarImage src={donation.senderAvatar} alt={donation.sender} />
                       <AvatarFallback className="bg-gradient-to-br from-[hsl(var(--brand-cyan)_/_0.3)] to-[hsl(var(--brand-iris)_/_0.3)] text-foreground font-semibold">
                         {donation.sender.slice(0, 2).toUpperCase()}
