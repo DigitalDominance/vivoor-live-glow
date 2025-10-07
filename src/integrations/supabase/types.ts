@@ -775,6 +775,14 @@ export type Database = {
         Args: { wallet_address: string }
         Returns: string
       }
+      end_browser_stream_secure: {
+        Args: {
+          session_token_param: string
+          stream_id_param: string
+          wallet_address_param: string
+        }
+        Returns: undefined
+      }
       end_user_active_streams: {
         Args: { user_id_param: string }
         Returns: number

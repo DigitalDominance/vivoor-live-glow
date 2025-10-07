@@ -284,8 +284,32 @@ const Stream = () => {
     try {
       console.log('Manually ending stream');
       
-      // Update stream in Supabase
-      if (streamData?.id) {
+      if (!streamData?.id || !identity?.address) {
+        toast.error('Unable to end stream - missing stream or wallet info');
+        return;
+      }
+      
+      // Get session token from wallet context
+      const sessionToken = localStorage.getItem('wallet_session_token');
+      if (!sessionToken) {
+        toast.error('No valid session found. Please reconnect your wallet.');
+        return;
+      }
+      
+      // Use secure function for browser streams
+      if (streamData.stream_type === 'browser') {
+        const { error } = await supabase.rpc('end_browser_stream_secure', {
+          session_token_param: sessionToken,
+          wallet_address_param: identity.address,
+          stream_id_param: streamData.id
+        });
+        
+        if (error) {
+          console.error('Error ending browser stream:', error);
+          throw new Error(`Failed to end stream: ${error.message}`);
+        }
+      } else {
+        // For RTMP streams, use regular update (already protected by RLS)
         const { error } = await supabase
           .from('streams')
           .update({ 
@@ -295,7 +319,7 @@ const Stream = () => {
           .eq('id', streamData.id);
           
         if (error) {
-          console.error('Error updating stream in database:', error);
+          console.error('Error ending RTMP stream:', error);
           throw new Error(`Failed to end stream: ${error.message}`);
         }
       }
