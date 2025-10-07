@@ -3,13 +3,12 @@ const SiteFooter = () => {
     <footer className="mt-16 border-t border-border/60">
       <div className="container mx-auto px-4 py-10">
         <div className="grid gap-6 md:flex md:items-center md:justify-between mb-4">
-          <a href="#top" className="flex items-center gap-1 font-display text-lg font-bold text-gradient">
+          <a href="#top" className="flex items-center gap-1 font-display text-lg font-bold">
             <img 
-              src="/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png" 
+              src="/lovable-uploads/vivoorlogo2.png" 
               alt="Vivoor logo" 
-              className="h-6 w-auto"
+              className="h-8 w-auto"
             />
-            ivoor
           </a>
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <a className="story-link" href="/docs">Documentation</a>
