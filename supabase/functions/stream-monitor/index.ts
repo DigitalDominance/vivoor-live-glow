@@ -23,22 +23,17 @@ serve(async (req: Request) => {
     // Always check Livepeer API for accurate stream status
     if (livepeerApiKey) {
       try {
-        // Only get RTMP/Livepeer streams for Livepeer API check
+        // Get all streams with Livepeer stream IDs (RTMP and browser)
         const { data: liveStreams } = await supabase
           .from('streams')
           .select('id, livepeer_stream_id, playback_url, stream_type, last_heartbeat')
           .eq('is_live', true)
-          .neq('stream_type', 'browser'); // Exclude browser streams from RTMP checks
+          .not('livepeer_stream_id', 'is', null); // Only check streams with Livepeer IDs
 
         console.log(`Checking ${liveStreams?.length || 0} live streams against Livepeer API`);
 
-        // Check each live RTMP/Livepeer stream
+        // Check each live stream via Livepeer API
         for (const stream of liveStreams || []) {
-          // Skip browser streams (should already be filtered, but double-check)
-          if (stream.stream_type === 'browser') {
-            console.log(`Skipping browser stream ${stream.id} from RTMP monitoring`);
-            continue;
-          }
           
           // Handle Livepeer streams
           if (stream.livepeer_stream_id) {
