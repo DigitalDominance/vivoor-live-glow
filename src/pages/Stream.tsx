@@ -21,7 +21,7 @@ import * as Player from "@livepeer/react/player";
 const Stream = () => {
   const { streamId } = useParams();
   const navigate = useNavigate();
-  const { identity } = useWallet();
+  const { identity, sessionToken } = useWallet(); // Get sessionToken from wallet context
   const kaspaAddress = identity?.address; // The kaspa wallet address from wallet identity
   const [elapsed, setElapsed] = React.useState(0);
   const [isAuthorized, setIsAuthorized] = React.useState(false);
@@ -292,12 +292,13 @@ const Stream = () => {
         return;
       }
       
-      // Get session token from wallet context
-      const sessionToken = localStorage.getItem('wallet_session_token');
+      // Get session token from wallet context (not localStorage)
       if (!sessionToken) {
         toast.error('No valid session found. Please reconnect your wallet.');
         return;
       }
+      
+      console.log('Ending stream with session token from context');
       
       // Use secure function for browser streams
       if (streamData.stream_type === 'browser') {
