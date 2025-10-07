@@ -436,6 +436,20 @@ const Stream = () => {
           console.error('Error stopping Livepeer stream:', stopError);
           throw new Error(`Failed to stop stream: ${stopError.message}`);
         }
+        
+        // Clear local storage
+        localStorage.removeItem('currentIngestUrl');
+        localStorage.removeItem('currentStreamKey');
+        localStorage.removeItem('currentPlaybackUrl');
+        localStorage.removeItem('streamStartTime');
+        localStorage.removeItem('currentStreamId');
+        localStorage.removeItem('currentStreamingMode');
+        localStorage.removeItem('currentLivepeerPlaybackId');
+        
+        toast.success('Stream ended successfully');
+        
+        // Refresh the page to fully release camera and microphone
+        window.location.reload();
       } else {
         // For RTMP streams, use regular update (already protected by RLS)
         const { error } = await supabase
@@ -450,19 +464,19 @@ const Stream = () => {
           console.error('Error ending RTMP stream:', error);
           throw new Error(`Failed to end stream: ${error.message}`);
         }
+        
+        // Clear local storage
+        localStorage.removeItem('currentIngestUrl');
+        localStorage.removeItem('currentStreamKey');
+        localStorage.removeItem('currentPlaybackUrl');
+        localStorage.removeItem('streamStartTime');
+        localStorage.removeItem('currentStreamId');
+        localStorage.removeItem('currentStreamingMode');
+        localStorage.removeItem('currentLivepeerPlaybackId');
+        
+        toast.success('Stream ended successfully');
+        navigate('/app');
       }
-      
-      // Clear local storage
-      localStorage.removeItem('currentIngestUrl');
-      localStorage.removeItem('currentStreamKey');
-      localStorage.removeItem('currentPlaybackUrl');
-      localStorage.removeItem('streamStartTime');
-      localStorage.removeItem('currentStreamId');
-      localStorage.removeItem('currentStreamingMode');
-      localStorage.removeItem('currentLivepeerPlaybackId');
-      
-      toast.success('Stream ended successfully');
-      navigate('/app');
     } catch (error) {
       console.error('Failed to end stream:', error);
       toast.error(`Failed to end stream: ${error instanceof Error ? error.message : 'Unknown error'}`);
