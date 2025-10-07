@@ -2,6 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import "./donations-history-scrollbar.css";
 
 interface Donation {
   id: string;
@@ -44,7 +45,7 @@ const DonationsHistoryModal: React.FC<DonationsHistoryModalProps> = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[400px] pr-4">
+        <ScrollArea className="max-h-[400px] pr-4 donations-history-scroll">
           {sortedDonations.length === 0 ? (
             <div className="text-center py-12 text-foreground/60">
               No donations yet. Be the first to support!

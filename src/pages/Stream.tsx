@@ -131,34 +131,146 @@ const Stream = () => {
 
   const [userJoinedAt] = React.useState(new Date()); // Track when user started viewing
 
-  // Monitor tips for this stream using realtime subscription
-  const { tips: allTips, totalAmountReceived } = useRealtimeTips({
+  const [watchStartTime, setWatchStartTime] = React.useState<number>(Date.now());
+
+  // Monitor tips for this stream using realtime subscription (same as Watch page)
+  const { tips: allTips, totalAmountReceived, isConnected: tipConnected } = useRealtimeTips({
     streamId: streamData?.id,
     onNewTip: (tip) => {
-      // Only show tips that occurred after the user started watching (same as Watch page)
-      if (tip.timestamp >= userJoinedAt.getTime()) {
+      // Only show tips that occurred after the user started watching
+      if (tip.timestamp >= watchStartTime) {
         setNewTips(prev => [...prev, tip]);
       }
     }
   });
 
-  const handleTipProcessed = (tip: { id: string; sender: string; senderAvatar?: string; amount: number; message?: string; timestamp: number }) => {
-    console.log('[Stream] Adding tip to donation history:', tip);
-    setAllStoredDonations(prev => {
-      const updated = [...prev, tip];
+  // Show previous tips when user first arrives, then only new ones (same as Watch page)
+  React.useEffect(() => {
+    if (allTips.length > 0 && shownTipIds.size === 0) {
+      // First time loading - show recent tips from before they started watching
+      const recentTips = allTips.slice(-3); // Show last 3 tips
+      setNewTips(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newTipsToAdd = recentTips.filter(tip => !existingIds.has(tip.id));
+        return [...prev, ...newTipsToAdd];
+      });
+    }
+  }, [allTips, shownTipIds]);
+
+  // Set up periodic tip fetching every 5 seconds (same as Watch page)
+  React.useEffect(() => {
+    if (!streamData?.id) return;
+
+    const interval = setInterval(async () => {
       try {
-        localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
-        console.log('[Stream] Saved donation to localStorage, total donations:', updated.length);
-      } catch (e) {
-        console.warn('Failed to save donation to localStorage:', e);
+        const { data: recentTips, error } = await supabase
+          .from('tips')
+          .select('*')
+          .eq('stream_id', streamData.id)
+          .gte('created_at', new Date(watchStartTime).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (error) {
+          console.error('Error fetching recent tips:', error);
+          return;
+        }
+
+        if (recentTips) {
+          const processedTips = recentTips.map(tip => ({
+            id: tip.id,
+            amount: Math.round(tip.amount_sompi / 100000000),
+            sender: tip.sender_name || 'Anonymous',
+            message: tip.tip_message,
+            timestamp: new Date(tip.created_at).getTime(),
+            txid: tip.txid,
+            created_at: tip.created_at
+          }));
+
+          // Add any new tips that aren't already shown and occurred after watch start
+          const newUnshownTips = processedTips.filter(tip => 
+            !shownTipIds.has(tip.id) && 
+            new Date(tip.created_at).getTime() >= watchStartTime
+          );
+          
+          if (newUnshownTips.length > 0) {
+            setNewTips(prev => {
+              const existingIds = new Set(prev.map(t => t.id));
+              const newTipsToAdd = newUnshownTips.filter(tip => !existingIds.has(tip.id));
+              return [...prev, ...newTipsToAdd];
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error in tip polling:', error);
       }
-      return updated;
-    });
-  };
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [streamData?.id, shownTipIds, watchStartTime]);
+
+  // Fetch all tips from Supabase for donations history
+  const { data: allDonations } = useQuery({
+    queryKey: ['stream-tips', streamData?.id],
+    queryFn: async () => {
+      if (!streamData?.id) return [];
+      
+      const { data: tipsData, error } = await supabase
+        .from('tips')
+        .select('*')
+        .eq('stream_id', streamData.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching tips:', error);
+        return [];
+      }
+
+      // Fetch profile data for each tip sender
+      const tipsWithProfiles = await Promise.all(
+        (tipsData || []).map(async (tip) => {
+          let senderProfile = null;
+          let senderName = tip.sender_name || 'Anonymous';
+          let senderAvatar = tip.sender_avatar;
+
+          // Try to get profile by kaspa address if sender_name looks like a user ID
+          if (tip.sender_name && tip.sender_name.startsWith('usr_')) {
+            const { data: profileData } = await supabase.rpc('get_public_profile_display', {
+              user_id: tip.sender_name
+            });
+            senderProfile = profileData?.[0];
+            if (senderProfile) {
+              senderName = senderProfile.display_name || senderProfile.handle || 'Anonymous';
+              senderAvatar = senderProfile.avatar_url;
+            }
+          }
+
+          return {
+            id: tip.id,
+            sender: senderName,
+            senderAvatar: senderAvatar,
+            amount: Math.round(tip.amount_sompi / 100000000), // Convert sompi to KAS
+            message: tip.tip_message || tip.decrypted_message,
+            timestamp: new Date(tip.created_at).getTime()
+          };
+        })
+      );
+
+      return tipsWithProfiles;
+    },
+    enabled: !!streamData?.id,
+    refetchInterval: 10000 // Refetch every 10 seconds
+  });
 
   const handleTipShown = (tipId: string) => {
     setShownTipIds(prev => new Set([...prev, tipId]));
     setNewTips(prev => prev.filter(tip => tip.id !== tipId));
+  };
+
+  const handleTipProcessed = (tip: { id: string; sender: string; senderAvatar?: string; amount: number; message?: string; timestamp: number }) => {
+    console.log('[Stream] Tip processed:', tip);
+    // Tip is already being fetched from Supabase in allDonations query
+    // No need to store locally anymore
   };
 
   React.useEffect(() => {
@@ -300,17 +412,29 @@ const Stream = () => {
       
       console.log('Ending stream with session token from context');
       
-      // Use secure function for browser streams
+      // For browser streams, stop the media tracks and Livepeer stream
       if (streamData.stream_type === 'browser') {
-        const { error } = await supabase.rpc('end_browser_stream_secure', {
-          session_token_param: sessionToken,
-          wallet_address_param: identity.address,
-          stream_id_param: streamData.id
+        // Stop local camera/mic
+        const mediaStream = (document.querySelector('video') as HTMLVideoElement)?.srcObject as MediaStream;
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => {
+            track.stop();
+            console.log('Stopped media track:', track.kind);
+          });
+        }
+
+        // Call edge function to stop Livepeer stream (securely with API key)
+        const { error: stopError } = await supabase.functions.invoke('stop-livepeer-stream', {
+          body: {
+            session_token: sessionToken,
+            wallet_address: identity.address,
+            stream_id: streamData.id
+          }
         });
         
-        if (error) {
-          console.error('Error ending browser stream:', error);
-          throw new Error(`Failed to end stream: ${error.message}`);
+        if (stopError) {
+          console.error('Error stopping Livepeer stream:', stopError);
+          throw new Error(`Failed to stop stream: ${stopError.message}`);
         }
       } else {
         // For RTMP streams, use regular update (already protected by RLS)
@@ -429,8 +553,12 @@ const Stream = () => {
                   size="sm" 
                   onClick={() => setDonationsHistoryOpen(true)}
                   className="border border-white/10 hover:border-primary/50 hover:bg-primary/10"
+                  title="Donations History"
                 >
                   <DollarSign className="size-4" />
+                  {allDonations && allDonations.length > 0 && (
+                    <span className="ml-1 text-xs">({allDonations.length})</span>
+                  )}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={handleEndStream}>
                   End Stream
@@ -597,7 +725,7 @@ const Stream = () => {
       <DonationsHistoryModal
         open={donationsHistoryOpen}
         onOpenChange={setDonationsHistoryOpen}
-        donations={allStoredDonations}
+        donations={allDonations || []}
       />
       
     </main>

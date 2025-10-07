@@ -470,11 +470,13 @@ const Watch = () => {
 
   // Video control handlers
   const handlePlayPause = () => {
-    if (videoRef.current) {
+    // Get video element - works for both HLS and browser streams
+    const video = videoRef.current || document.querySelector('video');
+    if (video) {
       if (isPlaying) {
-        videoRef.current.pause();
+        video.pause();
       } else {
-        videoRef.current.play();
+        video.play();
       }
     }
   };
@@ -535,8 +537,9 @@ const Watch = () => {
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
-    if (videoRef.current) {
-      videoRef.current.volume = newVolume;
+    const video = videoRef.current || document.querySelector('video');
+    if (video) {
+      video.volume = newVolume;
     }
     if (newVolume > 0) setIsMuted(false);
   };
@@ -544,8 +547,9 @@ const Watch = () => {
   const handleToggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = newMuted;
+    const video = videoRef.current || document.querySelector('video');
+    if (video) {
+      video.muted = newMuted;
     }
   };
 
@@ -558,7 +562,8 @@ const Watch = () => {
 
   // Handle video events for control state sync and auto-unmute
   React.useEffect(() => {
-    const video = videoRef.current;
+    // Support both HLS and browser stream video elements
+    const video = videoRef.current || document.querySelector('video');
     if (!video) return;
 
     const handlePlay = () => setIsPlaying(true);
@@ -602,7 +607,7 @@ const Watch = () => {
       video.removeEventListener('canplay', handleCanPlay);
       video.removeEventListener('click', handleClick);
     };
-  }, [volume]);
+  }, [volume, streamData?.stream_type, streamPlayback?.hlsUrl]); // Re-attach when stream type or URL changes
 
   // Handle fullscreen changes
   React.useEffect(() => {
