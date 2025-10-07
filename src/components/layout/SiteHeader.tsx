@@ -21,7 +21,7 @@ import MyProfileModal from "@/components/modals/MyProfileModal";
 const Wordmark = () => (
   <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
     <img src="/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png" alt="Vivoor logo" className="h-8 w-auto" />
-    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">Vivoor</span>
+    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">vivoor</span>
   </Link>
 );
 
