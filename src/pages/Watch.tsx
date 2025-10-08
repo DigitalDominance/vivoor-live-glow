@@ -18,7 +18,8 @@ import { useRealtimeTips } from "@/hooks/useRealtimeTips";
 import { useStreamStatus } from "@/hooks/useStreamStatus";
 import { useViewerTracking } from "@/hooks/useViewerTracking";
 import { useSecureViewerCount } from "@/hooks/useSecureViewerCount";
-import { useStreamChat } from "@/hooks/useStreamChat";
+import { useChatMessages } from "@/hooks/useChatMessages";
+import { useOnChainChat } from "@/hooks/useOnChainChat";
 import { useStreamReadiness } from "@/hooks/useStreamReadiness";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
@@ -59,8 +60,9 @@ const Watch = () => {
   const [qualityLevels, setQualityLevels] = React.useState<Array<{label: string, value: number}>>([]);
   const [currentQuality, setCurrentQuality] = React.useState<number>(-1); // -1 for auto
 
-  // WebSocket chat
-  const { messages: wsMessages, sendChat, isConnected: chatConnected } = useStreamChat(streamId || '');
+  // On-chain chat system
+  const { messages: chatMessages } = useChatMessages(streamId || '');
+  const { sendMessage: sendOnChainMessage, isSending: isSendingMessage } = useOnChainChat(streamId || '');
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
@@ -226,26 +228,6 @@ const Watch = () => {
     enabled: !!streamData
   });
 
-  // Transform WebSocket messages to chat format
-  const chatMessages = React.useMemo(() => {
-    return wsMessages
-      .filter(msg => msg.type === 'chat') // Only show chat messages
-      .map(msg => ({
-        id: `${msg.serverTs}-${msg.user.id}`,
-        user: {
-          id: msg.user.id,
-          name: msg.user.name,
-          avatar: msg.user.avatar
-        },
-        text: msg.text,
-        time: new Date(msg.serverTs).toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        })
-      }));
-  }, [wsMessages]);
-
   const [watchStartTime, setWatchStartTime] = React.useState<number>(Date.now());
 
   // Monitor tips for this stream using real-time Supabase
@@ -378,7 +360,7 @@ const Watch = () => {
     }
   }, [streamData?.id, livepeerIsLive]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!identity?.id || !newMessage.trim()) {
       toast.error('Please connect your wallet to chat');
       return;
@@ -390,14 +372,11 @@ const Watch = () => {
       return;
     }
 
-    const user = {
-      id: identity.id,
-      name: currentUserProfile?.display_name || currentUserProfile?.handle || `User ${identity.id.slice(0, 8)}`,
-      avatar: currentUserProfile?.avatar_url
-    };
-
-    sendChat(newMessage.trim(), user);
-    setNewMessage('');
+    // Send message on-chain
+    const success = await sendOnChainMessage(newMessage.trim());
+    if (success) {
+      setNewMessage('');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -923,15 +902,15 @@ const Watch = () => {
         <div className="lg:col-span-1">
           <ChatPanel
             messages={chatMessages}
-            canPost={!!identity?.id}
+            canPost={!!identity?.id && !isSendingMessage}
             onRequireLogin={onRequireLogin}
             newMessage={newMessage}
             onMessageChange={setNewMessage}
             onSendMessage={handleSendMessage}
           />
-          {!chatConnected && (
+          {isSendingMessage && (
             <div className="text-xs text-muted-foreground mt-2 text-center">
-              Connecting to chat...
+              Sending message on-chain...
             </div>
           )}
         </div>
