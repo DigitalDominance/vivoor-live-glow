@@ -49,10 +49,26 @@ export function useOnChainChat(streamId: string) {
         { payload: encryptedPayload }
       );
 
-      // Extract txid from response (kasware returns a transaction object or string)
-      const txid = typeof txResponse === 'string' ? txResponse : (txResponse as any).id;
+      console.log('[OnChainChat] Raw txResponse:', txResponse);
+
+      // Extract txid from response (kasware can return string, object, or stringified JSON)
+      let txid: string;
+      if (typeof txResponse === 'string') {
+        // Try to parse if it's a JSON string
+        try {
+          const parsed = JSON.parse(txResponse);
+          txid = parsed.id || txResponse;
+        } catch {
+          // Not JSON, use as-is
+          txid = txResponse;
+        }
+      } else if (txResponse && typeof txResponse === 'object' && 'id' in txResponse) {
+        txid = (txResponse as any).id;
+      } else {
+        throw new Error('Invalid transaction response from wallet');
+      }
       
-      console.log('[OnChainChat] Transaction sent:', txid);
+      console.log('[OnChainChat] Extracted txid:', txid);
 
       // Verify and save message via Supabase edge function
       const { data, error } = await supabase.functions.invoke('verify-chat-message', {
