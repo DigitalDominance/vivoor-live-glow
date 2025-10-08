@@ -130,123 +130,71 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
   return TIP_IDENTIFIER + upperHex.slice(index + identifierHex.length);
 }
 
-// ============= CHAT MESSAGE ENCRYPTION =============
-const CHAT_IDENTIFIER = "Vivoor-chat:1:";
-const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG"; // Constant identifier for on-chain discovery
-const VIVOOR_MESSAGE_VERSION = "1"; // Version number for future compatibility
+// ============= CHAT MESSAGE (PLAIN TEXT) =============
+// Format: ciph_msg:1:bcast:{streamID}:{message}
+// No encryption - plain text converted to hex
 
-// Encrypt a chat message with format {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
-export async function encryptChatMessage(
-  username: string,
+// Create chat message payload
+export function createChatMessagePayload(
   streamId: string,
   messageContent: string
-): Promise<string> {
-  try {
-    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
-    const key = await deriveKey(sharedSecret);
-    
-    // Create payload with format: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
-    const payload = `${VIVOOR_MESSAGE_IDENTIFIER}:${VIVOOR_MESSAGE_VERSION}:${streamId}:${messageContent}:${Date.now()}`;
-    
-    const encoder = new TextEncoder();
-    const data = encoder.encode(payload);
-    
-    // Generate random IV
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    
-    // Encrypt the data
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-    
-    // Combine IV and encrypted data
-    const combined = new Uint8Array(iv.length + encrypted.byteLength);
-    combined.set(iv);
-    combined.set(new Uint8Array(encrypted), iv.length);
-    
-    // Convert to hex string
-    const hexString = Array.from(combined)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    return CHAT_IDENTIFIER + hexString;
-  } catch (error) {
-    console.error('Chat encryption error:', error);
-    throw new Error('Failed to encrypt chat message');
-  }
+): string {
+  // Create plain text payload in format: ciph_msg:1:bcast:{streamID}:{message}
+  const payload = `ciph_msg:1:bcast:${streamId}:${messageContent}`;
+  
+  // Convert to hex
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(payload);
+  const hexString = Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return hexString;
 }
 
-// Decrypt a chat message
-export async function decryptChatMessage(encryptedPayload: string): Promise<{
+// Parse chat message from plain text payload
+export function parseChatMessagePayload(payloadHex: string): {
   identifier: string;
   version: string;
+  broadcast: string;
   streamId: string;
   messageContent: string;
-  timestamp: number;
-} | null> {
+} | null {
   try {
-    // Remove identifier prefix
-    if (!encryptedPayload.startsWith(CHAT_IDENTIFIER)) {
-      return null;
+    // Convert hex to string
+    const bytes: number[] = [];
+    for (let i = 0; i < payloadHex.length; i += 2) {
+      const byte = parseInt(payloadHex.slice(i, i + 2), 16);
+      if (!Number.isNaN(byte)) bytes.push(byte);
     }
+    const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
     
-    const hexData = encryptedPayload.slice(CHAT_IDENTIFIER.length);
-    
-    // Convert hex to bytes
-    const bytes = new Uint8Array(
-      hexData.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
-    );
-    
-    if (bytes.length < 12) {
-      return null;
-    }
-    
-    // Extract IV and encrypted data
-    const iv = bytes.slice(0, 12);
-    const encrypted = bytes.slice(12);
-    
-    // Use same shared secret
-    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
-    const key = await deriveKey(sharedSecret);
-    
-    // Decrypt the data
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
-    );
-    
-    const decoder = new TextDecoder();
-    const payloadString = decoder.decode(decrypted);
-    
-    // Parse the format: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
-    const parts = payloadString.split(':');
+    // Parse format: ciph_msg:1:bcast:{streamID}:{message}
+    const parts = payloadText.split(':');
     if (parts.length < 5) {
       return null;
     }
     
-    const identifier = parts[0];
-    const version = parts[1];
-    const streamId = parts[2];
-    const timestamp = parseInt(parts[parts.length - 1]);
-    const messageContent = parts.slice(3, -1).join(':');
+    const identifier = parts[0]; // ciph_msg
+    const version = parts[1]; // 1
+    const broadcast = parts[2]; // bcast
+    const streamId = parts[3];
+    const messageContent = parts.slice(4).join(':'); // Handle colons in message
     
-    // Verify it's a valid Vivoor message
-    if (identifier !== VIVOOR_MESSAGE_IDENTIFIER || version !== VIVOOR_MESSAGE_VERSION) {
+    // Verify format
+    if (identifier !== 'ciph_msg' || version !== '1' || broadcast !== 'bcast') {
       return null;
     }
     
     return {
       identifier,
       version,
+      broadcast,
       streamId,
-      messageContent,
-      timestamp
+      messageContent
     };
   } catch (error) {
-    console.error('Chat decryption error:', error);
+    console.error('Parse error:', error);
     return null;
   }
 }
@@ -254,8 +202,6 @@ export async function decryptChatMessage(encryptedPayload: string): Promise<{
 // Extract chat identifier from transaction payload
 export function extractChatFromPayload(payloadHex?: string | null): string | undefined {
   if (!payloadHex) return undefined;
-  
-  const CHAT_IDENTIFIER = "Vivoor-chat:1:";
   
   try {
     // Convert hex payload to string
@@ -266,9 +212,9 @@ export function extractChatFromPayload(payloadHex?: string | null): string | und
     }
     const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
     
-    if (payloadText.includes(CHAT_IDENTIFIER)) {
-      const idx = payloadText.indexOf(CHAT_IDENTIFIER);
-      return payloadText.slice(idx);
+    // Check for new format: ciph_msg:1:bcast:
+    if (payloadText.includes('ciph_msg:1:bcast:')) {
+      return payloadHex;
     }
   } catch (error) {
     console.error('Error extracting chat from payload:', error);

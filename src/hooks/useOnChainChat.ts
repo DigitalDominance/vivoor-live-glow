@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { supabase } from "@/integrations/supabase/client";
-import { encryptChatMessage } from "@/lib/crypto";
+import { createChatMessagePayload } from "@/lib/crypto";
 import { toast } from "sonner";
 
 export function useOnChainChat(streamId: string) {
@@ -29,12 +29,8 @@ export function useOnChainChat(streamId: string) {
     setIsSending(true);
 
     try {
-      // Get username from profile
-      const username = profile?.username || 'Anonymous';
-
-      // Encrypt the message payload: {username}:{streamID}:{messageContent}:{timestamp}
-      const encryptedPayload = await encryptChatMessage(
-        username,
+      // Create plain text payload: ciph_msg:1:bcast:{streamID}:{message}
+      const payloadHex = createChatMessagePayload(
         streamId,
         messageText.trim()
       );
@@ -42,14 +38,15 @@ export function useOnChainChat(streamId: string) {
       console.log('[OnChainChat] Sending message transaction:', {
         to: identity.address,
         amount: '1.2 KAS',
-        payloadLength: encryptedPayload.length
+        payloadFormat: 'ciph_msg:1:bcast:{streamID}:{message}',
+        payloadLength: payloadHex.length
       });
 
-      // Send 1.2 KAS to sender's own address with encrypted payload
+      // Send 1.2 KAS to sender's own address with plain text payload
       const txResponse = await window.kasware.sendKaspa(
         identity.address, // Send to self
         120000000, // 1.2 KAS in sompi
-        { payload: encryptedPayload }
+        { payload: payloadHex }
       );
 
       console.log('[OnChainChat] Raw txResponse:', txResponse);

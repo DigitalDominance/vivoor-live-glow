@@ -1,0 +1,40 @@
+/* Custom scrollbar with smooth gradient glass effect */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    hsl(329, 75%, 80%) 0%,
+    hsl(280, 75%, 75%) 25%,
+    hsl(252, 85%, 75%) 50%,
+    hsl(230, 80%, 70%) 75%,
+    hsl(190, 85%, 65%) 100%
+  );
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    hsl(329, 75%, 85%) 0%,
+    hsl(280, 75%, 80%) 25%,
+    hsl(252, 85%, 80%) 50%,
+    hsl(230, 80%, 75%) 75%,
+    hsl(190, 85%, 70%) 100%
+  );
+}
+
+/* Firefox scrollbar */
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(252, 85%, 75%) rgba(0, 0, 0, 0.3);
+}

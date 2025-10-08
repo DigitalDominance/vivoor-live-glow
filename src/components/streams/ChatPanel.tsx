@@ -5,6 +5,7 @@ import { SendHorizonal } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
+import "./chat-panel.css";
 
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
@@ -78,15 +79,30 @@ const ChatPanel: React.FC<{
   };
   
   return (
-    <div className="h-full flex flex-col rounded-xl border border-border bg-card/60 backdrop-blur-md">
-      <div className="px-3 py-2 border-b border-border/60 text-sm font-medium">
-        Chat {messages.length > 0 && `(${messages.length})`}
-      </div>
-      <div 
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[300px] max-h-[400px] lg:max-h-[500px]"
-      >
+    <div className="h-full flex flex-col rounded-xl relative bg-black/70 backdrop-blur-xl overflow-hidden">
+      {/* Smooth gradient outline with glow */}
+      <div className="absolute inset-0 rounded-xl opacity-60 pointer-events-none" style={{
+        background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+        padding: '1.5px',
+        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+        WebkitMaskComposite: 'xor',
+        maskComposite: 'exclude'
+      }} />
+      
+      {/* Glow effect */}
+      <div className="absolute inset-0 rounded-xl blur-md opacity-30 pointer-events-none" style={{
+        background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+      }} />
+
+      <div className="relative z-10 h-full flex flex-col">
+        <div className="px-3 py-2 border-b border-white/10 text-sm font-medium text-foreground">
+          Chat {messages.length > 0 && `(${messages.length})`}
+        </div>
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[300px] max-h-[400px] lg:max-h-[500px] chat-scrollbar"
+        >
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm mt-8">
             No messages yet. Be the first to say something!
@@ -114,33 +130,34 @@ const ChatPanel: React.FC<{
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="p-2 border-t border-border/60">
-        {canPost !== undefined && canPost !== null ? (
-          <div className="flex gap-2">
-            <input 
-              className="flex-1 rounded-md bg-background px-3 py-2 text-sm border border-border" 
-              placeholder="Say something..." 
-              value={newMessage}
-              onChange={(e) => onMessageChange?.(e.target.value)}
-              onKeyPress={handleKeyPress}
-            />
-            <Button 
-              size="icon" 
-              variant="hero" 
-              aria-label="Send"
-              onClick={onSendMessage}
-              disabled={!newMessage.trim()}
-            >
-              <SendHorizonal />
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="p-2 border-t border-white/10">
+          {canPost !== undefined && canPost !== null ? (
+            <div className="flex gap-2">
+              <input 
+                className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" 
+                placeholder="Say something..." 
+                value={newMessage}
+                onChange={(e) => onMessageChange?.(e.target.value)}
+                onKeyPress={handleKeyPress}
+              />
+              <Button 
+                size="icon" 
+                variant="hero" 
+                aria-label="Send"
+                onClick={onSendMessage}
+                disabled={!newMessage.trim()}
+              >
+                <SendHorizonal />
+              </Button>
+            </div>
+          ) : (
+            <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
+              Login to chat
             </Button>
-          </div>
-        ) : (
-          <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
-            Login to chat
-          </Button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

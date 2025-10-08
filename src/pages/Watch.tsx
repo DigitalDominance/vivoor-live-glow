@@ -717,9 +717,23 @@ const Watch = () => {
           {/* Video player */}
           <div 
             ref={playerContainerRef}
-            className="relative rounded-xl overflow-hidden border-2 border-transparent bg-gradient-to-r from-brand-cyan/20 via-brand-iris/20 to-brand-pink/20 p-1"
+            className="relative rounded-xl overflow-hidden bg-black/70 backdrop-blur-xl"
           >
-            <div className="relative rounded-lg overflow-hidden bg-black">
+            {/* Smooth gradient outline with glow */}
+            <div className="absolute inset-0 rounded-xl opacity-40 pointer-events-none z-10" style={{
+              background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+              padding: '2px',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude'
+            }} />
+            
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-xl blur-lg opacity-20 pointer-events-none" style={{
+              background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+            }} />
+            
+            <div className="relative rounded-lg overflow-hidden bg-black z-0">
               {streamData.is_live ? (
                 streamPlayback ? (
                   <>
@@ -813,8 +827,22 @@ const Watch = () => {
           </div>
 
           {/* Stream info */}
-          <div className="glass rounded-xl p-4">
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+          <div className="relative rounded-xl p-4 bg-black/70 backdrop-blur-xl overflow-hidden">
+            {/* Smooth gradient outline */}
+            <div className="absolute inset-0 rounded-xl opacity-60 pointer-events-none" style={{
+              background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+              padding: '1.5px',
+              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              WebkitMaskComposite: 'xor',
+              maskComposite: 'exclude'
+            }} />
+            
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-xl blur-md opacity-25 pointer-events-none" style={{
+              background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
+            }} />
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
                 <Avatar className="size-10 sm:size-12 flex-shrink-0">
                   <AvatarImage src={streamerProfile?.avatar_url || undefined} />
