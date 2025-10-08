@@ -373,29 +373,29 @@ const Watch = () => {
       return;
     }
 
-    // Add optimistic message immediately
-    const optimisticMsg = {
-      id: `optimistic-${Date.now()}`,
-      user: {
-        id: currentUserProfile?.id || identity.id,
-        name: currentUserProfile?.handle || currentUserProfile?.display_name || 'You',
-        avatar: currentUserProfile?.avatar_url
-      },
-      text: newMessage.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setOptimisticMessages(prev => [...prev, optimisticMsg]);
-    
     const messageToSend = newMessage.trim();
-    setNewMessage(''); // Clear immediately for better UX
+    setNewMessage(''); // Clear input immediately
 
+    // Send the transaction first - this will show kasware popup
     const success = await sendOnChainMessage(messageToSend);
-    if (!success) {
-      // Remove optimistic message on failure and restore input
-      setOptimisticMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+    
+    if (success) {
+      // Only add optimistic message AFTER kasware transaction is confirmed
+      const optimisticMsg = {
+        id: `optimistic-${Date.now()}`,
+        user: {
+          id: currentUserProfile?.id || identity.id,
+          name: currentUserProfile?.handle || currentUserProfile?.display_name || 'You',
+          avatar: currentUserProfile?.avatar_url
+        },
+        text: messageToSend,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setOptimisticMessages(prev => [...prev, optimisticMsg]);
+    } else {
+      // Restore message on failure
       setNewMessage(messageToSend);
     }
-    // Keep optimistic message for sender - other users will see it from real-time
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -921,7 +921,14 @@ const Watch = () => {
         <div className="lg:col-span-1">
           <ChatPanel
             messages={[
-              ...chatMessages.filter(msg => msg.user.id !== (currentUserProfile?.id || identity?.id)),
+              ...chatMessages.filter(msg => {
+                // Only filter out messages that match current optimistic messages
+                return !optimisticMessages.some(opt => 
+                  opt.text === msg.text && 
+                  opt.user.id === msg.user.id &&
+                  Math.abs(new Date(msg.time).getTime() - Date.now()) < 20000 // Within last 20 seconds
+                );
+              }),
               ...optimisticMessages
             ]}
             canPost={!!identity?.id}
