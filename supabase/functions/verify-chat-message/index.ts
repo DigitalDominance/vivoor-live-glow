@@ -213,11 +213,13 @@ serve(async (req) => {
       )
     }
 
-    // Extract and parse chat message from payload (plain text, no encryption)
+    // Extract and parse chat message from payload (NO DECRYPTION - plain text hex only)
+    console.log('[ChatVerify] Raw payload hex:', tx.payload);
+    
     let parsedData = null
     if (tx.payload) {
       try {
-        // First check if payload contains our identifier
+        // First check if payload contains our identifier by converting hex to string
         const bytes: number[] = [];
         for (let i = 0; i < tx.payload.length; i += 2) {
           const byte = parseInt(tx.payload.slice(i, i + 2), 16);
@@ -225,17 +227,25 @@ serve(async (req) => {
         }
         const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
         
+        console.log('[ChatVerify] Decoded payload text:', payloadText);
+        console.log('[ChatVerify] Contains identifier?', payloadText.includes('ciph_msg:1:bcast:'));
+        
         if (payloadText.includes('ciph_msg:1:bcast:')) {
           parsedData = parseChatMessage(tx.payload);
+          console.log('[ChatVerify] Parsed data:', parsedData);
+        } else {
+          console.error('[ChatVerify] Payload does not contain identifier. Got:', payloadText.substring(0, 50));
         }
       } catch (error) {
-        console.error('Error parsing payload:', error);
+        console.error('[ChatVerify] Error parsing payload:', error);
       }
+    } else {
+      console.error('[ChatVerify] No payload in transaction');
     }
 
     if (!parsedData) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to parse message payload' }),
+        JSON.stringify({ success: false, error: 'Failed to parse message payload - check logs for details' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

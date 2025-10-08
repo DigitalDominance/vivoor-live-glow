@@ -29,16 +29,18 @@ export function useOnChainChat(streamId: string) {
     setIsSending(true);
 
     try {
-      // Create plain text payload: ciph_msg:1:bcast:{streamID}:{message}
+      // Create plain text payload (NO ENCRYPTION): ciph_msg:1:bcast:{streamID}:{message}
       const payloadHex = createChatMessagePayload(
         streamId,
         messageText.trim()
       );
 
-      console.log('[OnChainChat] Sending message transaction:', {
+      console.log('[OnChainChat] Sending transaction with payload:', {
         to: identity.address,
         amount: '1.2 KAS',
-        payloadFormat: 'ciph_msg:1:bcast:{streamID}:{message}',
+        streamId,
+        messageText: messageText.trim(),
+        payloadHex: payloadHex,
         payloadLength: payloadHex.length
       });
 

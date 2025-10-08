@@ -134,7 +134,7 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
 // Format: ciph_msg:1:bcast:{streamID}:{message}
 // No encryption - plain text converted to hex
 
-// Create chat message payload
+// Create chat message payload (NO ENCRYPTION - plain text to hex only)
 export function createChatMessagePayload(
   streamId: string,
   messageContent: string
@@ -142,12 +142,17 @@ export function createChatMessagePayload(
   // Create plain text payload in format: ciph_msg:1:bcast:{streamID}:{message}
   const payload = `ciph_msg:1:bcast:${streamId}:${messageContent}`;
   
-  // Convert to hex
+  console.log('[ChatPayload] Plain text payload:', payload);
+  
+  // Convert to hex (NOT encryption, just encoding)
   const encoder = new TextEncoder();
   const bytes = encoder.encode(payload);
   const hexString = Array.from(bytes)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+  
+  console.log('[ChatPayload] Hex payload:', hexString);
+  console.log('[ChatPayload] Hex length:', hexString.length);
   
   return hexString;
 }
