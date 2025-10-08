@@ -34,7 +34,7 @@ interface KaspaTx {
 }
 
 // Parse chat message from plain text payload (no encryption)
-function parseChatMessage(payloadHex: string): {
+function parseChatMessage(payloadData: string): {
   identifier: string;
   version: string;
   broadcast: string;
@@ -42,13 +42,21 @@ function parseChatMessage(payloadHex: string): {
   messageContent: string;
 } | null {
   try {
-    // Convert hex to string
-    const bytes: number[] = [];
-    for (let i = 0; i < payloadHex.length; i += 2) {
-      const byte = parseInt(payloadHex.slice(i, i + 2), 16);
-      if (!Number.isNaN(byte)) bytes.push(byte);
+    let payloadText: string;
+    
+    // Check if payload is hex or plain text
+    if (/^[0-9a-f]+$/i.test(payloadData)) {
+      // It's hex, convert to string
+      const bytes: number[] = [];
+      for (let i = 0; i < payloadData.length; i += 2) {
+        const byte = parseInt(payloadData.slice(i, i + 2), 16);
+        if (!Number.isNaN(byte)) bytes.push(byte);
+      }
+      payloadText = new TextDecoder().decode(new Uint8Array(bytes));
+    } else {
+      // It's already plain text
+      payloadText = payloadData;
     }
-    const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
     
     console.log('[ChatVerify] Parsed payload text:', payloadText);
     
@@ -213,29 +221,14 @@ serve(async (req) => {
       )
     }
 
-    // Extract and parse chat message from payload (NO DECRYPTION - plain text hex only)
-    console.log('[ChatVerify] Raw payload hex:', tx.payload);
+    // Extract and parse chat message from payload (NO DECRYPTION - plain text only)
+    console.log('[ChatVerify] Raw payload:', tx.payload);
     
     let parsedData = null
     if (tx.payload) {
       try {
-        // First check if payload contains our identifier by converting hex to string
-        const bytes: number[] = [];
-        for (let i = 0; i < tx.payload.length; i += 2) {
-          const byte = parseInt(tx.payload.slice(i, i + 2), 16);
-          if (!Number.isNaN(byte)) bytes.push(byte);
-        }
-        const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
-        
-        console.log('[ChatVerify] Decoded payload text:', payloadText);
-        console.log('[ChatVerify] Contains identifier?', payloadText.includes('ciph_msg:1:bcast:'));
-        
-        if (payloadText.includes('ciph_msg:1:bcast:')) {
-          parsedData = parseChatMessage(tx.payload);
-          console.log('[ChatVerify] Parsed data:', parsedData);
-        } else {
-          console.error('[ChatVerify] Payload does not contain identifier. Got:', payloadText.substring(0, 50));
-        }
+        parsedData = parseChatMessage(tx.payload);
+        console.log('[ChatVerify] Parsed data:', parsedData);
       } catch (error) {
         console.error('[ChatVerify] Error parsing payload:', error);
       }

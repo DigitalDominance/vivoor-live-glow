@@ -132,9 +132,9 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
 
 // ============= CHAT MESSAGE (PLAIN TEXT) =============
 // Format: ciph_msg:1:bcast:{streamID}:{message}
-// No encryption - plain text converted to hex
+// No encryption - plain text payload
 
-// Create chat message payload (NO ENCRYPTION - plain text to hex only)
+// Create chat message payload (NO ENCRYPTION - plain text only)
 export function createChatMessagePayload(
   streamId: string,
   messageContent: string
@@ -144,17 +144,8 @@ export function createChatMessagePayload(
   
   console.log('[ChatPayload] Plain text payload:', payload);
   
-  // Convert to hex (NOT encryption, just encoding)
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(payload);
-  const hexString = Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  
-  console.log('[ChatPayload] Hex payload:', hexString);
-  console.log('[ChatPayload] Hex length:', hexString.length);
-  
-  return hexString;
+  // Return plain text - Kasware will handle hex encoding
+  return payload;
 }
 
 // Parse chat message from plain text payload
