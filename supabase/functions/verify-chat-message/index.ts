@@ -169,7 +169,7 @@ serve(async (req) => {
       )
     }
 
-    // Wait and fetch transaction with retries
+    // Wait and fetch transaction with retries until it's accepted
     await new Promise(resolve => setTimeout(resolve, 3000))
     
     const maxRetries = 8
@@ -191,9 +191,21 @@ serve(async (req) => {
           continue
         }
 
-        tx = await kaspaResponse.json()
-        console.log('Transaction fetched successfully')
-        break
+        const fetchedTx = await kaspaResponse.json()
+        console.log('Transaction fetched successfully, is_accepted:', fetchedTx.is_accepted)
+        
+        // Only break if transaction is accepted
+        if (fetchedTx.is_accepted) {
+          tx = fetchedTx
+          console.log('Transaction accepted!')
+          break
+        }
+        
+        // Transaction exists but not accepted yet, retry
+        if (attempt < maxRetries) {
+          console.log(`Transaction not accepted yet, waiting ${retryDelay}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+        }
         
       } catch (error) {
         console.error(`Error on attempt ${attempt}:`, error)
@@ -208,7 +220,7 @@ serve(async (req) => {
 
     if (!tx.is_accepted) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Transaction not yet accepted' }),
+        JSON.stringify({ success: false, error: 'Transaction not accepted after retries. Please wait and try again.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
