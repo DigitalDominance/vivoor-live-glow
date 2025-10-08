@@ -923,8 +923,12 @@ const Watch = () => {
           <ChatPanel
             messages={[
               ...chatMessages.filter(msg => {
-                // Filter out confirmed messages from current user (they only see optimistic)
-                return msg.user.id !== (currentUserProfile?.id || identity?.id);
+                // Only filter out confirmed messages that match current optimistic messages
+                const hasOptimistic = optimisticMessages.some(opt => 
+                  opt.text === msg.text && 
+                  msg.user.id === (currentUserProfile?.id || identity?.id)
+                );
+                return !hasOptimistic;
               }),
               ...optimisticMessages
             ]}
