@@ -130,83 +130,41 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
   return TIP_IDENTIFIER + upperHex.slice(index + identifierHex.length);
 }
 
-// ============= CHAT MESSAGE ENCRYPTION =============
-// Format: ciph_msg:1:bcast:{streamID}:{message}
+// ============= CHAT MESSAGE PAYLOAD =============
+// Format: ciph_msg:1:bcast:{streamID}:{message} (plain text, no encryption)
 const CHAT_IDENTIFIER = "ciph_msg";
 
-// Encrypt a chat message with format ciph_msg:1:bcast:{streamID}:{message}
+// Create chat message payload with format ciph_msg:1:bcast:{streamID}:{message}
 export async function encryptChatMessage(
   streamId: string,
   messageContent: string
 ): Promise<string> {
-  try {
-    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
-    const key = await deriveKey(sharedSecret);
-    
-    // Create payload with format: ciph_msg:1:bcast:{streamID}:{message}
-    const payload = `${CHAT_IDENTIFIER}:1:bcast:${streamId}:${messageContent}`;
-    
-    const encoder = new TextEncoder();
-    const data = encoder.encode(payload);
-    
-    // Generate random IV
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    
-    // Encrypt the data
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-    
-    // Combine IV and encrypted data
-    const combined = new Uint8Array(iv.length + encrypted.byteLength);
-    combined.set(iv);
-    combined.set(new Uint8Array(encrypted), iv.length);
-    
-    // Convert to hex string
-    const hexString = Array.from(combined)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    return hexString;
-  } catch (error) {
-    console.error('Chat encryption error:', error);
-    throw new Error('Failed to encrypt chat message');
-  }
+  // Create plain text payload - no encryption needed
+  const payload = `${CHAT_IDENTIFIER}:1:bcast:${streamId}:${messageContent}`;
+  
+  // Convert to hex
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payload);
+  const hexString = Array.from(data)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return hexString;
 }
 
-// Decrypt a chat message - format: ciph_msg:1:bcast:{streamID}:{message}
+// Parse chat message payload - format: ciph_msg:1:bcast:{streamID}:{message}
 export async function decryptChatMessage(encryptedPayload: string): Promise<{
   streamId: string;
   messageContent: string;
 } | null> {
   try {
-    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
-    const key = await deriveKey(sharedSecret);
-    
-    // Convert hex to bytes
+    // Convert hex to text
     const bytes = new Uint8Array(
       encryptedPayload.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
     );
     
-    if (bytes.length < 12) {
-      return null;
-    }
-    
-    // Extract IV and encrypted data
-    const iv = bytes.slice(0, 12);
-    const encrypted = bytes.slice(12);
-    
-    // Decrypt the data
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
-    );
-    
     const decoder = new TextDecoder();
-    const payloadString = decoder.decode(decrypted);
+    const payloadString = decoder.decode(bytes);
     
     // Parse the format: ciph_msg:1:bcast:{streamID}:{message}
     const parts = payloadString.split(':');
@@ -230,7 +188,7 @@ export async function decryptChatMessage(encryptedPayload: string): Promise<{
       messageContent
     };
   } catch (error) {
-    console.error('Chat decryption error:', error);
+    console.error('Chat parsing error:', error);
     return null;
   }
 }

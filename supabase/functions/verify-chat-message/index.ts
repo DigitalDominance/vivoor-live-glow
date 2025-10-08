@@ -33,47 +33,23 @@ interface KaspaTx {
   }>;
 }
 
-// Decrypt chat message - format: ciph_msg:1:bcast:{streamID}:{message}
-async function decryptChatMessage(encryptedPayload: string): Promise<{
+// Parse chat message - format: ciph_msg:1:bcast:{streamID}:{message} (plain text)
+async function decryptChatMessage(payloadHex: string): Promise<{
   streamId: string;
   messageContent: string;
 } | null> {
   const CHAT_IDENTIFIER = "ciph_msg";
-  const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
   
   try {
-    // Convert hex to bytes
+    // Convert hex to text
     const bytes = new Uint8Array(
-      encryptedPayload.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
-    );
-    
-    if (bytes.length < 12) return null;
-    
-    const iv = bytes.slice(0, 12);
-    const encrypted = bytes.slice(12);
-    
-    // Derive key
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(sharedSecret);
-    const hash = await crypto.subtle.digest('SHA-256', keyData);
-    const key = await crypto.subtle.importKey(
-      'raw',
-      hash,
-      { name: 'AES-GCM' },
-      false,
-      ['decrypt']
-    );
-    
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
+      payloadHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
     );
     
     const decoder = new TextDecoder();
-    const payloadString = decoder.decode(decrypted);
+    const payloadString = decoder.decode(bytes);
     
-    console.log('[ChatVerify] Decrypted payload:', payloadString);
+    console.log('[ChatVerify] Parsed payload:', payloadString);
     
     // Parse: ciph_msg:1:bcast:{streamID}:{message}
     const parts = payloadString.split(':');
@@ -93,7 +69,7 @@ async function decryptChatMessage(encryptedPayload: string): Promise<{
     
     return { streamId, messageContent };
   } catch (error) {
-    console.error('Decryption error:', error);
+    console.error('Parse error:', error);
     return null;
   }
 }
@@ -233,7 +209,7 @@ serve(async (req) => {
       )
     }
 
-    // Extract and decrypt chat message from payload (payload is now just hex encrypted data)
+    // Parse chat message from payload (payload is plain text hex)
     let decryptedData = null
     if (tx.payload) {
       try {

@@ -1,0 +1,38 @@
+/* Custom gradient glass scrollbar for chat panel */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgb(236, 72, 153) 0%,
+    rgb(168, 85, 247) 50%,
+    rgb(59, 130, 246) 100%
+  );
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgb(244, 114, 182) 0%,
+    rgb(192, 132, 252) 50%,
+    rgb(96, 165, 250) 100%
+  );
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.7);
+}
+
+/* Firefox scrollbar */
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.8) rgba(0, 0, 0, 0.3);
+}

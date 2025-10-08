@@ -5,6 +5,7 @@ import { SendHorizonal } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
+import "./chat-panel.css";
 
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
@@ -78,69 +79,71 @@ const ChatPanel: React.FC<{
   };
   
   return (
-    <div className="h-full flex flex-col rounded-xl border border-border bg-card/60 backdrop-blur-md">
-      <div className="px-3 py-2 border-b border-border/60 text-sm font-medium">
-        Chat {messages.length > 0 && `(${messages.length})`}
-      </div>
-      <div 
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[300px] max-h-[400px] lg:max-h-[500px]"
-      >
-        {messages.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm mt-8">
-            No messages yet. Be the first to say something!
-          </div>
-        ) : (
-          messages.map((m) => (
-            <div key={m.id} className="text-sm flex gap-2">
-              <Avatar className="h-6 w-6 mt-0.5 flex-shrink-0">
-                <AvatarImage src={m.user.avatar} alt={m.user.name} />
-                <AvatarFallback className="text-xs">
-                  {m.user.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="text-primary font-medium truncate">{m.user.name}</span>
-                  <VerifiedUserBadge userId={m.user.id} />
-                  <span className="text-xs text-muted-foreground">{m.time}</span>
-                </div>
-                <div 
-                  className="break-words mt-0.5"
-                  dangerouslySetInnerHTML={{ __html: blurBadWords(m.text) }}
-                />
-              </div>
+    <div className="h-full flex flex-col rounded-xl border-2 border-transparent bg-gradient-to-r from-[#ec4899] via-[#a855f7] to-[#3b82f6] p-[2px] shadow-[0_0_30px_rgba(168,85,247,0.5)]">
+      <div className="h-full flex flex-col rounded-[10px] bg-black/90 backdrop-blur-md">
+        <div className="px-3 py-2 border-b border-white/10 text-sm font-medium">
+          Chat {messages.length > 0 && `(${messages.length})`}
+        </div>
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[300px] max-h-[400px] lg:max-h-[500px] chat-scrollbar"
+        >
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm mt-8">
+              No messages yet. Be the first to say something!
             </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="p-2 border-t border-border/60">
-        {canPost !== undefined && canPost !== null ? (
-          <div className="flex gap-2">
-            <input 
-              className="flex-1 rounded-md bg-background px-3 py-2 text-sm border border-border" 
-              placeholder="Say something..." 
-              value={newMessage}
-              onChange={(e) => onMessageChange?.(e.target.value)}
-              onKeyPress={handleKeyPress}
-            />
-            <Button 
-              size="icon" 
-              variant="hero" 
-              aria-label="Send"
-              onClick={onSendMessage}
-              disabled={!newMessage.trim()}
-            >
-              <SendHorizonal />
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className="text-sm flex gap-2">
+                <Avatar className="h-6 w-6 mt-0.5 flex-shrink-0">
+                  <AvatarImage src={m.user.avatar} alt={m.user.name} />
+                  <AvatarFallback className="text-xs">
+                    {m.user.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-primary font-medium truncate">{m.user.name}</span>
+                    <VerifiedUserBadge userId={m.user.id} />
+                    <span className="text-xs text-muted-foreground">{m.time}</span>
+                  </div>
+                  <div 
+                    className="break-words mt-0.5"
+                    dangerouslySetInnerHTML={{ __html: blurBadWords(m.text) }}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="p-2 border-t border-white/10">
+          {canPost !== undefined && canPost !== null ? (
+            <div className="flex gap-2">
+              <input 
+                className="flex-1 rounded-md bg-background px-3 py-2 text-sm border border-border" 
+                placeholder="Say something..." 
+                value={newMessage}
+                onChange={(e) => onMessageChange?.(e.target.value)}
+                onKeyPress={handleKeyPress}
+              />
+              <Button 
+                size="icon" 
+                variant="hero" 
+                aria-label="Send"
+                onClick={onSendMessage}
+                disabled={!newMessage.trim()}
+              >
+                <SendHorizonal />
+              </Button>
+            </div>
+          ) : (
+            <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
+              Login to chat
             </Button>
-          </div>
-        ) : (
-          <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
-            Login to chat
-          </Button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
