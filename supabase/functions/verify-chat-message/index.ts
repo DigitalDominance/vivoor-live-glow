@@ -33,26 +33,18 @@ interface KaspaTx {
   }>;
 }
 
-// Decrypt chat message (same logic as frontend)
+// Decrypt chat message - format: ciph_msg:1:bcast:{streamID}:{message}
 async function decryptChatMessage(encryptedPayload: string): Promise<{
-  identifier: string;
-  version: string;
   streamId: string;
   messageContent: string;
-  timestamp: number;
 } | null> {
-  const CHAT_IDENTIFIER = "Vivoor-chat:1:";
-  const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG";
-  const VIVOOR_MESSAGE_VERSION = "1";
+  const CHAT_IDENTIFIER = "ciph_msg";
+  const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
   
   try {
-    if (!encryptedPayload.startsWith(CHAT_IDENTIFIER)) {
-      return null;
-    }
-    
-    const hexData = encryptedPayload.slice(CHAT_IDENTIFIER.length);
+    // Convert hex to bytes
     const bytes = new Uint8Array(
-      hexData.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+      encryptedPayload.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
     );
     
     if (bytes.length < 12) return null;
@@ -61,7 +53,6 @@ async function decryptChatMessage(encryptedPayload: string): Promise<{
     const encrypted = bytes.slice(12);
     
     // Derive key
-    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
     const encoder = new TextEncoder();
     const keyData = encoder.encode(sharedSecret);
     const hash = await crypto.subtle.digest('SHA-256', keyData);
@@ -84,23 +75,23 @@ async function decryptChatMessage(encryptedPayload: string): Promise<{
     
     console.log('[ChatVerify] Decrypted payload:', payloadString);
     
-    // Parse: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
+    // Parse: ciph_msg:1:bcast:{streamID}:{message}
     const parts = payloadString.split(':');
     if (parts.length < 5) return null;
     
     const identifier = parts[0];
     const version = parts[1];
-    const streamId = parts[2];
-    const timestamp = parseInt(parts[parts.length - 1]);
-    const messageContent = parts.slice(3, -1).join(':');
+    const broadcast = parts[2];
+    const streamId = parts[3];
+    const messageContent = parts.slice(4).join(':'); // Rejoin in case message contains colons
     
-    // Verify it's a valid Vivoor message
-    if (identifier !== VIVOOR_MESSAGE_IDENTIFIER || version !== VIVOOR_MESSAGE_VERSION) {
-      console.error('[ChatVerify] Invalid identifier or version:', { identifier, version });
+    // Verify format
+    if (identifier !== CHAT_IDENTIFIER || version !== '1' || broadcast !== 'bcast') {
+      console.error('[ChatVerify] Invalid format:', { identifier, version, broadcast });
       return null;
     }
     
-    return { identifier, version, streamId, messageContent, timestamp };
+    return { streamId, messageContent };
   } catch (error) {
     console.error('Decryption error:', error);
     return null;
@@ -242,22 +233,11 @@ serve(async (req) => {
       )
     }
 
-    // Extract and decrypt chat message from payload
+    // Extract and decrypt chat message from payload (payload is now just hex encrypted data)
     let decryptedData = null
     if (tx.payload) {
       try {
-        const bytes: number[] = [];
-        for (let i = 0; i < tx.payload.length; i += 2) {
-          const byte = parseInt(tx.payload.slice(i, i + 2), 16);
-          if (!Number.isNaN(byte)) bytes.push(byte);
-        }
-        const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
-        
-        if (payloadText.includes('Vivoor-chat:1:')) {
-          const idx = payloadText.indexOf('Vivoor-chat:1:');
-          const encryptedMessage = payloadText.slice(idx);
-          decryptedData = await decryptChatMessage(encryptedMessage);
-        }
+        decryptedData = await decryptChatMessage(tx.payload);
       } catch (error) {
         console.error('Error parsing payload:', error);
       }
@@ -278,10 +258,9 @@ serve(async (req) => {
       )
     }
 
-    // Log Vivoor message verification
-    console.log('[ChatVerify] Verified Vivoor message:', {
-      identifier: decryptedData.identifier,
-      version: decryptedData.version,
+    // Log message verification
+    console.log('[ChatVerify] Verified message:', {
+      format: 'ciph_msg:1:bcast:{streamID}:{message}',
       streamId: decryptedData.streamId
     })
 
@@ -292,7 +271,8 @@ serve(async (req) => {
       .eq('id', session.encrypted_user_id)
       .single()
 
-    // Store message in database
+    // Store message in database with server timestamp
+    const serverTimestamp = new Date().toISOString()
     const { data: newMessage, error: insertError } = await supabaseClient
       .from('chat_messages')
       .insert({
@@ -300,7 +280,7 @@ serve(async (req) => {
         user_id: session.encrypted_user_id,
         message: decryptedData.messageContent,
         txid: cleanTxid,
-        created_at: new Date(decryptedData.timestamp).toISOString()
+        created_at: serverTimestamp
       })
       .select()
       .single()
@@ -323,7 +303,7 @@ serve(async (req) => {
             avatar: profile?.avatar_url
           },
           text: decryptedData.messageContent,
-          timestamp: decryptedData.timestamp
+          timestamp: Date.now() // Use current timestamp for UI
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

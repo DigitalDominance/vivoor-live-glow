@@ -29,12 +29,8 @@ export function useOnChainChat(streamId: string) {
     setIsSending(true);
 
     try {
-      // Get username from profile
-      const username = profile?.username || 'Anonymous';
-
-      // Encrypt the message payload: {username}:{streamID}:{messageContent}:{timestamp}
+      // Encrypt the message payload: ciph_msg:1:bcast:{streamID}:{message}
       const encryptedPayload = await encryptChatMessage(
-        username,
         streamId,
         messageText.trim()
       );
@@ -42,6 +38,7 @@ export function useOnChainChat(streamId: string) {
       console.log('[OnChainChat] Sending message transaction:', {
         to: identity.address,
         amount: '1.2 KAS',
+        format: 'ciph_msg:1:bcast:{streamID}:{message}',
         payloadLength: encryptedPayload.length
       });
 
