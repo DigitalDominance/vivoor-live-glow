@@ -35,12 +35,15 @@ interface KaspaTx {
 
 // Decrypt chat message (same logic as frontend)
 async function decryptChatMessage(encryptedPayload: string): Promise<{
-  username: string;
+  identifier: string;
+  version: string;
   streamId: string;
   messageContent: string;
   timestamp: number;
 } | null> {
   const CHAT_IDENTIFIER = "VIVR-CHAT1:";
+  const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG";
+  const VIVOOR_MESSAGE_VERSION = "1";
   
   try {
     if (!encryptedPayload.startsWith(CHAT_IDENTIFIER)) {
@@ -79,16 +82,25 @@ async function decryptChatMessage(encryptedPayload: string): Promise<{
     const decoder = new TextDecoder();
     const payloadString = decoder.decode(decrypted);
     
-    // Parse: {username}:{streamID}:{messageContent}:{timestamp}
+    console.log('[ChatVerify] Decrypted payload:', payloadString);
+    
+    // Parse: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
     const parts = payloadString.split(':');
-    if (parts.length < 4) return null;
+    if (parts.length < 5) return null;
     
-    const username = parts[0];
-    const streamId = parts[1];
+    const identifier = parts[0];
+    const version = parts[1];
+    const streamId = parts[2];
     const timestamp = parseInt(parts[parts.length - 1]);
-    const messageContent = parts.slice(2, -1).join(':');
+    const messageContent = parts.slice(3, -1).join(':');
     
-    return { username, streamId, messageContent, timestamp };
+    // Verify it's a valid Vivoor message
+    if (identifier !== VIVOOR_MESSAGE_IDENTIFIER || version !== VIVOOR_MESSAGE_VERSION) {
+      console.error('[ChatVerify] Invalid identifier or version:', { identifier, version });
+      return null;
+    }
+    
+    return { identifier, version, streamId, messageContent, timestamp };
   } catch (error) {
     console.error('Decryption error:', error);
     return null;
@@ -253,6 +265,13 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Log Vivoor message verification
+    console.log('[ChatVerify] Verified Vivoor message:', {
+      identifier: decryptedData.identifier,
+      version: decryptedData.version,
+      streamId: decryptedData.streamId
+    })
 
     // Get user profile for avatar
     const { data: profile } = await supabaseClient

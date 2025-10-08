@@ -132,8 +132,10 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
 
 // ============= CHAT MESSAGE ENCRYPTION =============
 const CHAT_IDENTIFIER = "VIVR-CHAT1:";
+const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG"; // Constant identifier for on-chain discovery
+const VIVOOR_MESSAGE_VERSION = "1"; // Version number for future compatibility
 
-// Encrypt a chat message with format {username}:{streamID}:{messageContent}:{timestamp}
+// Encrypt a chat message with format {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
 export async function encryptChatMessage(
   username: string,
   streamId: string,
@@ -143,8 +145,8 @@ export async function encryptChatMessage(
     const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
     const key = await deriveKey(sharedSecret);
     
-    // Create payload with exact format requested
-    const payload = `${username}:${streamId}:${messageContent}:${Date.now()}`;
+    // Create payload with format: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
+    const payload = `${VIVOOR_MESSAGE_IDENTIFIER}:${VIVOOR_MESSAGE_VERSION}:${streamId}:${messageContent}:${Date.now()}`;
     
     const encoder = new TextEncoder();
     const data = encoder.encode(payload);
@@ -178,7 +180,8 @@ export async function encryptChatMessage(
 
 // Decrypt a chat message
 export async function decryptChatMessage(encryptedPayload: string): Promise<{
-  username: string;
+  identifier: string;
+  version: string;
   streamId: string;
   messageContent: string;
   timestamp: number;
@@ -218,20 +221,26 @@ export async function decryptChatMessage(encryptedPayload: string): Promise<{
     const decoder = new TextDecoder();
     const payloadString = decoder.decode(decrypted);
     
-    // Parse the format: {username}:{streamID}:{messageContent}:{timestamp}
+    // Parse the format: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
     const parts = payloadString.split(':');
-    if (parts.length < 4) {
+    if (parts.length < 5) {
       return null;
     }
     
-    // Handle message content that might contain colons
-    const username = parts[0];
-    const streamId = parts[1];
+    const identifier = parts[0];
+    const version = parts[1];
+    const streamId = parts[2];
     const timestamp = parseInt(parts[parts.length - 1]);
-    const messageContent = parts.slice(2, -1).join(':');
+    const messageContent = parts.slice(3, -1).join(':');
+    
+    // Verify it's a valid Vivoor message
+    if (identifier !== VIVOOR_MESSAGE_IDENTIFIER || version !== VIVOOR_MESSAGE_VERSION) {
+      return null;
+    }
     
     return {
-      username,
+      identifier,
+      version,
       streamId,
       messageContent,
       timestamp
