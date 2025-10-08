@@ -920,7 +920,10 @@ const Watch = () => {
         {/* Chat sidebar */}
         <div className="lg:col-span-1">
           <ChatPanel
-            messages={[...chatMessages, ...optimisticMessages]}
+            messages={[
+              ...chatMessages.filter(msg => msg.user.id !== (currentUserProfile?.id || identity?.id)),
+              ...optimisticMessages
+            ]}
             canPost={!!identity?.id}
             onRequireLogin={onRequireLogin}
             newMessage={newMessage}
