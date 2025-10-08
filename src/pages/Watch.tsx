@@ -813,96 +813,88 @@ const Watch = () => {
           </div>
 
           {/* Stream info */}
-          <div className="rounded-xl relative overflow-hidden">
-            {/* Smooth gradient border */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#ec4899] via-[#c026d3] via-[#a855f7] via-[#7c3aed] to-[#3b82f6] p-[2px] shadow-[0_0_30px_rgba(168,85,247,0.5)]">
-              <div className="h-full w-full rounded-[10px] bg-black/90 backdrop-blur-md" />
-            </div>
-            
-            {/* Content */}
-            <div className="relative z-10 p-4">
-              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
-                  <Avatar className="size-10 sm:size-12 flex-shrink-0">
-                    <AvatarImage src={streamerProfile?.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-base sm:text-lg font-semibold truncate">{streamData.title}</h1>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        onClick={() => setProfileOpen(true)}
-                      >
-                        @{streamerProfile?.handle || 'streamer'}
-                      </button>
-                      {streamerProfile?.id && <ClipVerifiedBadge userId={streamerProfile.id} size="sm" />}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted">
-                        {streamData.category || 'IRL'}
+          <div className="glass rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
+                <Avatar className="size-10 sm:size-12 flex-shrink-0">
+                  <AvatarImage src={streamerProfile?.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {(streamerProfile?.display_name || streamerProfile?.handle || 'S').slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-base sm:text-lg font-semibold truncate">{streamData.title}</h1>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setProfileOpen(true)}
+                    >
+                      @{streamerProfile?.handle || 'streamer'}
+                    </button>
+                    {streamerProfile?.id && <ClipVerifiedBadge userId={streamerProfile.id} size="sm" />}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted">
+                      {streamData.category || 'IRL'}
+                    </span>
+                    {livepeerIsLive && streamConnected && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
+                        LIVE
                       </span>
-                      {livepeerIsLive && streamConnected && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium">
-                          LIVE
-                        </span>
-                      )}
-                      {!streamConnected && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-500 text-black font-medium">
-                          CONNECTING
-                        </span>
-                      )}
-                    </div>
+                    )}
+                    {!streamConnected && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-yellow-500 text-black font-medium">
+                        CONNECTING
+                      </span>
+                    )}
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    variant={liked ? "hero" : "ghost"}
-                    size="sm"
-                    onClick={handleLike}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
-                    <span className="ml-1">{likeCount}</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReportOpen(true)}
-                    className="flex-1 sm:flex-none border border-white/10 hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    <Flag className="size-4" />
-                  </Button>
-                  <Button
-                    variant={followed ? "secondary" : "hero"}
-                    size="sm"
-                    onClick={handleFollow}
-                    className="flex-1 sm:flex-none"
-                  >
-                    {followed ? 'Following' : 'Follow'}
-                  </Button>
-                  <Button
-                    ref={tipButtonRef}
-                    variant="gradientOutline"
-                    size="sm"
-                    onClick={() => {
-                      console.log('Tip button values:', { 
-                        identity: !!identity, 
-                        streamerKaspaAddress, 
-                        livepeerIsLive,
-                        disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
-                      });
-                      setTipOpen(true);
-                    }}
-                    disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
-                    className="flex-1 sm:flex-none"
-                  >
-                    Tip KAS
-                  </Button>
-                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant={liked ? "hero" : "ghost"}
+                  size="sm"
+                  onClick={handleLike}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
+                  <span className="ml-1">{likeCount}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReportOpen(true)}
+                  className="flex-1 sm:flex-none border border-white/10 hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <Flag className="size-4" />
+                </Button>
+                <Button
+                  variant={followed ? "secondary" : "hero"}
+                  size="sm"
+                  onClick={handleFollow}
+                  className="flex-1 sm:flex-none"
+                >
+                  {followed ? 'Following' : 'Follow'}
+                </Button>
+                <Button
+                  ref={tipButtonRef}
+                  variant="gradientOutline"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Tip button values:', { 
+                      identity: !!identity, 
+                      streamerKaspaAddress, 
+                      livepeerIsLive,
+                      disabled: !identity || !streamerKaspaAddress || !livepeerIsLive
+                    });
+                    setTipOpen(true);
+                  }}
+                  disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
+                  className="flex-1 sm:flex-none"
+                >
+                  Tip KAS
+                </Button>
               </div>
             </div>
           </div>

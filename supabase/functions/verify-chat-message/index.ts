@@ -33,43 +33,76 @@ interface KaspaTx {
   }>;
 }
 
-// Parse chat message - format: ciph_msg:1:bcast:{streamID}:{message} (plain text hex)
-function parseChatMessage(payloadHex: string): {
+// Decrypt chat message (same logic as frontend)
+async function decryptChatMessage(encryptedPayload: string): Promise<{
+  identifier: string;
+  version: string;
   streamId: string;
   messageContent: string;
-} | null {
-  const CHAT_IDENTIFIER = "ciph_msg";
+  timestamp: number;
+} | null> {
+  const CHAT_IDENTIFIER = "Vivoor-chat:1:";
+  const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG";
+  const VIVOOR_MESSAGE_VERSION = "1";
   
   try {
-    // Convert hex to text
+    if (!encryptedPayload.startsWith(CHAT_IDENTIFIER)) {
+      return null;
+    }
+    
+    const hexData = encryptedPayload.slice(CHAT_IDENTIFIER.length);
     const bytes = new Uint8Array(
-      payloadHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+      hexData.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+    );
+    
+    if (bytes.length < 12) return null;
+    
+    const iv = bytes.slice(0, 12);
+    const encrypted = bytes.slice(12);
+    
+    // Derive key
+    const sharedSecret = "VIVOOR_CHAT_SECRET_2025";
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(sharedSecret);
+    const hash = await crypto.subtle.digest('SHA-256', keyData);
+    const key = await crypto.subtle.importKey(
+      'raw',
+      hash,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted
     );
     
     const decoder = new TextDecoder();
-    const payloadString = decoder.decode(bytes);
+    const payloadString = decoder.decode(decrypted);
     
-    console.log('[ChatVerify] Parsed payload:', payloadString);
+    console.log('[ChatVerify] Decrypted payload:', payloadString);
     
-    // Parse: ciph_msg:1:bcast:{streamID}:{message}
+    // Parse: {vivoorUniqueIdentifier}:1:{streamID}:{messageContent}:{timestamp}
     const parts = payloadString.split(':');
     if (parts.length < 5) return null;
     
     const identifier = parts[0];
     const version = parts[1];
-    const broadcast = parts[2];
-    const streamId = parts[3];
-    const messageContent = parts.slice(4).join(':'); // Rejoin in case message contains colons
+    const streamId = parts[2];
+    const timestamp = parseInt(parts[parts.length - 1]);
+    const messageContent = parts.slice(3, -1).join(':');
     
-    // Verify format
-    if (identifier !== CHAT_IDENTIFIER || version !== '1' || broadcast !== 'bcast') {
-      console.error('[ChatVerify] Invalid format:', { identifier, version, broadcast });
+    // Verify it's a valid Vivoor message
+    if (identifier !== VIVOOR_MESSAGE_IDENTIFIER || version !== VIVOOR_MESSAGE_VERSION) {
+      console.error('[ChatVerify] Invalid identifier or version:', { identifier, version });
       return null;
     }
     
-    return { streamId, messageContent };
+    return { identifier, version, streamId, messageContent, timestamp };
   } catch (error) {
-    console.error('Parse error:', error);
+    console.error('Decryption error:', error);
     return null;
   }
 }
@@ -209,28 +242,47 @@ serve(async (req) => {
       )
     }
 
-    // Parse chat message from payload (payload is plain text hex)
-    const parsedData = parseChatMessage(tx.payload);
-    
-    if (!parsedData) {
+    // Extract and decrypt chat message from payload
+    let decryptedData = null
+    if (tx.payload) {
+      try {
+        const bytes: number[] = [];
+        for (let i = 0; i < tx.payload.length; i += 2) {
+          const byte = parseInt(tx.payload.slice(i, i + 2), 16);
+          if (!Number.isNaN(byte)) bytes.push(byte);
+        }
+        const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
+        
+        if (payloadText.includes('Vivoor-chat:1:')) {
+          const idx = payloadText.indexOf('Vivoor-chat:1:');
+          const encryptedMessage = payloadText.slice(idx);
+          decryptedData = await decryptChatMessage(encryptedMessage);
+        }
+      } catch (error) {
+        console.error('Error parsing payload:', error);
+      }
+    }
+
+    if (!decryptedData) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to parse message payload' }),
+        JSON.stringify({ success: false, error: 'Failed to decrypt message payload' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Verify stream ID matches
-    if (parsedData.streamId !== streamId) {
+    if (decryptedData.streamId !== streamId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Stream ID mismatch in payload' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Log message verification
-    console.log('[ChatVerify] Verified message:', {
-      format: 'ciph_msg:1:bcast:{streamID}:{message} (plain text)',
-      streamId: parsedData.streamId
+    // Log Vivoor message verification
+    console.log('[ChatVerify] Verified Vivoor message:', {
+      identifier: decryptedData.identifier,
+      version: decryptedData.version,
+      streamId: decryptedData.streamId
     })
 
     // Get user profile for avatar
@@ -240,16 +292,15 @@ serve(async (req) => {
       .eq('id', session.encrypted_user_id)
       .single()
 
-    // Store message in database with server timestamp
-    const serverTimestamp = new Date().toISOString()
+    // Store message in database
     const { data: newMessage, error: insertError } = await supabaseClient
       .from('chat_messages')
       .insert({
         stream_id: streamId,
         user_id: session.encrypted_user_id,
-        message: parsedData.messageContent,
+        message: decryptedData.messageContent,
         txid: cleanTxid,
-        created_at: serverTimestamp
+        created_at: new Date(decryptedData.timestamp).toISOString()
       })
       .select()
       .single()
@@ -271,8 +322,8 @@ serve(async (req) => {
             name: profile?.display_name || profile?.handle || 'Anonymous',
             avatar: profile?.avatar_url
           },
-          text: parsedData.messageContent,
-          timestamp: Date.now() // Use current timestamp for UI
+          text: decryptedData.messageContent,
+          timestamp: decryptedData.timestamp
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
