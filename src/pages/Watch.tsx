@@ -63,6 +63,7 @@ const Watch = () => {
   // On-chain chat system
   const { messages: chatMessages } = useChatMessages(streamId || '');
   const { sendMessage: sendOnChainMessage, isSending: isSendingMessage } = useOnChainChat(streamId || '');
+  const [optimisticMessages, setOptimisticMessages] = React.useState<any[]>([]);
 
   // Fetch stream data
   const { data: streamData, isLoading } = useQuery({
@@ -372,10 +373,32 @@ const Watch = () => {
       return;
     }
 
-    // Send message on-chain
-    const success = await sendOnChainMessage(newMessage.trim());
+    // Add optimistic message immediately
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
+      user: {
+        id: currentUserProfile?.id || identity.id,
+        name: currentUserProfile?.handle || currentUserProfile?.display_name || 'You',
+        avatar: currentUserProfile?.avatar_url
+      },
+      text: newMessage.trim(),
+      time: 'sending...'
+    };
+    setOptimisticMessages(prev => [...prev, optimisticMsg]);
+    
+    const messageToSend = newMessage.trim();
+    setNewMessage(''); // Clear immediately for better UX
+
+    const success = await sendOnChainMessage(messageToSend);
     if (success) {
-      setNewMessage('');
+      // Remove optimistic message after a delay (it will appear from real-time)
+      setTimeout(() => {
+        setOptimisticMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      }, 15000); // Remove after 15 seconds
+    } else {
+      // Remove optimistic message on failure
+      setOptimisticMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      setNewMessage(messageToSend); // Restore message on failure
     }
   };
 
@@ -901,16 +924,16 @@ const Watch = () => {
         {/* Chat sidebar */}
         <div className="lg:col-span-1">
           <ChatPanel
-            messages={chatMessages}
-            canPost={!!identity?.id && !isSendingMessage}
+            messages={[...chatMessages, ...optimisticMessages]}
+            canPost={!!identity?.id}
             onRequireLogin={onRequireLogin}
             newMessage={newMessage}
             onMessageChange={setNewMessage}
             onSendMessage={handleSendMessage}
           />
-          {isSendingMessage && (
+          {optimisticMessages.length > 0 && (
             <div className="text-xs text-muted-foreground mt-2 text-center">
-              Sending message on-chain...
+              Confirming {optimisticMessages.length} message{optimisticMessages.length > 1 ? 's' : ''} on-chain...
             </div>
           )}
         </div>

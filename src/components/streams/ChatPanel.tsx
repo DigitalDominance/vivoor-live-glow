@@ -80,7 +80,7 @@ const ChatPanel: React.FC<{
         <div ref={messagesEndRef} />
       </div>
       <div className="p-2 border-t border-border/60">
-        {canPost ? (
+        {canPost !== undefined && canPost !== null ? (
           <div className="flex gap-2">
             <input 
               className="flex-1 rounded-md bg-background px-3 py-2 text-sm border border-border" 
