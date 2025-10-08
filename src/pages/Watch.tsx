@@ -376,11 +376,9 @@ const Watch = () => {
     const messageToSend = newMessage.trim();
     setNewMessage(''); // Clear input immediately
 
-    // Send the transaction first - this will show kasware popup
-    const success = await sendOnChainMessage(messageToSend);
-    
-    if (success) {
-      // Only add optimistic message AFTER kasware transaction is confirmed
+    // Send the transaction - show optimistic message as soon as kasware returns txid
+    const success = await sendOnChainMessage(messageToSend, (txid) => {
+      // This callback fires immediately after kasware returns the txid
       const optimisticMsg = {
         id: `optimistic-${Date.now()}`,
         user: {
@@ -392,8 +390,11 @@ const Watch = () => {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
-    } else {
-      // Restore message on failure
+    });
+    
+    if (!success) {
+      // Remove optimistic message on verification failure and restore input
+      setOptimisticMessages([]);
       setNewMessage(messageToSend);
     }
   };

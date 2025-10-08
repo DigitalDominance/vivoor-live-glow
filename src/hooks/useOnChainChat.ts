@@ -8,7 +8,10 @@ export function useOnChainChat(streamId: string) {
   const { identity, sessionToken, profile } = useWallet();
   const [isSending, setIsSending] = useState(false);
 
-  const sendMessage = useCallback(async (messageText: string) => {
+  const sendMessage = useCallback(async (
+    messageText: string, 
+    onTxCreated?: (txid: string) => void
+  ) => {
     if (!identity?.address || !sessionToken || !streamId) {
       toast.error("Please connect your wallet to send messages");
       return false;
@@ -69,6 +72,9 @@ export function useOnChainChat(streamId: string) {
       }
       
       console.log('[OnChainChat] Extracted txid:', txid);
+
+      // Call the callback right after getting txid
+      onTxCreated?.(txid);
 
       // Verify and save message via Supabase edge function
       const { data, error } = await supabase.functions.invoke('verify-chat-message', {
