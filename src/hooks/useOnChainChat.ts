@@ -43,12 +43,15 @@ export function useOnChainChat(streamId: string) {
       });
 
       // Send 1.2 KAS to sender's own address with encrypted payload
-      const txid = await window.kasware.sendKaspa(
+      const txResponse = await window.kasware.sendKaspa(
         identity.address, // Send to self
         120000000, // 1.2 KAS in sompi
         { payload: encryptedPayload }
       );
 
+      // Extract txid from response (kasware returns a transaction object or string)
+      const txid = typeof txResponse === 'string' ? txResponse : (txResponse as any).id;
+      
       console.log('[OnChainChat] Transaction sent:', txid);
 
       // Verify and save message via Supabase edge function

@@ -131,7 +131,7 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
 }
 
 // ============= CHAT MESSAGE ENCRYPTION =============
-const CHAT_IDENTIFIER = "VIVR-CHAT1:";
+const CHAT_IDENTIFIER = "Vivoor-chat:1:";
 const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG"; // Constant identifier for on-chain discovery
 const VIVOOR_MESSAGE_VERSION = "1"; // Version number for future compatibility
 
@@ -254,6 +254,8 @@ export async function decryptChatMessage(encryptedPayload: string): Promise<{
 // Extract chat identifier from transaction payload
 export function extractChatFromPayload(payloadHex?: string | null): string | undefined {
   if (!payloadHex) return undefined;
+  
+  const CHAT_IDENTIFIER = "Vivoor-chat:1:";
   
   try {
     // Convert hex payload to string

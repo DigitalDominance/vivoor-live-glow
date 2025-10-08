@@ -41,7 +41,7 @@ async function decryptChatMessage(encryptedPayload: string): Promise<{
   messageContent: string;
   timestamp: number;
 } | null> {
-  const CHAT_IDENTIFIER = "VIVR-CHAT1:";
+  const CHAT_IDENTIFIER = "Vivoor-chat:1:";
   const VIVOOR_MESSAGE_IDENTIFIER = "VIVOOR_MSG";
   const VIVOOR_MESSAGE_VERSION = "1";
   
@@ -241,8 +241,8 @@ serve(async (req) => {
         }
         const payloadText = new TextDecoder().decode(new Uint8Array(bytes));
         
-        if (payloadText.includes('VIVR-CHAT1:')) {
-          const idx = payloadText.indexOf('VIVR-CHAT1:');
+        if (payloadText.includes('Vivoor-chat:1:')) {
+          const idx = payloadText.indexOf('Vivoor-chat:1:');
           const encryptedMessage = payloadText.slice(idx);
           decryptedData = await decryptChatMessage(encryptedMessage);
         }
