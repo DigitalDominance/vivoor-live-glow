@@ -135,11 +135,11 @@ export function extractTipFromSignature(signatureHex?: string | null): string | 
 const CHAT_IDENTIFIER = "ciph_msg";
 
 // Create chat message payload with format ciph_msg:1:bcast:{streamID}:{message}
-export async function encryptChatMessage(
+export function encryptChatMessage(
   streamId: string,
   messageContent: string
-): Promise<string> {
-  // Create plain text payload - no encryption needed
+): string {
+  // Create plain text payload - no encryption
   const payload = `${CHAT_IDENTIFIER}:1:bcast:${streamId}:${messageContent}`;
   
   // Convert to hex
@@ -153,14 +153,14 @@ export async function encryptChatMessage(
 }
 
 // Parse chat message payload - format: ciph_msg:1:bcast:{streamID}:{message}
-export async function decryptChatMessage(encryptedPayload: string): Promise<{
+export function decryptChatMessage(payloadHex: string): {
   streamId: string;
   messageContent: string;
-} | null> {
+} | null {
   try {
     // Convert hex to text
     const bytes = new Uint8Array(
-      encryptedPayload.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+      payloadHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
     );
     
     const decoder = new TextDecoder();

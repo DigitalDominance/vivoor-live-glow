@@ -11,10 +11,12 @@
 
 .chat-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(
-    180deg,
-    rgb(236, 72, 153) 0%,
-    rgb(168, 85, 247) 50%,
-    rgb(59, 130, 246) 100%
+    135deg,
+    #ec4899 0%,
+    #c026d3 25%,
+    #a855f7 50%,
+    #7c3aed 75%,
+    #3b82f6 100%
   );
   border-radius: 10px;
   border: 2px solid rgba(0, 0, 0, 0.3);
@@ -23,10 +25,12 @@
 
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(
-    180deg,
-    rgb(244, 114, 182) 0%,
-    rgb(192, 132, 252) 50%,
-    rgb(96, 165, 250) 100%
+    135deg,
+    #f472b6 0%,
+    #d946ef 25%,
+    #c084fc 50%,
+    #a78bfa 75%,
+    #60a5fa 100%
   );
   box-shadow: 0 0 15px rgba(168, 85, 247, 0.7);
 }

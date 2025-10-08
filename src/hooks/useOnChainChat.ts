@@ -29,8 +29,8 @@ export function useOnChainChat(streamId: string) {
     setIsSending(true);
 
     try {
-      // Encrypt the message payload: ciph_msg:1:bcast:{streamID}:{message}
-      const encryptedPayload = await encryptChatMessage(
+      // Create plain text payload: ciph_msg:1:bcast:{streamID}:{message}
+      const payload = encryptChatMessage(
         streamId,
         messageText.trim()
       );
@@ -38,15 +38,15 @@ export function useOnChainChat(streamId: string) {
       console.log('[OnChainChat] Sending message transaction:', {
         to: identity.address,
         amount: '1.2 KAS',
-        format: 'ciph_msg:1:bcast:{streamID}:{message}',
-        payloadLength: encryptedPayload.length
+        format: 'ciph_msg:1:bcast:{streamID}:{message} (plain text)',
+        payloadLength: payload.length
       });
 
-      // Send 1.2 KAS to sender's own address with encrypted payload
+      // Send 1.2 KAS to sender's own address with plain text payload
       const txResponse = await window.kasware.sendKaspa(
         identity.address, // Send to self
         120000000, // 1.2 KAS in sompi
-        { payload: encryptedPayload }
+        { payload }
       );
 
       console.log('[OnChainChat] Raw txResponse:', txResponse);

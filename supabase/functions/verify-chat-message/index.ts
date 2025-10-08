@@ -33,11 +33,11 @@ interface KaspaTx {
   }>;
 }
 
-// Parse chat message - format: ciph_msg:1:bcast:{streamID}:{message} (plain text)
-async function decryptChatMessage(payloadHex: string): Promise<{
+// Parse chat message - format: ciph_msg:1:bcast:{streamID}:{message} (plain text hex)
+function parseChatMessage(payloadHex: string): {
   streamId: string;
   messageContent: string;
-} | null> {
+} | null {
   const CHAT_IDENTIFIER = "ciph_msg";
   
   try {
@@ -210,24 +210,17 @@ serve(async (req) => {
     }
 
     // Parse chat message from payload (payload is plain text hex)
-    let decryptedData = null
-    if (tx.payload) {
-      try {
-        decryptedData = await decryptChatMessage(tx.payload);
-      } catch (error) {
-        console.error('Error parsing payload:', error);
-      }
-    }
-
-    if (!decryptedData) {
+    const parsedData = parseChatMessage(tx.payload);
+    
+    if (!parsedData) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to decrypt message payload' }),
+        JSON.stringify({ success: false, error: 'Failed to parse message payload' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Verify stream ID matches
-    if (decryptedData.streamId !== streamId) {
+    if (parsedData.streamId !== streamId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Stream ID mismatch in payload' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -236,8 +229,8 @@ serve(async (req) => {
 
     // Log message verification
     console.log('[ChatVerify] Verified message:', {
-      format: 'ciph_msg:1:bcast:{streamID}:{message}',
-      streamId: decryptedData.streamId
+      format: 'ciph_msg:1:bcast:{streamID}:{message} (plain text)',
+      streamId: parsedData.streamId
     })
 
     // Get user profile for avatar
@@ -254,7 +247,7 @@ serve(async (req) => {
       .insert({
         stream_id: streamId,
         user_id: session.encrypted_user_id,
-        message: decryptedData.messageContent,
+        message: parsedData.messageContent,
         txid: cleanTxid,
         created_at: serverTimestamp
       })
@@ -278,7 +271,7 @@ serve(async (req) => {
             name: profile?.display_name || profile?.handle || 'Anonymous',
             avatar: profile?.avatar_url
           },
-          text: decryptedData.messageContent,
+          text: parsedData.messageContent,
           timestamp: Date.now() // Use current timestamp for UI
         }
       }),

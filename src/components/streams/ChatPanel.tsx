@@ -79,8 +79,14 @@ const ChatPanel: React.FC<{
   };
   
   return (
-    <div className="h-full flex flex-col rounded-xl border-2 border-transparent bg-gradient-to-r from-[#ec4899] via-[#a855f7] to-[#3b82f6] p-[2px] shadow-[0_0_30px_rgba(168,85,247,0.5)]">
-      <div className="h-full flex flex-col rounded-[10px] bg-black/90 backdrop-blur-md">
+    <div className="h-full flex flex-col rounded-xl relative overflow-hidden">
+      {/* Smooth gradient border */}
+      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#ec4899] via-[#c026d3] via-[#a855f7] via-[#7c3aed] to-[#3b82f6] p-[2px] shadow-[0_0_30px_rgba(168,85,247,0.5)]">
+        <div className="h-full w-full rounded-[10px] bg-black/90 backdrop-blur-md" />
+      </div>
+      
+      {/* Content */}
+      <div className="relative h-full flex flex-col z-10">
         <div className="px-3 py-2 border-b border-white/10 text-sm font-medium">
           Chat {messages.length > 0 && `(${messages.length})`}
         </div>
