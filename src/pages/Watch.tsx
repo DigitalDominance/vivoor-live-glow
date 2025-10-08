@@ -382,7 +382,7 @@ const Watch = () => {
         avatar: currentUserProfile?.avatar_url
       },
       text: newMessage.trim(),
-      time: 'sending...'
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setOptimisticMessages(prev => [...prev, optimisticMsg]);
     
@@ -390,16 +390,12 @@ const Watch = () => {
     setNewMessage(''); // Clear immediately for better UX
 
     const success = await sendOnChainMessage(messageToSend);
-    if (success) {
-      // Remove optimistic message after a delay (it will appear from real-time)
-      setTimeout(() => {
-        setOptimisticMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
-      }, 15000); // Remove after 15 seconds
-    } else {
-      // Remove optimistic message on failure
+    if (!success) {
+      // Remove optimistic message on failure and restore input
       setOptimisticMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
-      setNewMessage(messageToSend); // Restore message on failure
+      setNewMessage(messageToSend);
     }
+    // Keep optimistic message for sender - other users will see it from real-time
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -931,11 +927,6 @@ const Watch = () => {
             onMessageChange={setNewMessage}
             onSendMessage={handleSendMessage}
           />
-          {optimisticMessages.length > 0 && (
-            <div className="text-xs text-muted-foreground mt-2 text-center">
-              Confirming {optimisticMessages.length} message{optimisticMessages.length > 1 ? 's' : ''} on-chain...
-            </div>
-          )}
         </div>
       </div>
 
