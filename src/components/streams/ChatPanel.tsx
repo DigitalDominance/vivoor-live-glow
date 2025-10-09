@@ -134,24 +134,37 @@ const ChatPanel: React.FC<{
         </div>
         <div className="p-2 border-t border-white/10">
           {canPost !== undefined && canPost !== null ? (
-            <div className="flex gap-2">
-              <input 
-                className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50" 
-                placeholder="Say something..." 
-                value={newMessage}
-                onChange={(e) => onMessageChange?.(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-              <Button 
-                size="icon" 
-                variant="hero" 
-                aria-label="Send"
-                onClick={onSendMessage}
-                disabled={!newMessage.trim()}
-              >
-                <SendHorizonal />
-              </Button>
-            </div>
+            <>
+              <div className="flex gap-2">
+                <input 
+                  className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50" 
+                  placeholder="Say something..." 
+                  value={newMessage}
+                  onChange={(e) => onMessageChange?.(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                />
+                <Button 
+                  size="icon" 
+                  variant="hero" 
+                  aria-label="Send"
+                  onClick={onSendMessage}
+                  disabled={!newMessage.trim()}
+                >
+                  <SendHorizonal />
+                </Button>
+              </div>
+              <div className="mt-2 text-center text-xs text-white/70">
+                powered by{" "}
+                <a 
+                  href="https://kasia.fyi/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity"
+                >
+                  KASIA
+                </a>
+              </div>
+            </>
           ) : (
             <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
               Login to chat
