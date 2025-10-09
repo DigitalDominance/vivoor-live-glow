@@ -5,6 +5,7 @@ import { SendHorizonal } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
+import kasiaLogo from "@/assets/kasia-logo.png";
 import "./chat-panel.css";
 
 // Component to show verified badge for a user
@@ -153,15 +154,16 @@ const ChatPanel: React.FC<{
                   <SendHorizonal />
                 </Button>
               </div>
-              <div className="mt-2 text-center text-xs text-white/70">
-                powered by{" "}
+              <div className="mt-2 text-center text-xs text-white/70 flex items-center justify-center gap-1.5">
+                <span>powered by</span>
                 <a 
                   href="https://kasia.fyi/" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity"
+                  className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity flex items-center gap-1"
                 >
                   KASIA
+                  <img src={kasiaLogo} alt="KASIA" className="h-3 w-3 inline-block" />
                 </a>
               </div>
             </>
