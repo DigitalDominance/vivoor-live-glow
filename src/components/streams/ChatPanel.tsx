@@ -50,11 +50,13 @@ const ChatPanel: React.FC<{
       try {
         const estimate = await fetchFeeEstimate();
         const feerate = estimate.normalBuckets[0]?.feerate || 1;
-        const fee = calculateMessageFee(feerate);
-        setCurrentFee(fee.toFixed(8));
+        // Use higher mass estimate for payload transactions (~3000 grams)
+        const fee = calculateMessageFee(feerate, 3000);
+        // Remove trailing zeros
+        setCurrentFee(parseFloat(fee.toFixed(8)).toString());
       } catch (error) {
         console.error("Failed to fetch fee estimate:", error);
-        setCurrentFee("~0.000015");
+        setCurrentFee("~0.0003");
       }
     };
     getFee();
@@ -183,27 +185,15 @@ const ChatPanel: React.FC<{
                   <SendHorizonal />
                 </Button>
               </div>
-              <div className="mt-2 text-center text-xs text-white/70">
-                <span>Current Network Fee: </span>
+              <div className="mt-3 text-center text-xs text-white/70">
+                <span>Estimated Network Fee: </span>
                 <span className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
                   {currentFee} KAS
                 </span>
               </div>
-              <div className="mt-1 text-center text-xs text-white/70 flex items-center justify-center gap-1.5">
-                <span>powered by</span>
-                <a 
-                  href="https://kasia.fyi/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity flex items-center gap-1"
-                >
-                  KASIA
-                  <img src={kasiaLogo} alt="KASIA" className="h-4 w-4 inline-block" />
-                </a>
-              </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button className="mt-1 text-center text-xs text-white/70 hover:text-white/90 transition-colors flex items-center justify-center gap-1 mx-auto">
+                  <button className="mt-3 text-center text-xs text-white/70 hover:text-white/90 transition-colors flex items-center justify-center gap-1 mx-auto">
                     <HelpCircle className="h-3 w-3" />
                     <span>How it works?</span>
                   </button>
@@ -245,6 +235,18 @@ const ChatPanel: React.FC<{
                   </div>
                 </AlertDialogContent>
               </AlertDialog>
+              <div className="mt-4 text-center text-xs text-white/70 flex items-center justify-center gap-1.5">
+                <span>POWERED BY</span>
+                <a 
+                  href="https://kasia.fyi/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity flex items-center gap-1"
+                >
+                  KASIA
+                  <img src={kasiaLogo} alt="KASIA" className="h-4 w-4 inline-block" />
+                </a>
+              </div>
             </>
           ) : (
             <Button className="w-full" variant="gradientOutline" onClick={onRequireLogin}>
