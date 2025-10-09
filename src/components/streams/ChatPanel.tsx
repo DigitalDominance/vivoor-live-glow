@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SendHorizonal, HelpCircle } from "lucide-react";
+import { SendHorizonal, HelpCircle, X } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { fetchFeeEstimate, calculateMessageFee } from "@/lib/kaspaApi";
 import "./chat-panel.css";
@@ -198,7 +199,7 @@ const ChatPanel: React.FC<{
                     <span>How it works?</span>
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-black/70 backdrop-blur-xl border-0 relative overflow-hidden max-w-md top-[50%] translate-y-[-50%]">
+                <AlertDialogContent className="bg-black/70 backdrop-blur-xl border-0 relative overflow-hidden max-w-md sm:top-[50%] sm:translate-y-[-50%]">
                   {/* Gradient outline */}
                   <div className="absolute inset-0 rounded-lg opacity-50 pointer-events-none" style={{
                     background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
@@ -211,9 +212,13 @@ const ChatPanel: React.FC<{
                   <div className="absolute inset-0 rounded-lg blur-xl opacity-25 pointer-events-none" style={{
                     background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
                   }} />
+                  <AlertDialogCancel className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground bg-transparent border-0 h-auto w-auto p-0">
+                    <X className="h-5 w-5 text-white" />
+                    <span className="sr-only">Close</span>
+                  </AlertDialogCancel>
                   <div className="relative z-10">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-white text-lg">How Kaspa On-Chain Chat Works</AlertDialogTitle>
+                      <AlertDialogTitle className="text-white text-lg pr-8">How Kaspa On-Chain Chat Works</AlertDialogTitle>
                       <AlertDialogDescription className="text-white/80 text-sm space-y-3 pt-2">
                         <p>
                           This chat uses Kaspa's blockchain for truly decentralized, immutable messaging.
