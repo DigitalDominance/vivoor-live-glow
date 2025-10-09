@@ -163,7 +163,7 @@ const ChatPanel: React.FC<{
                   className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] hover:opacity-80 transition-opacity flex items-center gap-1"
                 >
                   KASIA
-                  <img src={kasiaLogo} alt="KASIA" className="h-3 w-3 inline-block" />
+                  <img src={kasiaLogo} alt="KASIA" className="h-4 w-4 inline-block" />
                 </a>
               </div>
             </>

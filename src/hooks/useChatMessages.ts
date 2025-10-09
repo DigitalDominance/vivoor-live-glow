@@ -11,6 +11,7 @@ export type ChatMessage = {
   };
   text: string;
   time: string;
+  timestamp?: number;
 };
 
 export function useChatMessages(streamId: string) {
@@ -56,7 +57,8 @@ export function useChatMessages(streamId: string) {
         time: new Date(msg.created_at).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit'
-        })
+        }),
+        timestamp: new Date(msg.created_at).getTime()
       }));
     },
     enabled: !!streamId,
@@ -123,7 +125,8 @@ export function useChatMessages(streamId: string) {
             time: new Date(newMsg.created_at).toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit'
-            })
+            }),
+            timestamp: new Date(newMsg.created_at).getTime()
           };
 
           setMessages((prev) => [...prev, formattedMessage]);

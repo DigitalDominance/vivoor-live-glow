@@ -379,15 +379,17 @@ const Watch = () => {
     // Send the transaction - show optimistic message as soon as kasware returns txid
     const success = await sendOnChainMessage(messageToSend, (txid) => {
       // This callback fires immediately after kasware returns the txid
+      const now = Date.now();
       const optimisticMsg = {
-        id: `optimistic-${Date.now()}`,
+        id: `optimistic-${now}`,
         user: {
           id: currentUserProfile?.id || identity.id,
           name: currentUserProfile?.handle || currentUserProfile?.display_name || 'You',
           avatar: currentUserProfile?.avatar_url
         },
         text: messageToSend,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: now
       };
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
     });
@@ -959,7 +961,7 @@ const Watch = () => {
                 return !hasOptimistic;
               }),
               ...optimisticMessages
-            ]}
+            ].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))}
             canPost={!!identity?.id}
             onRequireLogin={onRequireLogin}
             newMessage={newMessage}
