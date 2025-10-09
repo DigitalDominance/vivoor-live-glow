@@ -235,16 +235,16 @@ const ChatPanel: React.FC<{
                       <AlertDialogTitle className="text-white text-lg pr-8">How Kaspa On-Chain Chat Works</AlertDialogTitle>
                       <AlertDialogDescription className="text-white/80 text-sm space-y-3 pt-2">
                         <p>
-                          This chat uses Kaspa's blockchain for truly decentralized, immutable messaging.
+                          This chat uses Kaspa's blockDAG for truly decentralized, immutable messaging.
                         </p>
                         <p>
                           <strong className="text-white">Zero Cost:</strong> The 1.2 KAS you send goes directly to your own wallet. The only cost is the tiny network fee (typically ~0.000015 KAS).
                         </p>
                         <p>
-                          <strong className="text-white">On-Chain & Immutable:</strong> Messages are embedded within transaction payloads, making them permanently stored on the blockchain.
+                          <strong className="text-white">On-Chain & Immutable:</strong> Messages are embedded within transaction payloads, making them permanently stored on the blockDAG.
                         </p>
                         <p>
-                          <strong className="text-white">No WebSockets Required:</strong> The system reads transaction payloads from the blockchain and displays them as chat messages in real-time.
+                          <strong className="text-white">No WebSockets Required:</strong> The system reads transaction payloads from the blockDAG and displays them as chat messages in real-time.
                         </p>
                         <p className="text-xs text-white/60 pt-2">
                           Powered by KASIA's decentralized messaging protocol.
