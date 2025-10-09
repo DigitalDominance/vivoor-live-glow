@@ -81,21 +81,21 @@ const ChatPanel: React.FC<{
   return (
     <div className="h-full flex flex-col rounded-xl relative bg-black/70 backdrop-blur-xl overflow-hidden">
       {/* Smooth gradient outline with glow */}
-      <div className="absolute inset-0 rounded-xl opacity-60 pointer-events-none" style={{
+      <div className="absolute inset-0 rounded-xl opacity-50 pointer-events-none" style={{
         background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
-        padding: '1.5px',
+        padding: '3px',
         WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
         WebkitMaskComposite: 'xor',
         maskComposite: 'exclude'
       }} />
       
       {/* Glow effect */}
-      <div className="absolute inset-0 rounded-xl blur-md opacity-30 pointer-events-none" style={{
+      <div className="absolute inset-0 rounded-xl blur-xl opacity-35 pointer-events-none" style={{
         background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
       }} />
 
       <div className="relative z-10 h-full flex flex-col">
-        <div className="px-3 py-2 border-b border-white/10 text-sm font-medium text-foreground">
+        <div className="px-3 py-2 border-b border-white/10 text-sm font-medium text-white">
           Chat {messages.length > 0 && `(${messages.length})`}
         </div>
         <div 
@@ -118,12 +118,12 @@ const ChatPanel: React.FC<{
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-primary font-medium truncate">{m.user.name}</span>
+                  <span className="text-white font-medium truncate">{m.user.name}</span>
                   <VerifiedUserBadge userId={m.user.id} />
-                  <span className="text-xs text-muted-foreground">{m.time}</span>
+                  <span className="text-xs text-white/50 dark:text-white/50">{m.time}</span>
                 </div>
                 <div 
-                  className="break-words mt-0.5"
+                  className="text-white break-words mt-0.5"
                   dangerouslySetInnerHTML={{ __html: blurBadWords(m.text) }}
                 />
               </div>
@@ -136,7 +136,7 @@ const ChatPanel: React.FC<{
           {canPost !== undefined && canPost !== null ? (
             <div className="flex gap-2">
               <input 
-                className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" 
+                className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50" 
                 placeholder="Say something..." 
                 value={newMessage}
                 onChange={(e) => onMessageChange?.(e.target.value)}

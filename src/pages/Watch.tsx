@@ -720,16 +720,16 @@ const Watch = () => {
             className="relative rounded-xl overflow-hidden bg-black/70 backdrop-blur-xl"
           >
             {/* Smooth gradient outline with glow */}
-            <div className="absolute inset-0 rounded-xl opacity-40 pointer-events-none z-10" style={{
+            <div className="absolute inset-0 rounded-xl opacity-50 pointer-events-none z-10" style={{
               background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
-              padding: '2px',
+              padding: '3px',
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor',
               maskComposite: 'exclude'
             }} />
             
             {/* Glow effect */}
-            <div className="absolute inset-0 rounded-xl blur-lg opacity-20 pointer-events-none" style={{
+            <div className="absolute inset-0 rounded-xl blur-xl opacity-35 pointer-events-none" style={{
               background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
             }} />
             
@@ -829,16 +829,16 @@ const Watch = () => {
           {/* Stream info */}
           <div className="relative rounded-xl p-4 bg-black/70 backdrop-blur-xl overflow-hidden">
             {/* Smooth gradient outline */}
-            <div className="absolute inset-0 rounded-xl opacity-60 pointer-events-none" style={{
+            <div className="absolute inset-0 rounded-xl opacity-50 pointer-events-none" style={{
               background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
-              padding: '1.5px',
+              padding: '3px',
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor',
               maskComposite: 'exclude'
             }} />
             
             {/* Glow effect */}
-            <div className="absolute inset-0 rounded-xl blur-md opacity-25 pointer-events-none" style={{
+            <div className="absolute inset-0 rounded-xl blur-xl opacity-35 pointer-events-none" style={{
               background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
             }} />
 
@@ -851,10 +851,10 @@ const Watch = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-base sm:text-lg font-semibold truncate">{streamData.title}</h1>
+                  <h1 className="text-base sm:text-lg font-semibold text-white truncate">{streamData.title}</h1>
                   <div className="flex items-center gap-2">
                     <button 
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-white/60 dark:text-white/60 hover:text-white transition-colors"
                       onClick={() => setProfileOpen(true)}
                     >
                       @{streamerProfile?.handle || 'streamer'}
@@ -884,7 +884,7 @@ const Watch = () => {
                   variant={liked ? "hero" : "ghost"}
                   size="sm"
                   onClick={handleLike}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none text-white"
                 >
                   <Heart className={`size-4 ${liked ? "fill-current" : ""}`} />
                   <span className="ml-1">{likeCount}</span>
@@ -893,7 +893,7 @@ const Watch = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setReportOpen(true)}
-                  className="flex-1 sm:flex-none border border-white/10 hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-400"
+                  className="flex-1 sm:flex-none text-white border border-white/10 hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-400"
                 >
                   <Flag className="size-4" />
                 </Button>
@@ -901,7 +901,7 @@ const Watch = () => {
                   variant={followed ? "secondary" : "hero"}
                   size="sm"
                   onClick={handleFollow}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none text-white"
                 >
                   {followed ? 'Following' : 'Follow'}
                 </Button>
