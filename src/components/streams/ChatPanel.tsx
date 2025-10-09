@@ -208,7 +208,7 @@ const ChatPanel: React.FC<{
                     <span>How it works?</span>
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-black/70 backdrop-blur-xl border-0 relative overflow-hidden max-w-md">
+                <AlertDialogContent className="bg-black/70 backdrop-blur-xl border-0 relative overflow-hidden max-w-md top-[50%] translate-y-[-50%]">
                   {/* Gradient outline */}
                   <div className="absolute inset-0 rounded-lg opacity-50 pointer-events-none" style={{
                     background: 'linear-gradient(135deg, hsl(329, 75%, 80%) 0%, hsl(280, 75%, 75%) 20%, hsl(252, 85%, 75%) 40%, hsl(230, 80%, 70%) 60%, hsl(210, 85%, 65%) 80%, hsl(190, 85%, 65%) 100%)',
