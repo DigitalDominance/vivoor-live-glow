@@ -6,13 +6,14 @@ const SUBNETWORK_ID_SIZE = 20;
 const OUTPOINT_SIZE = 36; // 32 bytes txid + 4 bytes index
 
 // Standard sizes for typical Kaspa transactions with payload
-// Kasware wallet typically uses larger signatures for payload transactions
-const SIGNATURE_SCRIPT_SIZE = 150; // Increased for payload transactions
+// Kasware wallet uses larger signatures for payload transactions
+const SIGNATURE_SCRIPT_SIZE = 200; // Larger for payload transactions
 const SCRIPT_PUBLIC_KEY_SIZE = 35; // Typical P2PK script public key
 
 // Kaspa mass includes both storage and compute costs
 // Each signature operation adds significant compute mass
-const COMPUTE_MASS_PER_SIG_OP = 1000; // grams per signature verification
+const COMPUTE_MASS_PER_SIG_OP = 2500; // grams per signature verification (increased)
+const BASE_OVERHEAD = 500; // Additional overhead for transaction processing
 
 export interface TransactionMassEstimate {
   mass: number;
@@ -86,7 +87,7 @@ export function estimateTransactionMass(
   // Compute mass accounts for signature verification operations
   const storageMass = size;
   const computeMass = numInputs * COMPUTE_MASS_PER_SIG_OP; // Each input has 1 sig op
-  const mass = storageMass + computeMass;
+  const mass = storageMass + computeMass + BASE_OVERHEAD;
 
   return { mass, size };
 }
