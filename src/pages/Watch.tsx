@@ -919,7 +919,7 @@ const Watch = () => {
                     setTipOpen(true);
                   }}
                   disabled={!identity || !streamerKaspaAddress || !livepeerIsLive}
-                  className="flex-1 sm:flex-none"
+                  className="flex-1 sm:flex-none text-white"
                 >
                   Tip KAS
                 </Button>
