@@ -193,7 +193,7 @@ const ChatPanel: React.FC<{
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button className="mt-3 text-center text-xs text-white/70 hover:text-white/90 transition-colors flex items-center justify-center gap-1 mx-auto">
+                  <button className="mt-4 text-center text-xs text-white/70 hover:text-white/90 transition-colors flex items-center justify-center gap-1 mx-auto">
                     <HelpCircle className="h-3 w-3" />
                     <span>How it works?</span>
                   </button>
@@ -235,7 +235,7 @@ const ChatPanel: React.FC<{
                   </div>
                 </AlertDialogContent>
               </AlertDialog>
-              <div className="mt-4 text-center text-xs text-white/70 flex items-center justify-center gap-1.5">
+              <div className="mt-6 text-center text-xs text-white/70 flex items-center justify-center gap-1.5">
                 <span>POWERED BY</span>
                 <a 
                   href="https://kasia.fyi/" 
