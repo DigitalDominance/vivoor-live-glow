@@ -48,11 +48,3 @@ export async function fetchFeeEstimate(): Promise<FeeEstimate> {
   if (!res.ok) throw new Error(`Kaspa API error ${res.status}`);
   return (await res.json()) as FeeEstimate;
 }
-
-// Calculate fee for a typical chat message transaction
-// Typical mass is around 1500 grams for a simple transaction with payload
-export function calculateMessageFee(feeratePerGram: number, massInGrams = 1500): number {
-  const feeInSompi = feeratePerGram * massInGrams;
-  const feeInKas = feeInSompi / 1e8;
-  return feeInKas;
-}

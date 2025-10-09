@@ -15,7 +15,8 @@ import {
   AlertDialogTrigger,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { fetchFeeEstimate, calculateMessageFee } from "@/lib/kaspaApi";
+import { fetchFeeEstimate } from "@/lib/kaspaApi";
+import { calculateMessageFee, formatFee } from "@/lib/kaspaTransactionMass";
 import "./chat-panel.css";
 
 // Component to show verified badge for a user
@@ -38,12 +39,15 @@ const ChatPanel: React.FC<{
   newMessage?: string;
   onMessageChange?: (message: string) => void;
   onSendMessage?: () => void;
-}> = ({ messages, canPost, onRequireLogin, newMessage = '', onMessageChange, onSendMessage }) => {
+  streamId?: string; // Add streamId prop for fee calculation
+}> = ({ messages, canPost, onRequireLogin, newMessage = '', onMessageChange, onSendMessage, streamId = '' }) => {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const [isUserScrolling, setIsUserScrolling] = React.useState(false);
   const previousMessagesLength = React.useRef(messages.length);
   const [currentFee, setCurrentFee] = React.useState<string>("...");
+
+  const [baseFeeRate, setBaseFeeRate] = React.useState<number>(1);
 
   // Fetch fee estimate on mount
   React.useEffect(() => {
@@ -51,13 +55,10 @@ const ChatPanel: React.FC<{
       try {
         const estimate = await fetchFeeEstimate();
         const feerate = estimate.normalBuckets[0]?.feerate || 1;
-        // Use higher mass estimate for payload transactions (~3000 grams)
-        const fee = calculateMessageFee(feerate, 3000);
-        // Remove trailing zeros
-        setCurrentFee(parseFloat(fee.toFixed(8)).toString());
+        setBaseFeeRate(feerate);
       } catch (error) {
         console.error("Failed to fetch fee estimate:", error);
-        setCurrentFee("~0.0003");
+        setBaseFeeRate(1); // Default to minimum fee rate
       }
     };
     getFee();
@@ -65,6 +66,19 @@ const ChatPanel: React.FC<{
     const interval = setInterval(getFee, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Calculate fee dynamically based on actual message length
+  React.useEffect(() => {
+    if (!streamId) {
+      setCurrentFee("...");
+      return;
+    }
+    
+    // Use actual message length, or estimate for empty message
+    const messageToEstimate = newMessage.trim() || "Sample message text";
+    const fee = calculateMessageFee(messageToEstimate, streamId, baseFeeRate);
+    setCurrentFee(formatFee(fee));
+  }, [newMessage, streamId, baseFeeRate]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });

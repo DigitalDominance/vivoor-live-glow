@@ -967,6 +967,7 @@ const Watch = () => {
             newMessage={newMessage}
             onMessageChange={setNewMessage}
             onSendMessage={handleSendMessage}
+            streamId={streamId}
           />
         </div>
       </div>
