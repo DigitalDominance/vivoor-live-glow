@@ -35,3 +35,24 @@ export function sumOutputsToAddress(tx: KaspaTx, address: string) {
     .filter(o => o.script_public_key_address === address)
     .reduce((acc, o) => acc + (o.amount || 0), 0);
 }
+
+export type FeeEstimate = {
+  priorityBucket: { feerate: number; estimatedSeconds: number };
+  normalBuckets: Array<{ feerate: number; estimatedSeconds: number }>;
+  lowBuckets: Array<{ feerate: number; estimatedSeconds: number }>;
+};
+
+export async function fetchFeeEstimate(): Promise<FeeEstimate> {
+  const url = `${BASE}/info/fee-estimate`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Kaspa API error ${res.status}`);
+  return (await res.json()) as FeeEstimate;
+}
+
+// Calculate fee for a typical chat message transaction
+// Typical mass is around 1500 grams for a simple transaction with payload
+export function calculateMessageFee(feeratePerGram: number, massInGrams = 1500): number {
+  const feeInSompi = feeratePerGram * massInGrams;
+  const feeInKas = feeInSompi / 1e8;
+  return feeInKas;
+}
