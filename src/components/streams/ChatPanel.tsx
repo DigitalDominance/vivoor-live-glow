@@ -255,9 +255,6 @@ const ChatPanel: React.FC<{
                 <span className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
                   {currentFee} KAS
                 </span>
-                <span className="block mt-1 text-white/50 text-[10px]">
-                  (Emojis not included in on-chain payload)
-                </span>
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
