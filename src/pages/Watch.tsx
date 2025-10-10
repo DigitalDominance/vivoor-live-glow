@@ -24,12 +24,13 @@ import { useStreamReadiness } from "@/hooks/useStreamReadiness";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { toast } from "sonner";
-import { Heart, Volume2, VolumeX, Flag } from "lucide-react";
+import { Heart, Volume2, VolumeX, Flag, Smile } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getCategoryThumbnail } from "@/utils/categoryThumbnails";
 import { containsBadWords, cleanText } from "@/lib/badWords";
 import { startStreamTracking, updateStreamStatus, stopStreamTracking } from "@/lib/streamLocal";
 import ReportModal from "@/components/modals/ReportModal";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 
 const Watch = () => {
   const { streamId } = useParams();
@@ -48,6 +49,7 @@ const Watch = () => {
   const [shownTipIds, setShownTipIds] = React.useState<Set<string>>(new Set());
   const [clipModalOpen, setClipModalOpen] = React.useState(false);
   const [newMessage, setNewMessage] = React.useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
   const [volume, setVolume] = React.useState(1);
   const [isMuted, setIsMuted] = React.useState(true); // Start muted for autoplay, will unmute immediately
   const [showControls, setShowControls] = React.useState(true);
@@ -59,6 +61,7 @@ const Watch = () => {
   const qualityChangeRef = React.useRef<((qualityLevel: number) => void) | null>(null);
   const [qualityLevels, setQualityLevels] = React.useState<Array<{label: string, value: number}>>([]);
   const [currentQuality, setCurrentQuality] = React.useState<number>(-1); // -1 for auto
+  const emojiPickerRef = React.useRef<HTMLDivElement>(null);
 
   // On-chain chat system
   const { messages: chatMessages } = useChatMessages(streamId || '');

@@ -12,6 +12,7 @@ interface ChatVerificationRequest {
   senderAddress: string;
   sessionToken: string;
   walletAddress: string;
+  displayMessage?: string; // Optional emoji version for display
 }
 
 interface KaspaTx {
@@ -102,10 +103,11 @@ serve(async (req) => {
       streamId, 
       senderAddress,
       sessionToken,
-      walletAddress
+      walletAddress,
+      displayMessage
     }: ChatVerificationRequest = await req.json()
 
-    console.log('Verifying chat message transaction:', { txid, streamId, senderAddress })
+    console.log('Verifying chat message transaction:', { txid, streamId, senderAddress, hasDisplayMessage: !!displayMessage })
 
     // Validate session token
     const { data: session, error: sessionError } = await supabaseClient
@@ -267,12 +269,15 @@ serve(async (req) => {
       .single()
 
     // Store message in database (timestamp is now() on server side)
+    // Use displayMessage if provided (has emojis), otherwise use on-chain message
+    const messageToStore = displayMessage || parsedData.messageContent;
+    
     const { data: newMessage, error: insertError } = await supabaseClient
       .from('chat_messages')
       .insert({
         stream_id: streamId,
         user_id: session.encrypted_user_id,
-        message: parsedData.messageContent,
+        message: messageToStore,
         txid: cleanTxid
         // created_at defaults to now() on server
       })
@@ -296,7 +301,7 @@ serve(async (req) => {
             name: profile?.display_name || profile?.handle || 'Anonymous',
             avatar: profile?.avatar_url
           },
-          text: parsedData.messageContent,
+          text: messageToStore, // Return the message with emojis
           timestamp: new Date(newMessage.created_at).getTime()
         }
       }),

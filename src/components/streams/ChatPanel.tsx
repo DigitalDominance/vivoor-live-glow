@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SendHorizonal, HelpCircle, X } from "lucide-react";
+import { SendHorizonal, HelpCircle, X, Smile } from "lucide-react";
 import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
@@ -18,6 +18,7 @@ import {
 import { fetchFeeEstimate } from "@/lib/kaspaApi";
 import { calculateMessageFee, formatFee } from "@/lib/kaspaTransactionMass";
 import "./chat-panel.css";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
@@ -46,6 +47,8 @@ const ChatPanel: React.FC<{
   const [isUserScrolling, setIsUserScrolling] = React.useState(false);
   const previousMessagesLength = React.useRef(messages.length);
   const [currentFee, setCurrentFee] = React.useState<string>("...");
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
+  const emojiPickerRef = React.useRef<HTMLDivElement>(null);
 
   const [baseFeeRate, setBaseFeeRate] = React.useState<number>(1);
 
@@ -124,6 +127,27 @@ const ChatPanel: React.FC<{
       onSendMessage?.();
     }
   };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    if (onMessageChange) {
+      onMessageChange((newMessage || '') + emojiData.emoji);
+    }
+    setShowEmojiPicker(false);
+  };
+
+  // Close emoji picker when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmojiPicker]);
   
   return (
     <div className="h-full flex flex-col rounded-xl relative bg-black/70 backdrop-blur-xl overflow-hidden">
@@ -182,7 +206,7 @@ const ChatPanel: React.FC<{
         <div className="p-2 border-t border-white/10">
           {canPost !== undefined && canPost !== null ? (
             <>
-              <div className="flex gap-2">
+              <div className="flex gap-2 relative">
                 <input 
                   className="flex-1 rounded-md bg-black/50 backdrop-blur-sm px-3 py-2 text-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50" 
                   placeholder="Say something..." 
@@ -192,6 +216,15 @@ const ChatPanel: React.FC<{
                 />
                 <Button 
                   size="icon" 
+                  variant="ghost" 
+                  aria-label="Emoji"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="text-white hover:bg-white/10"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+                <Button 
+                  size="icon" 
                   variant="hero" 
                   aria-label="Send"
                   onClick={onSendMessage}
@@ -199,11 +232,31 @@ const ChatPanel: React.FC<{
                 >
                   <SendHorizonal />
                 </Button>
+                
+                {/* Emoji Picker Popup */}
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    className="absolute bottom-full right-0 mb-2 z-50"
+                  >
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiClick}
+                      theme={Theme.DARK}
+                      width={300}
+                      height={400}
+                      searchPlaceHolder="Search emoji..."
+                      previewConfig={{ showPreview: false }}
+                    />
+                  </div>
+                )}
               </div>
               <div className="mt-3 text-center text-xs text-white/70">
                 <span>Estimated Network Fee: </span>
                 <span className="font-semibold bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
                   {currentFee} KAS
+                </span>
+                <span className="block mt-1 text-white/50 text-[10px]">
+                  (Emojis not included in on-chain payload)
                 </span>
               </div>
               <AlertDialog>
