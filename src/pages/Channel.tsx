@@ -19,7 +19,7 @@ import { useKnsDomain } from "@/hooks/useKnsDomain";
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
   const { data: verification } = useUserVerification(userId);
-  return <VerifiedBadge size="lg" isVerified={verification?.isVerified} />;
+  return <VerifiedBadge size="md" isVerified={verification?.isVerified} />;
 };
 
 // Component to show KNS badge for a user

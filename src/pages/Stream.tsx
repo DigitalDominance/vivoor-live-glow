@@ -82,31 +82,6 @@ const Stream = () => {
     enabled: !!streamData?.id && !!identity?.id
   });
 
-  // Get streamer's KNS domain for tipping (if enabled)
-  const { data: streamerKnsDomain } = useQuery({
-    queryKey: ['streamer-kns-domain', streamData?.user_id],
-    queryFn: async () => {
-      if (!streamData?.user_id) return null;
-      
-      // Check if streamer has KNS badge enabled
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('show_kns_badge')
-        .eq('id', streamData.user_id)
-        .maybeSingle();
-      
-      if (!profileData?.show_kns_badge) return null;
-      
-      // Get KNS domain
-      const { data } = await supabase.rpc('get_user_kns_domain', {
-        user_id_param: streamData.user_id
-      });
-      
-      return data?.[0]?.full_name || null;
-    },
-    enabled: !!streamData?.user_id
-  });
-
   // Use localStorage as fallback for current user's own stream
   const localStreamData = React.useMemo(() => ({
     ingestUrl: localStorage.getItem('currentIngestUrl'),
@@ -757,7 +732,6 @@ const Stream = () => {
         isLoggedIn={!!identity} 
         onRequireLogin={() => {}} 
         toAddress={streamerKaspaAddress}
-        knsDomain={streamerKnsDomain}
         senderHandle={profile?.handle || identity?.id?.slice(0, 8)} 
       />
 

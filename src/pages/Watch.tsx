@@ -183,31 +183,6 @@ const Watch = () => {
     enabled: !!streamData?.id
   });
 
-  // Get streamer's KNS domain for tipping (if enabled)
-  const { data: streamerKnsDomain } = useQuery({
-    queryKey: ['streamer-kns-domain', streamData?.user_id],
-    queryFn: async () => {
-      if (!streamData?.user_id) return null;
-      
-      // Check if streamer has KNS badge enabled
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('show_kns_badge')
-        .eq('id', streamData.user_id)
-        .maybeSingle();
-      
-      if (!profileData?.show_kns_badge) return null;
-      
-      // Get KNS domain
-      const { data } = await supabase.rpc('get_user_kns_domain', {
-        user_id_param: streamData.user_id
-      });
-      
-      return data?.[0]?.full_name || null;
-    },
-    enabled: !!streamData?.user_id
-  });
-
   // Fetch suggested streams
   const { data: suggestedStreams } = useQuery({
     queryKey: ['suggested-streams', streamData?.category],
@@ -1028,7 +1003,6 @@ const Watch = () => {
         isLoggedIn={!!identity} 
         onRequireLogin={onRequireLogin} 
         toAddress={streamerKaspaAddress}
-        knsDomain={streamerKnsDomain}
         senderHandle={currentUserProfile?.handle || identity?.id?.slice(0, 8)} 
         streamId={streamData?.id}
         senderProfile={currentUserProfile}
