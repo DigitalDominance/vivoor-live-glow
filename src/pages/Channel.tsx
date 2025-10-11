@@ -41,7 +41,7 @@ const KnsUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
   
   if (!profileData?.show_kns_badge || !knsDomain) return null;
   
-  return <KnsBadge knsDomain={knsDomain.full_name} size="md" />;
+  return <KnsBadge knsDomain={knsDomain.full_name} size="lg" />;
 };
 
 // Component to display KNS address on channel page
@@ -262,61 +262,62 @@ const Channel: React.FC = () => {
         {/* Profile Section */}
         <div className="container mx-auto px-4">
           <div className="relative -mt-16 pb-6">
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-              <Avatar className="size-24 md:size-32 border-4 border-background shadow-lg relative z-10">
-                <AvatarImage src={profile.avatar_url || ''} alt={`${profile.display_name} avatar`} />
-                <AvatarFallback className="text-2xl bg-grad-primary text-[hsl(var(--on-gradient))]">
-                  {(profile.display_name || profile.handle || 'U')[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              {/* Glass container with gradient border */}
-              <div className="flex-1 min-w-0 p-0.5 rounded-2xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink">
-                <div className="rounded-2xl bg-black/60 backdrop-blur-xl p-6 border border-white/5">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-2xl md:text-3xl font-bold text-white">{profile.display_name || profile.handle}</h1>
-                        <VerifiedUserBadge userId={profile.id} />
-                        <KnsUserBadge userId={profile.id} />
-                        {profile.banned && (
-                          <span className="px-2 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
-                            BANNED
-                          </span>
+            {/* Glass container with gradient border */}
+            <div className="p-0.5 rounded-2xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink max-w-4xl">
+              <div className="rounded-2xl bg-black/60 backdrop-blur-xl p-6 border border-white/5">
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                  <Avatar className="size-24 md:size-32 border-4 border-background shadow-lg flex-shrink-0">
+                    <AvatarImage src={profile.avatar_url || ''} alt={`${profile.display_name} avatar`} />
+                    <AvatarFallback className="text-2xl bg-grad-primary text-[hsl(var(--on-gradient))]">
+                      {(profile.display_name || profile.handle || 'U')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h1 className="text-2xl md:text-3xl font-bold text-white">{profile.display_name || profile.handle}</h1>
+                          <VerifiedUserBadge userId={profile.id} />
+                          <KnsUserBadge userId={profile.id} />
+                          {profile.banned && (
+                            <span className="px-2 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
+                              BANNED
+                            </span>
+                          )}
+                        </div>
+                        <KnsAddressDisplay userId={profile.id} />
+                        {profile.bio ? (
+                          <p className="text-white/80 mt-2">{profile.bio}</p>
+                        ) : (
+                          <p className="text-white/60 mt-2">@{profile.handle}</p>
                         )}
                       </div>
-                      <KnsAddressDisplay userId={profile.id} />
-                      {profile.bio ? (
-                        <p className="text-white/80 mt-2">{profile.bio}</p>
-                      ) : (
-                        <p className="text-white/60 mt-2">@{profile.handle}</p>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2">
+                      
                       {!isOwnChannel && identity?.id && (
                         <Button
                           variant={following ? "secondary" : "hero"}
                           onClick={handleFollow}
+                          className="md:self-start"
                         >
                           {following ? 'Following' : 'Follow'}
                         </Button>
                       )}
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-6 text-sm">
-                    <div>
-                      <span className="font-semibold text-white">{profile.total_likes || 0}</span>
-                      <span className="text-white/60 ml-1">total likes</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-white">{profile.follower_count || 0}</span>
-                      <span className="text-white/60 ml-1">followers</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-white">{profile.following_count || 0}</span>
-                      <span className="text-white/60 ml-1">following</span>
+                    
+                    <div className="flex gap-6 text-sm">
+                      <div>
+                        <span className="font-semibold text-white">{profile.total_likes || 0}</span>
+                        <span className="text-white/60 ml-1">total likes</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">{profile.follower_count || 0}</span>
+                        <span className="text-white/60 ml-1">followers</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">{profile.following_count || 0}</span>
+                        <span className="text-white/60 ml-1">following</span>
+                      </div>
                     </div>
                   </div>
                 </div>
