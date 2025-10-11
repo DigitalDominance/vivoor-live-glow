@@ -171,20 +171,20 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
             {clip.title}
           </h3>
           {/* Creator Info */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-            <Avatar className="size-5">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <Avatar className="size-7">
               <AvatarImage
                 src={clip.profile_avatar_url || ''}
                 alt={`@${clip.profile_handle} avatar`}
               />
-              <AvatarFallback className="text-[10px]">
+              <AvatarFallback className="text-xs">
                 {clip.profile_display_name?.[0]?.toUpperCase() ||
                   clip.profile_handle?.[0]?.toUpperCase() ||
                   'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex items-center gap-1">
-              <span>@{clip.profile_handle || 'Unknown'}</span>
+              <span className="font-medium">@{clip.profile_handle || 'Unknown'}</span>
               <ClipVerifiedBadge userId={clip.user_id} size="sm" />
               <UserKnsBadge userId={clip.user_id} size="sm" />
             </div>

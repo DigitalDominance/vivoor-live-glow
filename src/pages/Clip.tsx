@@ -227,7 +227,7 @@ const ClipPage: React.FC = () => {
               {/* Creator Info */}
               {creator && (
                 <div className="flex items-center gap-3 p-3 bg-background/30 rounded-lg border border-border/20">
-                  <Avatar className="size-10">
+                  <Avatar className="size-12">
                     <AvatarImage src={creator.avatar_url} alt={`@${creator.handle} avatar`} />
                     <AvatarFallback>
                       {(creator.display_name || creator.handle || 'U')[0].toUpperCase()}
@@ -235,11 +235,11 @@ const ClipPage: React.FC = () => {
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{creator.display_name || creator.handle}</span>
+                      <span className="font-semibold text-lg">{creator.display_name || creator.handle}</span>
                       <ClipVerifiedBadge userId={creator.id} size="sm" />
                       <UserKnsBadge userId={creator.id} size="sm" />
                     </div>
-                    <div className="text-sm text-muted-foreground">@{creator.handle}</div>
+                    <div className="text-base text-muted-foreground">@{creator.handle}</div>
                   </div>
                   <Button
                     variant="outline"
