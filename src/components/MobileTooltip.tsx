@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 interface MobileTooltipProps {
   children: React.ReactNode;
@@ -61,14 +62,16 @@ const MobileTooltip: React.FC<MobileTooltipProps> = ({ children, content, side =
             {children}
           </div>
         </TooltipTrigger>
-        <TooltipContent 
-          side={side}
-          align="center"
-          sideOffset={8}
-          className="bg-card border-white/10 text-foreground z-[100]"
-        >
-          {content}
-        </TooltipContent>
+        <TooltipPrimitive.Portal>
+          <TooltipContent 
+            side={side}
+            align="center"
+            sideOffset={8}
+            className="bg-card border-white/10 text-foreground z-[9999]"
+          >
+            {content}
+          </TooltipContent>
+        </TooltipPrimitive.Portal>
       </Tooltip>
     </TooltipProvider>
   );
