@@ -173,7 +173,7 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
           {/* Creator Info */}
           <div className="flex items-center gap-2.5 text-sm text-muted-foreground mb-3">
             <div className="relative p-0.5 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink shadow-lg shadow-brand-iris/30">
-              <Avatar className="size-7 border-2 border-background">
+              <Avatar className="size-7">
                 <AvatarImage
                   src={clip.profile_avatar_url || ''}
                   alt={`@${clip.profile_handle} avatar`}

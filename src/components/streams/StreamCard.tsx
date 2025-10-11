@@ -169,7 +169,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                 onClick={(e) => { e.stopPropagation(); onOpenProfile?.(stream.userId); }}
               >
                 <div className="relative p-0.5 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink shadow-lg shadow-brand-iris/30">
-                  <Avatar className="size-6 border-2 border-background">
+                  <Avatar className="size-6">
                     <AvatarImage src={stream.avatar} alt={`@${stream.username} avatar`} />
                     <AvatarFallback className="text-xs">{stream.username[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
