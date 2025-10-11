@@ -28,23 +28,41 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, walletAddress } = await req.json();
+    const { sessionToken, walletAddress } = await req.json();
 
-    if (!userId || !walletAddress) {
-      throw new Error('userId and walletAddress are required');
+    if (!sessionToken || !walletAddress) {
+      throw new Error('sessionToken and walletAddress are required');
     }
 
-    console.log(`Syncing KNS domain for user ${userId} with wallet ${walletAddress}`);
-
-    // Fetch primary name from KNS API
-    const knsApiUrl = `https://api.knsdomains.org/mainnet/api/v1/primary-name/${encodeURIComponent(walletAddress)}`;
-    const knsResponse = await fetch(knsApiUrl);
-    const knsData: KnsApiResponse = await knsResponse.json();
+    console.log(`Syncing KNS domain for wallet ${walletAddress}`);
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Validate session token and get user ID
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from('wallet_auth_sessions')
+      .select('encrypted_user_id')
+      .eq('session_token', sessionToken)
+      .eq('wallet_address', walletAddress)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (sessionError || !sessionData) {
+      console.error('Invalid session:', sessionError);
+      throw new Error('Invalid or expired session');
+    }
+
+    const userId = sessionData.encrypted_user_id;
+    console.log(`Validated session for user ${userId}`);
+
+    // Fetch primary name from KNS API
+    const knsApiUrl = `https://api.knsdomains.org/mainnet/api/v1/primary-name/${encodeURIComponent(walletAddress)}`;
+    const knsResponse = await fetch(knsApiUrl);
+    const knsData: KnsApiResponse = await knsResponse.json();
 
     if (!knsData.success || !knsData.data) {
       // No KNS domain found - delete any existing record

@@ -88,7 +88,7 @@ const MyProfileModal: React.FC<{
       setSyncing(true);
       try {
         const { data, error } = await supabase.functions.invoke('sync-kns-domain', {
-          body: { userId: identity.id, walletAddress: identity.address }
+          body: { sessionToken, walletAddress: identity.address }
         });
 
         if (error) throw error;
