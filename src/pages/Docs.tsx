@@ -64,6 +64,7 @@ const DocsPage = () => {
             <a href="#streaming" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('streaming'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Live Streaming</a>
             <a href="#clips" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('clips'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Creating Clips</a>
             <a href="#verification" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('verification'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Getting Verified</a>
+            <a href="#kns" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('kns'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Enabling KNS</a>
             <a href="#profile" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('profile'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Profile Management</a>
             <a href="#following" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('following'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Following Users</a>
           </nav>
@@ -782,6 +783,73 @@ const DocsPage = () => {
                         <p className="text-sm text-muted-foreground">Your verified badge appears immediately after confirmation</p>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.section>
+
+          {/* Enabling KNS */}
+          <motion.section id="kns" variants={fadeInUp}>
+            <Card className="border-brand-pink/20">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <Shield className="w-8 h-8 text-brand-pink" />
+                  Enabling KNS
+                </CardTitle>
+                <CardDescription>Display your Kaspa Name Service domain and create a memorable donation address</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 border border-brand-pink/20 rounded-lg bg-brand-pink/5">
+                  <h3 className="font-semibold text-brand-pink mb-2">✨ What is KNS?</h3>
+                  <p className="text-sm">
+                    KNS (Kaspa Name Service) allows you to replace your long wallet address with a memorable domain name like "yourname.kas". 
+                    Once enabled, your KNS badge will appear on your clips, streams, and channel while also providing supporters with an easy-to-remember donation address.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">How to Enable KNS Badge</h3>
+                  <div className="space-y-4">
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                      <div>
+                        <p className="font-medium">Obtain a KNS Domain</p>
+                        <p className="text-sm text-muted-foreground">Mint or receive a KNS domain for your connected Kaspa wallet address</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-iris text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                      <div>
+                        <p className="font-medium">Go to Edit Profile</p>
+                        <p className="text-sm text-muted-foreground">Click on your profile and select "Edit Profile"</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-pink text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                      <div>
+                        <p className="font-medium">Enable Show KNS Badge</p>
+                        <p className="text-sm text-muted-foreground">Toggle the "Show KNS Badge" option to automatically fetch and display your KNS domain</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                      <div>
+                        <p className="font-medium">Enjoy Your KNS!</p>
+                        <p className="text-sm text-muted-foreground">Your KNS badge will now appear across your profile, clips, and streams. Supporters can hover over it to see your wallet address, and tips will be sent to your memorable KNS domain!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 border border-border rounded-lg">
+                    <h4 className="font-medium mb-2">Memorable Donations</h4>
+                    <p className="text-sm text-muted-foreground">Instead of sharing a complex wallet address, supporters can tip you using your KNS domain</p>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg">
+                    <h4 className="font-medium mb-2">Professional Branding</h4>
+                    <p className="text-sm text-muted-foreground">Your KNS badge appears on all your content, enhancing your brand identity across the platform</p>
                   </div>
                 </div>
               </CardContent>
