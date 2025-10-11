@@ -57,13 +57,15 @@ const MobileTooltip: React.FC<MobileTooltipProps> = ({ children, content, side =
     <TooltipProvider>
       <Tooltip open={isMobile ? open : undefined}>
         <TooltipTrigger asChild onClick={handleClick}>
-          <div ref={triggerRef} className="inline-flex">
+          <div ref={triggerRef} className="inline-flex items-center">
             {children}
           </div>
         </TooltipTrigger>
         <TooltipContent 
-          side={side} 
-          className="bg-card border-white/10 text-foreground"
+          side={side}
+          align="center"
+          sideOffset={8}
+          className="bg-card border-white/10 text-foreground z-[100]"
         >
           {content}
         </TooltipContent>
