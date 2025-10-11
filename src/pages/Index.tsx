@@ -172,19 +172,21 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
           </h3>
           {/* Creator Info */}
           <div className="flex items-center gap-2.5 text-sm text-muted-foreground mb-3">
-            <Avatar className="size-7">
-              <AvatarImage
-                src={clip.profile_avatar_url || ''}
-                alt={`@${clip.profile_handle} avatar`}
-              />
-              <AvatarFallback className="text-xs">
-                {clip.profile_display_name?.[0]?.toUpperCase() ||
-                  clip.profile_handle?.[0]?.toUpperCase() ||
-                  'U'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative p-0.5 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink shadow-lg shadow-brand-iris/30">
+              <Avatar className="size-7 border-2 border-background">
+                <AvatarImage
+                  src={clip.profile_avatar_url || ''}
+                  alt={`@${clip.profile_handle} avatar`}
+                />
+                <AvatarFallback className="text-xs">
+                  {clip.profile_display_name?.[0]?.toUpperCase() ||
+                    clip.profile_handle?.[0]?.toUpperCase() ||
+                    'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-base">@{clip.profile_handle || 'Unknown'}</span>
+              <span className="font-semibold text-sm">@{clip.profile_handle || 'Unknown'}</span>
               <ClipVerifiedBadge userId={clip.user_id} size="sm" />
               <UserKnsBadge userId={clip.user_id} size="sm" />
             </div>

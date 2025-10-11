@@ -168,12 +168,14 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                 className="mt-1 inline-flex items-center gap-2.5 text-sm text-muted-foreground hover:text-foreground focus:outline-none story-link"
                 onClick={(e) => { e.stopPropagation(); onOpenProfile?.(stream.userId); }}
               >
-                <Avatar className="size-6">
-                  <AvatarImage src={stream.avatar} alt={`@${stream.username} avatar`} />
-                  <AvatarFallback className="text-xs">{stream.username[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <div className="relative p-0.5 rounded-full bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink shadow-lg shadow-brand-iris/30">
+                  <Avatar className="size-6 border-2 border-background">
+                    <AvatarImage src={stream.avatar} alt={`@${stream.username} avatar`} />
+                    <AvatarFallback className="text-xs">{stream.username[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-base">@{stream.username}</span>
+                  <span className="font-semibold text-sm">@{stream.username}</span>
                   <ClipVerifiedBadge userId={stream.userId} size="sm" />
                   {profileData?.show_kns_badge && knsDomain && (
                     <KnsBadge knsDomain={knsDomain.full_name} size="sm" />
