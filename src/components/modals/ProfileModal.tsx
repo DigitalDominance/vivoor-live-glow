@@ -7,6 +7,7 @@ import { useWallet } from "@/context/WalletContext";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
+import UserKnsBadge from "@/components/UserKnsBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
 
 export type UserProfile = {
@@ -109,6 +110,7 @@ const ProfileModal: React.FC<{
             <div className="flex items-center gap-2">
               <span className="font-medium">{profile.displayName}</span>
               <ClipVerifiedBadge userId={profile.id} size="sm" />
+              <UserKnsBadge userId={profile.id} size="sm" />
             </div>
             {verificationData?.isVerified && (
               <div className="flex items-center gap-1 mt-1">

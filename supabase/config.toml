@@ -2,3 +2,6 @@ project_id = "qcowmxypihinteajhnjw"
 
 [functions.verify-chat-message]
 verify_jwt = false
+
+[functions.sync-kns-domain]
+verify_jwt = false

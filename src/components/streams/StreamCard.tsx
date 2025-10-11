@@ -9,6 +9,8 @@ import { useWallet } from "@/context/WalletContext";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import KnsBadge from "@/components/KnsBadge";
+import { useKnsDomain } from "@/hooks/useKnsDomain";
 
 export type StreamCardProps = {
   stream: {
@@ -35,6 +37,22 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
   const { identity, sessionToken } = useWallet();
   const [liked, setLiked] = React.useState(false);
   const [likeCount, setLikeCount] = React.useState(stream.likeCount || 0);
+
+  // Check if user has KNS badge enabled
+  const { data: profileData } = useQuery({
+    queryKey: ['profile-kns-badge', stream.userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('show_kns_badge')
+        .eq('id', stream.userId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!stream.userId
+  });
+
+  const { data: knsDomain } = useKnsDomain(stream.userId, profileData?.show_kns_badge);
 
   // Update likeCount when stream.likeCount changes
   React.useEffect(() => {
@@ -156,6 +174,9 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                 </Avatar>
                 <span>@{stream.username}</span>
                 <ClipVerifiedBadge userId={stream.userId} size="sm" />
+                {profileData?.show_kns_badge && knsDomain && (
+                  <KnsBadge knsDomain={knsDomain.full_name} size="sm" />
+                )}
               </button>
             </div>
             <div className="flex items-center gap-2">

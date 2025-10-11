@@ -23,6 +23,7 @@ export type ProfileRecord = {
   avatarUrl?: string;
   lastUsernameChange?: string; // ISO date
   lastAvatarChange?: string; // ISO date for pfp edits cooldown
+  showKnsBadge?: boolean; // Whether to show KNS badge
 };
 
 
@@ -93,7 +94,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Verify the user exists in the database with this encrypted ID
             const { data: dbProfile, error } = await supabase
               .from('profiles')
-              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address')
+              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address, show_kns_badge')
               .eq('id', encryptedUserId)
               .eq('kaspa_address', addr)
               .maybeSingle();
@@ -114,6 +115,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 avatarUrl: dbProfile.avatar_url || undefined,
                 lastAvatarChange: dbProfile.last_avatar_change || undefined,
                 lastUsernameChange: dbProfile.last_username_change || undefined,
+                showKnsBadge: dbProfile.show_kns_badge || false,
               };
               setProfile(profileRecord);
               
@@ -210,7 +212,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Load profile from database to sync with local storage
       const { data: dbProfile } = await supabase
         .from('profiles')
-        .select('handle, display_name, avatar_url, last_avatar_change, last_username_change')
+        .select('handle, display_name, avatar_url, last_avatar_change, last_username_change, show_kns_badge')
         .eq('id', encryptedUserId)
         .maybeSingle();
       
@@ -220,6 +222,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           avatarUrl: dbProfile.avatar_url || undefined,
           lastAvatarChange: dbProfile.last_avatar_change || undefined,
           lastUsernameChange: dbProfile.last_username_change || undefined,
+          showKnsBadge: dbProfile.show_kns_badge || false,
         };
         setProfile(profileRecord);
         

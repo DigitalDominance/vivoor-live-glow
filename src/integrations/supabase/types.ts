@@ -157,6 +157,59 @@ export type Database = {
         }
         Relationships: []
       }
+      kns_domains: {
+        Row: {
+          created_at: string
+          domain_name: string
+          full_name: string
+          id: string
+          inscription_id: string
+          is_verified: boolean
+          last_verified_at: string
+          owner_address: string
+          status: string | null
+          tld: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain_name: string
+          full_name: string
+          id?: string
+          inscription_id: string
+          is_verified?: boolean
+          last_verified_at?: string
+          owner_address: string
+          status?: string | null
+          tld: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain_name?: string
+          full_name?: string
+          id?: string
+          inscription_id?: string
+          is_verified?: boolean
+          last_verified_at?: string
+          owner_address?: string
+          status?: string | null
+          tld?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kns_domains_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -237,6 +290,7 @@ export type Database = {
           kaspa_address: string | null
           last_avatar_change: string | null
           last_username_change: string | null
+          show_kns_badge: boolean | null
           updated_at: string
         }
         Insert: {
@@ -252,6 +306,7 @@ export type Database = {
           kaspa_address?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
+          show_kns_badge?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -267,6 +322,7 @@ export type Database = {
           kaspa_address?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
+          show_kns_badge?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -1010,6 +1066,16 @@ export type Database = {
       get_tip_address_secure: {
         Args: { stream_id: string }
         Returns: string
+      }
+      get_user_kns_domain: {
+        Args: { user_id_param: string }
+        Returns: {
+          domain_name: string
+          full_name: string
+          is_verified: boolean
+          last_verified_at: string
+          tld: string
+        }[]
       }
       get_user_verification: {
         Args: { user_id_param: string }

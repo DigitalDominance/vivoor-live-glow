@@ -23,6 +23,7 @@ import { useOnChainChat } from "@/hooks/useOnChainChat";
 import { useStreamReadiness } from "@/hooks/useStreamReadiness";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
+import UserKnsBadge from "@/components/UserKnsBadge";
 import { toast } from "sonner";
 import { Heart, Volume2, VolumeX, Flag, Smile } from "lucide-react";
 import { Helmet } from "react-helmet-async";
@@ -865,6 +866,7 @@ const Watch = () => {
                       @{streamerProfile?.handle || 'streamer'}
                     </button>
                     {streamerProfile?.id && <ClipVerifiedBadge userId={streamerProfile.id} size="sm" />}
+                    {streamerProfile?.id && <UserKnsBadge userId={streamerProfile.id} size="sm" />}
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs px-2 py-1 rounded-full bg-muted">

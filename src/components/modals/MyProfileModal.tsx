@@ -5,6 +5,10 @@ import { useWallet } from "@/context/WalletContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import AvatarCropper from "@/components/modals/AvatarCropper";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
+import { useKnsDomain } from "@/hooks/useKnsDomain";
 
 const MyProfileModal: React.FC<{
   open: boolean;
@@ -17,13 +21,22 @@ const MyProfileModal: React.FC<{
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [showKnsBadge, setShowKnsBadge] = useState(profile?.showKnsBadge || false);
+  const [syncing, setSyncing] = useState(false);
   const username = profile?.username ? `@${profile.username}` : "@unknown";
+
+  const { data: knsDomain } = useKnsDomain(identity?.id, showKnsBadge);
 
   const lastChange = profile?.lastAvatarChange ? new Date(profile.lastAvatarChange) : null;
   const now = new Date();
   const remainingMs = lastChange ? lastChange.getTime() + 14 * 24 * 60 * 60 * 1000 - now.getTime() : 0;
   const canChange = remainingMs <= 0;
   const daysLeft = Math.ceil(Math.max(remainingMs, 0) / (24 * 60 * 60 * 1000));
+
+  // Sync state with profile
+  React.useEffect(() => {
+    setShowKnsBadge(profile?.showKnsBadge || false);
+  }, [profile?.showKnsBadge]);
 
 
   const handlePick = () => fileInputRef.current?.click();
@@ -64,6 +77,69 @@ const MyProfileModal: React.FC<{
       setUploading(false);
     }
   };
+
+  const handleKnsBadgeToggle = async (checked: boolean) => {
+    if (!identity?.id || !sessionToken) return;
+    
+    setShowKnsBadge(checked);
+
+    if (checked) {
+      // Sync KNS domain when enabling
+      setSyncing(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-kns-domain', {
+          body: { userId: identity.id, walletAddress: identity.address }
+        });
+
+        if (error) throw error;
+
+        if (!data?.knsDomain) {
+          toast({
+            title: "No KNS Domain Found",
+            description: "Your wallet does not have a primary KNS domain.",
+            variant: "destructive"
+          });
+          setShowKnsBadge(false);
+          return;
+        }
+
+        toast({
+          title: "KNS Domain Synced",
+          description: `Connected ${data.knsDomain}`,
+        });
+      } catch (err: any) {
+        console.error('Error syncing KNS domain:', err);
+        toast({
+          title: "Sync Failed",
+          description: err.message || "Failed to sync KNS domain",
+          variant: "destructive"
+        });
+        setShowKnsBadge(false);
+        setSyncing(false);
+        return;
+      } finally {
+        setSyncing(false);
+      }
+    }
+
+    // Update profile setting
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ show_kns_badge: checked })
+        .eq('id', identity.id);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Error updating KNS badge setting:', err);
+      toast({
+        title: "Update Failed",
+        description: "Failed to save KNS badge setting",
+        variant: "destructive"
+      });
+      setShowKnsBadge(!checked);
+    }
+  };
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,6 +167,27 @@ const MyProfileModal: React.FC<{
                   {error && <div className="text-xs text-[hsl(var(--destructive))] mt-1">{error}</div>}
                 </div>
               </div>
+
+            {/* KNS Badge Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="space-y-0.5">
+                <Label htmlFor="kns-badge" className="text-sm font-medium">
+                  Show KNS Badge
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {knsDomain?.full_name 
+                    ? `Display ${knsDomain.full_name} next to your name`
+                    : "Display your KNS domain next to your name"}
+                </p>
+              </div>
+              <Switch
+                id="kns-badge"
+                checked={showKnsBadge}
+                onCheckedChange={handleKnsBadgeToggle}
+                disabled={syncing}
+              />
+            </div>
+
             <div className="flex justify-end gap-2 mt-2">
               <Button variant="hero" onClick={onEditUsername}>Edit username</Button>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>

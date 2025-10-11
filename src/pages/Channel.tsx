@@ -13,11 +13,64 @@ import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
+import KnsBadge from "@/components/KnsBadge";
+import { useKnsDomain } from "@/hooks/useKnsDomain";
 
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
   const { data: verification } = useUserVerification(userId);
   return <VerifiedBadge size="md" isVerified={verification?.isVerified} />;
+};
+
+// Component to show KNS badge for a user
+const KnsUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: profileData } = useQuery({
+    queryKey: ['profile-kns-badge', userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('show_kns_badge')
+        .eq('id', userId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!userId
+  });
+
+  const { data: knsDomain } = useKnsDomain(userId, profileData?.show_kns_badge);
+  
+  if (!profileData?.show_kns_badge || !knsDomain) return null;
+  
+  return <KnsBadge knsDomain={knsDomain.full_name} size="md" />;
+};
+
+// Component to display KNS address on channel page
+const KnsAddressDisplay: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: profileData } = useQuery({
+    queryKey: ['profile-kns-badge', userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('show_kns_badge')
+        .eq('id', userId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!userId
+  });
+
+  const { data: knsDomain } = useKnsDomain(userId, profileData?.show_kns_badge);
+  
+  if (!profileData?.show_kns_badge || !knsDomain) return null;
+  
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+      <span className="font-medium">KNS Address:</span>
+      <span className="bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink bg-clip-text text-transparent font-semibold">
+        {knsDomain.full_name}
+      </span>
+    </div>
+  );
 };
 
 const Channel: React.FC = () => {
@@ -223,16 +276,18 @@ const Channel: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <h1 className="text-2xl md:text-3xl font-bold">{profile.display_name || profile.handle}</h1>
                       <VerifiedUserBadge userId={profile.id} />
+                      <KnsUserBadge userId={profile.id} />
                       {profile.banned && (
                         <span className="px-2 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">
                           BANNED
                         </span>
                       )}
                     </div>
+                    <KnsAddressDisplay userId={profile.id} />
                     {profile.bio ? (
-                      <p className="text-muted-foreground">{profile.bio}</p>
+                      <p className="text-muted-foreground mt-2">{profile.bio}</p>
                     ) : (
-                      <p className="text-muted-foreground">@{profile.handle}</p>
+                      <p className="text-muted-foreground mt-2">@{profile.handle}</p>
                     )}
                   </div>
                   
