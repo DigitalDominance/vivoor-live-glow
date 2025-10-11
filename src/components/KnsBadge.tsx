@@ -12,9 +12,9 @@ const KnsBadge: React.FC<KnsBadgeProps> = ({ knsDomain, size = 'sm', className =
   if (!knsDomain) return null;
 
   const sizeClasses = {
-    sm: 'w-5 h-5',  // 15% smaller than w-6 h-6
-    md: 'w-7 h-7',  // 15% smaller than w-8 h-8
-    lg: 'w-8 h-8'   // 15% smaller than w-9 h-9
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-6 h-6'
   };
 
   return (
@@ -22,21 +22,11 @@ const KnsBadge: React.FC<KnsBadgeProps> = ({ knsDomain, size = 'sm', className =
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={`relative inline-flex ${className}`}>
-            <div 
-              className={`${sizeClasses[size]} rounded-full overflow-hidden`}
-              style={{
-                background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
-                padding: '2px'
-              }}
-            >
-              <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
-                <img 
-                  src={knsLogo} 
-                  alt="KNS" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
+            <img 
+              src={knsLogo} 
+              alt="KNS" 
+              className={`${sizeClasses[size]} rounded-full object-cover`}
+            />
           </div>
         </TooltipTrigger>
         <TooltipContent 

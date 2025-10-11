@@ -172,7 +172,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                   <AvatarImage src={stream.avatar} alt={`@${stream.username} avatar`} />
                   <AvatarFallback className="text-xs">{stream.username[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-base">@{stream.username}</span>
                   <ClipVerifiedBadge userId={stream.userId} size="sm" />
                   {profileData?.show_kns_badge && knsDomain && (

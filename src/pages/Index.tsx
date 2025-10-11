@@ -183,7 +183,7 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
                   'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="font-semibold text-base">@{clip.profile_handle || 'Unknown'}</span>
               <ClipVerifiedBadge userId={clip.user_id} size="sm" />
               <UserKnsBadge userId={clip.user_id} size="sm" />

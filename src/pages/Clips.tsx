@@ -407,7 +407,7 @@ const ClipsPage = () => {
                               {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <span className="font-semibold text-base">@{clip.profile_handle || 'Unknown'}</span>
                             <ClipVerifiedBadge userId={clip.user_id} size="sm" />
                             <UserKnsBadge userId={clip.user_id} size="sm" />
