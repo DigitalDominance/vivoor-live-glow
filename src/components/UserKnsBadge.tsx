@@ -10,7 +10,7 @@ interface UserKnsBadgeProps {
   className?: string;
 }
 
-const UserKnsBadge: React.FC<UserKnsBadgeProps> = ({ userId, size = 'sm', className = '' }) => {
+const UserKnsBadge: React.FC<UserKnsBadgeProps> = ({ userId, size = 'md', className = '' }) => {
   const { data: profileData } = useQuery({
     queryKey: ['profile-kns-badge', userId],
     queryFn: async () => {
