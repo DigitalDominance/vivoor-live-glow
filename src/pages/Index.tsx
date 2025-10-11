@@ -171,7 +171,7 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
             {clip.title}
           </h3>
           {/* Creator Info */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+          <div className="flex items-center gap-2.5 text-sm text-muted-foreground mb-3">
             <Avatar className="size-7">
               <AvatarImage
                 src={clip.profile_avatar_url || ''}
@@ -183,8 +183,8 @@ const ClipCard = ({ clip, onClick }: { clip: any; onClick: () => void }) => (
                   'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">@{clip.profile_handle || 'Unknown'}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base">@{clip.profile_handle || 'Unknown'}</span>
               <ClipVerifiedBadge userId={clip.user_id} size="sm" />
               <UserKnsBadge userId={clip.user_id} size="sm" />
             </div>

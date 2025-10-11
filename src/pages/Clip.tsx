@@ -234,12 +234,12 @@ const ClipPage: React.FC = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-lg">{creator.display_name || creator.handle}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-semibold text-xl">{creator.display_name || creator.handle}</span>
                       <ClipVerifiedBadge userId={creator.id} size="sm" />
                       <UserKnsBadge userId={creator.id} size="sm" />
                     </div>
-                    <div className="text-base text-muted-foreground">@{creator.handle}</div>
+                    <div className="text-lg text-muted-foreground">@{creator.handle}</div>
                   </div>
                   <Button
                     variant="outline"

@@ -399,7 +399,7 @@ const ClipsPage = () => {
                         {/* Creator Info */}
                         <button
                           onClick={() => handleProfileClick(clip.user_id)}
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
+                          className="flex items-center gap-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3 story-link"
                         >
                           <Avatar className="size-7">
                             <AvatarImage src={clip.profile_avatar_url || ''} alt={`@${clip.profile_handle} avatar`} />
@@ -407,8 +407,8 @@ const ClipsPage = () => {
                               {clip.profile_display_name?.[0]?.toUpperCase() || clip.profile_handle?.[0]?.toUpperCase() || 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex items-center gap-1">
-                            <span className="font-medium">@{clip.profile_handle || 'Unknown'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-base">@{clip.profile_handle || 'Unknown'}</span>
                             <ClipVerifiedBadge userId={clip.user_id} size="sm" />
                             <UserKnsBadge userId={clip.user_id} size="sm" />
                           </div>

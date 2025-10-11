@@ -12,9 +12,9 @@ const KnsBadge: React.FC<KnsBadgeProps> = ({ knsDomain, size = 'sm', className =
   if (!knsDomain) return null;
 
   const sizeClasses = {
-    sm: 'w-6 h-6',  // 50% bigger than original w-4 h-4
-    md: 'w-8 h-8',  // 50% bigger than original w-5 h-5 (rounded up)
-    lg: 'w-9 h-9'   // 50% bigger than original w-6 h-6
+    sm: 'w-5 h-5',  // 15% smaller than w-6 h-6
+    md: 'w-7 h-7',  // 15% smaller than w-8 h-8
+    lg: 'w-8 h-8'   // 15% smaller than w-9 h-9
   };
 
   return (
