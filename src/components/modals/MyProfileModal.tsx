@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useKnsDomain } from "@/hooks/useKnsDomain";
+import knsLogo from "@/assets/kns-logo.png";
 
 const MyProfileModal: React.FC<{
   open: boolean;
@@ -170,15 +171,34 @@ const MyProfileModal: React.FC<{
 
             {/* KNS Badge Toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
-              <div className="space-y-0.5">
-                <Label htmlFor="kns-badge" className="text-sm font-medium">
-                  Show KNS Badge
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {knsDomain?.full_name 
-                    ? `Display ${knsDomain.full_name} next to your name`
-                    : "Display your KNS domain next to your name"}
-                </p>
+              <div className="flex items-center gap-3 flex-1">
+                {/* KNS Logo */}
+                <div 
+                  className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+                    padding: '2px'
+                  }}
+                >
+                  <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={knsLogo} 
+                      alt="KNS Logo" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-0.5 flex-1">
+                  <Label htmlFor="kns-badge" className="text-sm font-medium">
+                    Show KNS Badge
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {knsDomain?.full_name 
+                      ? `Display ${knsDomain.full_name} next to your name`
+                      : "Display your KNS domain next to your name"}
+                  </p>
+                </div>
               </div>
               <Switch
                 id="kns-badge"
