@@ -263,7 +263,7 @@ const Channel: React.FC = () => {
         <div className="container mx-auto px-4">
           <div className="relative -mt-16 pb-6">
             {/* Glass container with gradient border */}
-            <div className="p-0.5 rounded-2xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink max-w-4xl">
+            <div className="p-0.5 rounded-2xl bg-gradient-to-r from-brand-cyan via-brand-iris to-brand-pink inline-block max-w-full">
               <div className="rounded-2xl bg-black/60 backdrop-blur-xl p-6 border border-white/5">
                 <div className="flex flex-col md:flex-row gap-6 items-start">
                   <Avatar className="size-24 md:size-32 border-4 border-background shadow-lg flex-shrink-0">
