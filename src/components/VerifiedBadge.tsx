@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface VerifiedBadgeProps {
   size?: 'sm' | 'md' | 'lg';
@@ -17,16 +18,28 @@ const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ size = 'sm', className = 
   };
 
   return (
-    <div className="relative inline-flex">
-      <CheckCircle2 
-        className={`${sizeClasses[size]} text-white ${className}`}
-        style={{
-          background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
-          borderRadius: '50%',
-          padding: '2px'
-        }}
-      />
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative inline-flex">
+            <CheckCircle2 
+              className={`${sizeClasses[size]} text-white ${className}`}
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+                borderRadius: '50%',
+                padding: '2px'
+              }}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="bg-card border-white/10 text-foreground"
+        >
+          <p className="font-medium">This User Is Verified!</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
