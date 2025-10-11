@@ -12,7 +12,8 @@ const TipModal: React.FC<{
   onOpenChange: (v: boolean) => void;
   isLoggedIn: boolean;
   onRequireLogin: () => void;
-  toAddress?: string | null; // Streamer's Kaspa address (not displayed)
+  toAddress?: string | null; // Streamer's Kaspa address (for backend verification)
+  knsDomain?: string | null; // Streamer's KNS domain (for Kasware transaction)
   senderHandle?: string; // Sender's handle for encryption
   streamId?: string; // Stream ID for verification
   senderProfile?: {
@@ -21,7 +22,7 @@ const TipModal: React.FC<{
     avatar_url?: string;
   } | null;
   triggerRef?: React.RefObject<HTMLElement>;
-}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, senderHandle, streamId, senderProfile, triggerRef }) => {
+}> = ({ open, onOpenChange, isLoggedIn, onRequireLogin, toAddress, knsDomain, senderHandle, streamId, senderProfile, triggerRef }) => {
   const [amount, setAmount] = React.useState<string>("1");
   const [message, setMessage] = React.useState<string>("");
   const [sending, setSending] = React.useState(false);
@@ -60,8 +61,12 @@ const TipModal: React.FC<{
         senderHandle || "Anonymous"
       );
       
+      // Use KNS domain if available, otherwise use wallet address
+      // Kasware supports KNS domains directly
+      const recipientAddress = knsDomain || toAddress;
+      
       // Send the transaction
-      const txResponse = await window.kasware.sendKaspa(toAddress, sompi, {
+      const txResponse = await window.kasware.sendKaspa(recipientAddress, sompi, {
         priorityFee: 10000,
         payload: encryptedPayload
       });
