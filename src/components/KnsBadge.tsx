@@ -1,6 +1,6 @@
 import React from 'react';
 import knsLogo from '@/assets/kns-logo.png';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import MobileTooltip from './MobileTooltip';
 
 interface KnsBadgeProps {
   knsDomain?: string;
@@ -18,25 +18,18 @@ const KnsBadge: React.FC<KnsBadgeProps> = ({ knsDomain, size = 'sm', className =
   };
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className={`relative inline-flex ${className}`}>
-            <img 
-              src={knsLogo} 
-              alt="KNS" 
-              className={`${sizeClasses[size]} rounded-full object-cover`}
-            />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent 
-          side="top" 
-          className="bg-card border-white/10 text-foreground"
-        >
-          <p className="font-medium">{knsDomain}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <MobileTooltip
+      content={<p className="font-medium">{knsDomain}</p>}
+      side="top"
+    >
+      <div className={`relative inline-flex ${className}`}>
+        <img 
+          src={knsLogo} 
+          alt="KNS" 
+          className={`${sizeClasses[size]} rounded-full object-cover`}
+        />
+      </div>
+    </MobileTooltip>
   );
 };
 
