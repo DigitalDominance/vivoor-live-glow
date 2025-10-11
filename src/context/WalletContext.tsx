@@ -24,6 +24,7 @@ export type ProfileRecord = {
   lastUsernameChange?: string; // ISO date
   lastAvatarChange?: string; // ISO date for pfp edits cooldown
   showKnsBadge?: boolean; // Whether to show KNS badge
+  knsLastVerifiedAt?: string; // Last time KNS was verified
 };
 
 
@@ -94,7 +95,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Verify the user exists in the database with this encrypted ID
             const { data: dbProfile, error } = await supabase
               .from('profiles')
-              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address, show_kns_badge')
+              .select('id, handle, display_name, avatar_url, last_avatar_change, last_username_change, kaspa_address, show_kns_badge, kns_last_verified_at')
               .eq('id', encryptedUserId)
               .eq('kaspa_address', addr)
               .maybeSingle();
@@ -116,6 +117,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 lastAvatarChange: dbProfile.last_avatar_change || undefined,
                 lastUsernameChange: dbProfile.last_username_change || undefined,
                 showKnsBadge: dbProfile.show_kns_badge || false,
+                knsLastVerifiedAt: dbProfile.kns_last_verified_at || undefined,
               };
               setProfile(profileRecord);
               

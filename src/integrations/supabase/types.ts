@@ -288,6 +288,7 @@ export type Database = {
           handle: string | null
           id: string
           kaspa_address: string | null
+          kns_last_verified_at: string | null
           last_avatar_change: string | null
           last_username_change: string | null
           show_kns_badge: boolean | null
@@ -304,6 +305,7 @@ export type Database = {
           handle?: string | null
           id: string
           kaspa_address?: string | null
+          kns_last_verified_at?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
           show_kns_badge?: boolean | null
@@ -320,6 +322,7 @@ export type Database = {
           handle?: string | null
           id?: string
           kaspa_address?: string | null
+          kns_last_verified_at?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
           show_kns_badge?: boolean | null
