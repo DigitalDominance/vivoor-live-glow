@@ -814,7 +814,14 @@ const DocsPage = () => {
                     <div className="flex gap-4">
                       <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
                       <div>
-                        <p className="font-medium">Obtain a KNS Domain</p>
+                        <a 
+                          href="https://app.knsdomains.org/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium hover:text-brand-pink transition-colors cursor-pointer"
+                        >
+                          Obtain a KNS Domain
+                        </a>
                         <p className="text-sm text-muted-foreground">Mint or receive a KNS domain for your connected Kaspa wallet address</p>
                       </div>
                     </div>
@@ -836,7 +843,7 @@ const DocsPage = () => {
                       <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
                       <div>
                         <p className="font-medium">Enjoy Your KNS!</p>
-                        <p className="text-sm text-muted-foreground">Your KNS badge will now appear across your profile, clips, and streams. Supporters can hover over it to see your wallet address, and tips will be sent to your memorable KNS domain!</p>
+                        <p className="text-sm text-muted-foreground">Your KNS badge will now appear across your profile, clips, and streams. Show off your awesome KNS domain and supporters can hover over it to see your wallet address and easily send you KAS!</p>
                       </div>
                     </div>
                   </div>
@@ -844,8 +851,8 @@ const DocsPage = () => {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="p-4 border border-border rounded-lg">
-                    <h4 className="font-medium mb-2">Memorable Donations</h4>
-                    <p className="text-sm text-muted-foreground">Instead of sharing a complex wallet address, supporters can tip you using your KNS domain</p>
+                    <h4 className="font-medium mb-2">Memorable Address</h4>
+                    <p className="text-sm text-muted-foreground">Instead of users not being able to memorize your wallet address, they can now see or remember your KNS domain and send tips through KasWare wallet or other wallets that support sending via KNS address</p>
                   </div>
                   <div className="p-4 border border-border rounded-lg">
                     <h4 className="font-medium mb-2">Professional Branding</h4>

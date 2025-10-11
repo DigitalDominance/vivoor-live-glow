@@ -191,7 +191,14 @@ const MyProfileModal: React.FC<{
                 
                 <div className="space-y-0.5 flex-1">
                   <Label htmlFor="kns-badge" className="text-sm font-medium">
-                    Show KNS Badge
+                    <a 
+                      href="https://app.knsdomains.org/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:text-brand-pink transition-colors cursor-pointer"
+                    >
+                      Show KNS Badge
+                    </a>
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     {knsDomain?.full_name 
