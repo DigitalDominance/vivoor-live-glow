@@ -818,7 +818,7 @@ const DocsPage = () => {
                 <div className="p-4 border border-brand-pink/20 rounded-lg bg-brand-pink/5">
                   <h3 className="font-semibold text-brand-pink mb-2">✨ What is KNS?</h3>
                   <p className="text-sm">
-                    KNS (Kaspa Name Service) allows you to replace your long wallet address with a memorable domain name like "yourname.kas". 
+                    KNS (Kaspa Name Service) allows you to inscribe a domain name like "yourname.kas" attaching it on-chain to your wallet address. 
                     Once enabled, your KNS badge will appear on your clips, streams, and channel while also providing supporters with an easy-to-remember donation address.
                   </p>
                 </div>
