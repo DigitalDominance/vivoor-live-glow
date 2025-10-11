@@ -26,6 +26,7 @@ import {
   Edit
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import knsLogo from "@/assets/kns-logo.png";
 
 const DocsPage = () => {
   const navigate = useNavigate();
@@ -794,7 +795,21 @@ const DocsPage = () => {
             <Card className="border-brand-pink/20">
               <CardHeader>
                 <CardTitle className="text-2xl flex items-center gap-3">
-                  <Shield className="w-8 h-8 text-brand-pink" />
+                  <div 
+                    className="w-8 h-8 rounded-full flex-shrink-0"
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(var(--brand-cyan)), hsl(var(--brand-iris)), hsl(var(--brand-pink)))',
+                      padding: '2px'
+                    }}
+                  >
+                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={knsLogo} 
+                        alt="KNS Logo" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
                   Enabling KNS
                 </CardTitle>
                 <CardDescription>Display your Kaspa Name Service domain and create a memorable donation address</CardDescription>
