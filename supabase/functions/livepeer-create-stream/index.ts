@@ -52,7 +52,7 @@ serve(async (req: Request) => {
     
     const streamId = payload.id;
     const playbackId = payload.playbackId || payload.playback_id;
-    const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.studio/live";
+    const ingestUrl = payload.rtmpIngestUrl || "rtmp://rtmp.livepeer.com/live";
     const streamKey = payload.streamKey;
     
     // IMPORTANT: Fetch the actual playback URL from Livepeer's stream endpoint
