@@ -101,8 +101,10 @@ serve(async (req) => {
     console.log('KRC721 API full response:', JSON.stringify(holdingData, null, 2));
     console.log('Result object:', holdingData.result);
     console.log('Has tokenId?:', holdingData.result?.tokenId);
+    console.log('Checking hasNFT condition...');
 
     const hasNFT = holdingData.result && holdingData.result.tokenId;
+    console.log('hasNFT result:', hasNFT);
 
     if (!hasNFT) {
       console.log('User no longer owns KASPERS NFT, removing badge');
