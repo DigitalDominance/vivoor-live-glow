@@ -89,7 +89,7 @@ serve(async (req) => {
     }
 
     // Fetch KASPERS NFT holdings from KRC721 API
-    const apiUrl = `https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/${profile.kaspa_address}/KASPER`;
+    const apiUrl = `https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/${profile.kaspa_address}/KASPERS`;
     console.log('Fetching KASPERS holdings from:', apiUrl);
     console.log('Using kaspa_address:', profile.kaspa_address);
 
@@ -153,7 +153,7 @@ serve(async (req) => {
       .from('kaspers_nft_badges')
       .upsert({
         user_id: userId,
-        tick: 'KASPER',
+        tick: 'KASPERS',
         token_id: holdingData.result!.tokenId,
         owner_address: profile.kaspa_address,
         is_verified: true,
