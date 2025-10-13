@@ -8,11 +8,11 @@ const corsHeaders = {
 
 interface KRC721HoldingResponse {
   message: string;
-  result?: {
+  result?: Array<{
     tick: string;
     tokenId: string;
     opScoreMod: string;
-  };
+  }>;
 }
 
 serve(async (req) => {
@@ -105,12 +105,12 @@ serve(async (req) => {
 
     const holdingData: KRC721HoldingResponse = await apiResponse.json();
     console.log('KRC721 API full response:', JSON.stringify(holdingData, null, 2));
-    console.log('Result object:', holdingData.result);
-    console.log('Has tokenId?:', holdingData.result?.tokenId);
-    console.log('Checking hasNFT condition...');
-
-    const hasNFT = holdingData.result && holdingData.result.tokenId;
+    console.log('Result array:', holdingData.result);
+    
+    // Check if result is an array and has items
+    const hasNFT = holdingData.result && Array.isArray(holdingData.result) && holdingData.result.length > 0 && holdingData.result[0].tokenId;
     console.log('hasNFT result:', hasNFT);
+    console.log('Token ID:', hasNFT ? holdingData.result[0].tokenId : 'none');
 
     if (!hasNFT) {
       console.log('User no longer owns KASPERS NFT, removing badge');
@@ -154,7 +154,7 @@ serve(async (req) => {
       .upsert({
         user_id: userId,
         tick: 'KASPERS',
-        token_id: holdingData.result!.tokenId,
+        token_id: holdingData.result[0].tokenId,
         owner_address: profile.kaspa_address,
         is_verified: true,
         last_verified_at: new Date().toISOString(),
@@ -219,7 +219,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true,
         hasNFT: true,
-        tokenId: holdingData.result!.tokenId,
+        tokenId: holdingData.result[0].tokenId,
         firstClaim: isFirstClaim,
         bonusGranted: isFirstClaim || !existingBadge?.verification_bonus_granted
       }),
