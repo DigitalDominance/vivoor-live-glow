@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useKnsDomain } from "@/hooks/useKnsDomain";
+import { useKaspersNft } from "@/hooks/useKaspersNft";
 import knsLogo from "@/assets/kns-logo.png";
 
 const MyProfileModal: React.FC<{
@@ -23,10 +24,13 @@ const MyProfileModal: React.FC<{
   const [cropOpen, setCropOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [showKnsBadge, setShowKnsBadge] = useState(profile?.showKnsBadge || false);
+  const [showKaspersBadge, setShowKaspersBadge] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingKaspers, setSyncingKaspers] = useState(false);
   const username = profile?.username ? `@${profile.username}` : "@unknown";
 
   const { data: knsDomain } = useKnsDomain(identity?.id, showKnsBadge);
+  const { data: kaspersNft } = useKaspersNft(identity?.id, showKaspersBadge);
 
   const lastChange = profile?.lastAvatarChange ? new Date(profile.lastAvatarChange) : null;
   const now = new Date();
@@ -38,6 +42,20 @@ const MyProfileModal: React.FC<{
   React.useEffect(() => {
     setShowKnsBadge(profile?.showKnsBadge || false);
   }, [profile?.showKnsBadge]);
+
+  // Fetch and sync KASPERS badge state
+  React.useEffect(() => {
+    if (!identity?.id) return;
+    const fetchKaspersBadge = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('show_kaspers_badge')
+        .eq('id', identity.id)
+        .maybeSingle();
+      setShowKaspersBadge(data?.show_kaspers_badge || false);
+    };
+    fetchKaspersBadge();
+  }, [identity?.id]);
 
 
   const handlePick = () => fileInputRef.current?.click();
@@ -141,6 +159,79 @@ const MyProfileModal: React.FC<{
       setShowKnsBadge(!checked);
     }
   };
+
+  const handleKaspersBadgeToggle = async (checked: boolean) => {
+    if (!identity?.id || !sessionToken) return;
+    
+    setShowKaspersBadge(checked);
+
+    if (checked) {
+      // Verify ownership when enabling
+      setSyncingKaspers(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-kaspers-nft-on-view', {
+          body: { userId: identity.id }
+        });
+
+        if (error) throw error;
+
+        if (!data?.hasNFT) {
+          toast({
+            title: "No KASPERS NFT Found",
+            description: "Your wallet does not own a KASPERS NFT.",
+            variant: "destructive"
+          });
+          setShowKaspersBadge(false);
+          return;
+        }
+
+        // Show bonus message if granted
+        if (data.firstClaim || data.bonusGranted) {
+          toast({
+            title: "🎉 KASPERS NFT Badge Claimed!",
+            description: "You've received 6 months of free verification (worth 600 KAS)!",
+            duration: 7000,
+          });
+        } else {
+          toast({
+            title: "KASPERS NFT Badge Enabled",
+            description: `Connected KASPERS #${data.tokenId}`,
+          });
+        }
+      } catch (err: any) {
+        console.error('Error syncing KASPERS NFT:', err);
+        toast({
+          title: "Sync Failed",
+          description: err.message || "Failed to verify KASPERS NFT ownership",
+          variant: "destructive"
+        });
+        setShowKaspersBadge(false);
+        setSyncingKaspers(false);
+        return;
+      } finally {
+        setSyncingKaspers(false);
+      }
+    }
+
+    // Update profile setting
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ show_kaspers_badge: checked })
+        .eq('id', identity.id);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Error updating KASPERS badge setting:', err);
+      toast({
+        title: "Update Failed",
+        description: "Failed to save KASPERS badge setting",
+        variant: "destructive"
+      });
+      setShowKaspersBadge(!checked);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,6 +259,35 @@ const MyProfileModal: React.FC<{
                   {error && <div className="text-xs text-[hsl(var(--destructive))] mt-1">{error}</div>}
                 </div>
               </div>
+
+            {/* KASPERS NFT Badge Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3 flex-1">
+                {/* KASPERS Logo */}
+                <div 
+                  className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 flex items-center justify-center"
+                >
+                  <span className="text-white font-bold text-sm">K</span>
+                </div>
+                
+                <div className="space-y-0.5 flex-1">
+                  <Label htmlFor="kaspers-badge" className="text-sm font-medium cursor-pointer">
+                    Claim KASPERS NFT Badge
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {kaspersNft?.token_id 
+                      ? `Display KASPERS #${kaspersNft.token_id} badge`
+                      : "First claim comes with 6 months free verification on Vivoor (worth 600 KAS)"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="kaspers-badge"
+                checked={showKaspersBadge}
+                onCheckedChange={handleKaspersBadgeToggle}
+                disabled={syncingKaspers}
+              />
+            </div>
 
             {/* KNS Badge Toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">

@@ -11,6 +11,7 @@ import { useWallet } from "@/context/WalletContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import UserKnsBadge from "@/components/UserKnsBadge";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 
 const ClipPage: React.FC = () => {
   const { id } = useParams();
@@ -237,6 +238,7 @@ const ClipPage: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <span className="font-semibold text-base">{creator.display_name || creator.handle}</span>
                       <ClipVerifiedBadge userId={creator.id} size="sm" />
+                      <UserKaspersBadge userId={creator.id} size="sm" />
                       <UserKnsBadge userId={creator.id} size="sm" />
                     </div>
                     <div className="text-sm text-muted-foreground">@{creator.handle}</div>

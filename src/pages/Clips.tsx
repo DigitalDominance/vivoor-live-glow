@@ -16,6 +16,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useNavigate } from "react-router-dom";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import UserKnsBadge from "@/components/UserKnsBadge";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 
 type ClipWithProfile = {
   id: string;
@@ -412,6 +413,7 @@ const ClipsPage = () => {
                           <div className="flex items-center gap-1.5">
                             <span className="font-semibold text-sm">@{clip.profile_handle || 'Unknown'}</span>
                             <ClipVerifiedBadge userId={clip.user_id} size="sm" />
+                            <UserKaspersBadge userId={clip.user_id} size="sm" />
                             <UserKnsBadge userId={clip.user_id} size="sm" />
                           </div>
                         </button>

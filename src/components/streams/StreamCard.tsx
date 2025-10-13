@@ -11,6 +11,7 @@ import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import KnsBadge from "@/components/KnsBadge";
 import { useKnsDomain } from "@/hooks/useKnsDomain";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 
 export type StreamCardProps = {
   stream: {
@@ -177,6 +178,7 @@ export const StreamCard: React.FC<StreamCardProps> = ({ stream, isLoggedIn, onOp
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-sm">@{stream.username}</span>
                   <ClipVerifiedBadge userId={stream.userId} size="sm" />
+                  <UserKaspersBadge userId={stream.userId} size="sm" />
                   {profileData?.show_kns_badge && knsDomain && (
                     <KnsBadge knsDomain={knsDomain.full_name} size="sm" />
                   )}

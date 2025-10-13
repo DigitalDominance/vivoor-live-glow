@@ -157,6 +157,56 @@ export type Database = {
         }
         Relationships: []
       }
+      kaspers_nft_badges: {
+        Row: {
+          created_at: string
+          first_claimed_at: string
+          id: string
+          is_verified: boolean
+          last_verified_at: string
+          owner_address: string
+          tick: string
+          token_id: string
+          updated_at: string
+          user_id: string
+          verification_bonus_granted: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          first_claimed_at?: string
+          id?: string
+          is_verified?: boolean
+          last_verified_at?: string
+          owner_address: string
+          tick?: string
+          token_id: string
+          updated_at?: string
+          user_id: string
+          verification_bonus_granted?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          first_claimed_at?: string
+          id?: string
+          is_verified?: boolean
+          last_verified_at?: string
+          owner_address?: string
+          tick?: string
+          token_id?: string
+          updated_at?: string
+          user_id?: string
+          verification_bonus_granted?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kaspers_nft_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kns_domains: {
         Row: {
           created_at: string
@@ -288,9 +338,11 @@ export type Database = {
           handle: string | null
           id: string
           kaspa_address: string | null
+          kaspers_last_verified_at: string | null
           kns_last_verified_at: string | null
           last_avatar_change: string | null
           last_username_change: string | null
+          show_kaspers_badge: boolean | null
           show_kns_badge: boolean | null
           updated_at: string
         }
@@ -305,9 +357,11 @@ export type Database = {
           handle?: string | null
           id: string
           kaspa_address?: string | null
+          kaspers_last_verified_at?: string | null
           kns_last_verified_at?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
+          show_kaspers_badge?: boolean | null
           show_kns_badge?: boolean | null
           updated_at?: string
         }
@@ -322,9 +376,11 @@ export type Database = {
           handle?: string | null
           id?: string
           kaspa_address?: string | null
+          kaspers_last_verified_at?: string | null
           kns_last_verified_at?: string | null
           last_avatar_change?: string | null
           last_username_change?: string | null
+          show_kaspers_badge?: boolean | null
           show_kns_badge?: boolean | null
           updated_at?: string
         }
@@ -1069,6 +1125,15 @@ export type Database = {
       get_tip_address_secure: {
         Args: { stream_id: string }
         Returns: string
+      }
+      get_user_kaspers_nft: {
+        Args: { user_id_param: string }
+        Returns: {
+          is_verified: boolean
+          last_verified_at: string
+          tick: string
+          token_id: string
+        }[]
       }
       get_user_kns_domain: {
         Args: { user_id_param: string }
