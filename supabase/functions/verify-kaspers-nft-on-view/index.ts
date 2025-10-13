@@ -36,11 +36,14 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get user profile
+    console.log('Fetching profile for user:', userId);
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('kaspa_address, show_kaspers_badge, kaspers_last_verified_at')
       .eq('id', userId)
       .single();
+
+    console.log('Profile query result:', { profile, profileError });
 
     if (profileError || !profile) {
       console.error('Profile not found:', profileError);
@@ -49,6 +52,9 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Profile found. Kaspa address:', profile.kaspa_address);
+    console.log('Show badge setting:', profile.show_kaspers_badge);
 
     // Only verify if badge is enabled
     if (!profile.show_kaspers_badge) {
