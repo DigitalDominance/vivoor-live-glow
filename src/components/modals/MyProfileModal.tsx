@@ -166,9 +166,17 @@ const MyProfileModal: React.FC<{
     setShowKaspersBadge(checked);
 
     if (checked) {
-      // Verify ownership when enabling
+      // First, enable the badge in the database
       setSyncingKaspers(true);
       try {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ show_kaspers_badge: true })
+          .eq('id', identity.id);
+
+        if (updateError) throw updateError;
+
+        // Now verify ownership
         const { data, error } = await supabase.functions.invoke('verify-kaspers-nft-on-view', {
           body: { userId: identity.id }
         });
@@ -176,6 +184,12 @@ const MyProfileModal: React.FC<{
         if (error) throw error;
 
         if (!data?.hasNFT) {
+          // Revert the database change
+          await supabase
+            .from('profiles')
+            .update({ show_kaspers_badge: false })
+            .eq('id', identity.id);
+            
           toast({
             title: "No KASPERS NFT Found",
             description: "Your wallet does not own a KASPERS NFT.",
@@ -205,30 +219,35 @@ const MyProfileModal: React.FC<{
           description: err.message || "Failed to verify KASPERS NFT ownership",
           variant: "destructive"
         });
+        
+        // Revert the database change on error
+        await supabase
+          .from('profiles')
+          .update({ show_kaspers_badge: false })
+          .eq('id', identity.id);
+          
         setShowKaspersBadge(false);
-        setSyncingKaspers(false);
-        return;
       } finally {
         setSyncingKaspers(false);
       }
-    }
+    } else {
+      // Disabling the badge
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ show_kaspers_badge: false })
+          .eq('id', identity.id);
 
-    // Update profile setting
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ show_kaspers_badge: checked })
-        .eq('id', identity.id);
-
-      if (error) throw error;
-    } catch (err: any) {
-      console.error('Error updating KASPERS badge setting:', err);
-      toast({
-        title: "Update Failed",
-        description: "Failed to save KASPERS badge setting",
-        variant: "destructive"
-      });
-      setShowKaspersBadge(!checked);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error('Error updating KASPERS badge setting:', err);
+        toast({
+          title: "Update Failed",
+          description: "Failed to save KASPERS badge setting",
+          variant: "destructive"
+        });
+        setShowKaspersBadge(!checked);
+      }
     }
   };
 
