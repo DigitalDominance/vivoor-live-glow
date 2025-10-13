@@ -104,13 +104,15 @@ serve(async (req) => {
     }
 
     const holdingData: KRC721HoldingResponse = await apiResponse.json();
-    console.log('KRC721 API full response:', JSON.stringify(holdingData, null, 2));
-    console.log('Result array:', holdingData.result);
+    console.log('✅ NEW CODE RUNNING - KRC721 API full response:', JSON.stringify(holdingData, null, 2));
+    console.log('Result is array?', Array.isArray(holdingData.result));
+    console.log('Result length:', holdingData.result?.length);
+    console.log('First item:', holdingData.result?.[0]);
     
     // Check if result is an array and has items
-    const hasNFT = holdingData.result && Array.isArray(holdingData.result) && holdingData.result.length > 0 && holdingData.result[0].tokenId;
-    console.log('hasNFT result:', hasNFT);
-    console.log('Token ID:', hasNFT ? holdingData.result[0].tokenId : 'none');
+    const hasNFT = holdingData.result && Array.isArray(holdingData.result) && holdingData.result.length > 0 && holdingData.result[0]?.tokenId;
+    console.log('✅ hasNFT check result:', hasNFT);
+    console.log('Token ID found:', hasNFT ? holdingData.result[0].tokenId : 'NONE FOUND');
 
     if (!hasNFT) {
       console.log('User no longer owns KASPERS NFT, removing badge');
