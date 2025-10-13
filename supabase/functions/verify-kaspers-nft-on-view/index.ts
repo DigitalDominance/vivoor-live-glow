@@ -85,15 +85,22 @@ serve(async (req) => {
     // Fetch KASPERS NFT holdings from KRC721 API
     const apiUrl = `https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/${profile.kaspa_address}/KASPER`;
     console.log('Fetching KASPERS holdings from:', apiUrl);
+    console.log('Using kaspa_address:', profile.kaspa_address);
 
     const apiResponse = await fetch(apiUrl);
+    console.log('API response status:', apiResponse.status);
+    
     if (!apiResponse.ok) {
       console.error('KRC721 API error:', apiResponse.status);
+      const errorText = await apiResponse.text();
+      console.error('API error response:', errorText);
       throw new Error(`KRC721 API error: ${apiResponse.status}`);
     }
 
     const holdingData: KRC721HoldingResponse = await apiResponse.json();
-    console.log('KRC721 API response:', holdingData);
+    console.log('KRC721 API full response:', JSON.stringify(holdingData, null, 2));
+    console.log('Result object:', holdingData.result);
+    console.log('Has tokenId?:', holdingData.result?.tokenId);
 
     const hasNFT = holdingData.result && holdingData.result.tokenId;
 
