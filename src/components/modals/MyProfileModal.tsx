@@ -169,17 +169,14 @@ const MyProfileModal: React.FC<{
       // Call sync function to verify and enable badge
       setSyncingKaspers(true);
       try {
-        const walletAddress = sessionStorage.getItem('kaspa_wallet_address');
-        const sessionToken = sessionStorage.getItem('wallet_session_token');
-        
-        if (!walletAddress || !sessionToken) {
+        if (!identity?.address || !sessionToken) {
           throw new Error('Wallet not connected');
         }
 
         const { data, error } = await supabase.functions.invoke('sync-kaspers-nft', {
           body: { 
             sessionToken,
-            walletAddress 
+            walletAddress: identity.address
           }
         });
 
