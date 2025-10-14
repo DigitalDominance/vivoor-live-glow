@@ -335,19 +335,15 @@ const MyProfileModal: React.FC<{
                   <div 
                     className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 flex items-center justify-center"
                   >
-                    {kaspersNft?.token_id ? (
-                      <img 
-                        src={`https://cache.krc721.stream/krc721/mainnet/optimized/KASPERS/${kaspersNft.token_id}`}
-                        alt={`KASPERS #${kaspersNft.token_id}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<span class="text-white font-bold text-sm">K</span>';
-                        }}
-                      />
-                    ) : (
-                      <span className="text-white font-bold text-sm">K</span>
-                    )}
+                    <img 
+                      src={`https://cache.krc721.stream/krc721/mainnet/optimized/KASPERS/${kaspersNft?.token_id || '525'}`}
+                      alt={`KASPERS #${kaspersNft?.token_id || '525'}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '<span class="text-white font-bold text-sm">K</span>';
+                      }}
+                    />
                   </div>
                   
                   <div className="space-y-0.5 flex-1">
@@ -355,7 +351,7 @@ const MyProfileModal: React.FC<{
                       Claim KASPERS NFT Badge
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {kaspersNft?.token_id 
+                      {showKaspersBadge && kaspersNft?.token_id 
                         ? `Display KASPERS #${kaspersNft.token_id} badge`
                         : "First claim comes with 6 months free verification (worth 600 KAS)"}
                     </p>
