@@ -15,6 +15,7 @@ import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
 import KnsBadge from "@/components/KnsBadge";
 import { useKnsDomain } from "@/hooks/useKnsDomain";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 
 // Component to show verified badge for a user
 const VerifiedUserBadge: React.FC<{ userId: string }> = ({ userId }) => {
@@ -279,6 +280,7 @@ const Channel: React.FC = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h1 className="text-2xl md:text-3xl font-bold text-white">{profile.display_name || profile.handle}</h1>
                           <VerifiedUserBadge userId={profile.id} />
+                          <UserKaspersBadge userId={profile.id} size="lg" />
                           <KnsUserBadge userId={profile.id} />
                           {profile.banned && (
                             <span className="px-2 py-1 text-xs font-semibold bg-destructive text-destructive-foreground rounded-full">

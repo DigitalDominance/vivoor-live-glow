@@ -6,6 +6,7 @@ import { blurBadWords } from "@/lib/badWords";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import { useUserVerification } from "@/hooks/useUserVerification";
 import UserKnsBadge from "@/components/UserKnsBadge";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 import kasiaLogo from "@/assets/kasia-logo.png";
 import {
   AlertDialog,
@@ -192,6 +193,7 @@ const ChatPanel: React.FC<{
                 <div className="flex items-center gap-1">
                   <span className="text-white font-medium truncate">{m.user.name}</span>
                   <VerifiedUserBadge userId={m.user.id} />
+                  <UserKaspersBadge userId={m.user.id} size="sm" />
                   <UserKnsBadge userId={m.user.id} size="sm" />
                   <span className="text-xs text-white/50 dark:text-white/50">{m.time}</span>
                 </div>
