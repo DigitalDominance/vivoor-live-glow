@@ -4,26 +4,25 @@ import kasperGhost from "@/assets/kasper-ghost.png";
 export const HalloweenOverlay = () => {
   // Position ghosts, zombies, and cobwebs on left and right sides - randomly mixed
   const [ghosts] = useState(() => 
-    Array.from({ length: 6 }, (_, i) => {
+    Array.from({ length: 12 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
       const characters = ['ghost', '🧟', '🕸️'];
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
-        delay: `${Math.random() * 5}s`,
-        duration: `${15 + Math.random() * 10}s`,
+        delay: `${Math.random() * 2}s`,
+        duration: `${6 + Math.random() * 4}s`,
         character: characters[Math.floor(Math.random() * characters.length)]
       };
     })
   );
 
-  // Position pumpkins spread out from top to bottom
+  // Position pumpkins spread out across entire width
   const [pumpkins] = useState(() =>
-    Array.from({ length: 8 }, (_, i) => {
-      const isLeft = Math.random() > 0.5;
+    Array.from({ length: 10 }, (_, i) => {
       return {
         id: i,
-        left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
+        left: `${Math.random() * 100}%`,
         top: `${Math.random() * 90 + 5}%`,
         size: `${Math.random() * 30 + 30}px`,
         rotation: `${Math.random() * 30 - 15}deg`
@@ -108,8 +107,8 @@ export const HalloweenOverlay = () => {
             animation: `float-ghost ${ghost.duration} ease-in-out infinite`,
             animationDelay: ghost.delay,
             top: "-100px",
-            width: ghost.character === 'ghost' ? '60px' : 'auto',
-            fontSize: ghost.character !== 'ghost' ? '2.5rem' : undefined
+            width: ghost.character === 'ghost' ? '40px' : 'auto',
+            fontSize: ghost.character !== 'ghost' ? '2rem' : undefined
           }}
         >
           {ghost.character === 'ghost' ? (
