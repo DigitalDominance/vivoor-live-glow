@@ -34,58 +34,94 @@ export const HalloweenOverlay = () => {
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
       {/* Flowing Smoke Particles - Left Side */}
       <div 
-        className="absolute bottom-0 left-[5%] w-2 h-full opacity-40"
+        className="absolute bottom-0 left-[3%] w-3 h-full opacity-70"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
           filter: 'blur(20px)',
           animation: 'smoke-flow-up 6s linear infinite'
         }}
       />
       <div 
-        className="absolute bottom-0 left-[12%] w-3 h-full opacity-35"
+        className="absolute bottom-0 left-[8%] w-4 h-full opacity-65"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(25px)',
           animation: 'smoke-flow-up 8s linear infinite',
           animationDelay: '2s'
         }}
       />
       <div 
-        className="absolute bottom-0 left-[8%] w-2 h-full opacity-30"
+        className="absolute bottom-0 left-[13%] w-3 h-full opacity-60"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
           filter: 'blur(22px)',
           animation: 'smoke-flow-up 7s linear infinite',
           animationDelay: '4s'
         }}
       />
+      <div 
+        className="absolute bottom-0 left-[5%] w-2 h-full opacity-55"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
+          filter: 'blur(18px)',
+          animation: 'smoke-flow-up 9s linear infinite',
+          animationDelay: '1s'
+        }}
+      />
+      <div 
+        className="absolute bottom-0 left-[11%] w-3 h-full opacity-65"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
+          filter: 'blur(23px)',
+          animation: 'smoke-flow-up 7.5s linear infinite',
+          animationDelay: '3.5s'
+        }}
+      />
 
       {/* Flowing Smoke Particles - Right Side */}
       <div 
-        className="absolute bottom-0 right-[5%] w-2 h-full opacity-40"
+        className="absolute bottom-0 right-[3%] w-3 h-full opacity-70"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
           filter: 'blur(20px)',
           animation: 'smoke-flow-up 6s linear infinite',
           animationDelay: '1s'
         }}
       />
       <div 
-        className="absolute bottom-0 right-[12%] w-3 h-full opacity-35"
+        className="absolute bottom-0 right-[8%] w-4 h-full opacity-65"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(25px)',
           animation: 'smoke-flow-up 8s linear infinite',
           animationDelay: '3s'
         }}
       />
       <div 
-        className="absolute bottom-0 right-[8%] w-2 h-full opacity-30"
+        className="absolute bottom-0 right-[13%] w-3 h-full opacity-60"
         style={{
-          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
           filter: 'blur(22px)',
           animation: 'smoke-flow-up 7s linear infinite',
           animationDelay: '5s'
+        }}
+      />
+      <div 
+        className="absolute bottom-0 right-[5%] w-2 h-full opacity-55"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
+          filter: 'blur(18px)',
+          animation: 'smoke-flow-up 9s linear infinite',
+          animationDelay: '2.5s'
+        }}
+      />
+      <div 
+        className="absolute bottom-0 right-[11%] w-3 h-full opacity-65"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
+          filter: 'blur(23px)',
+          animation: 'smoke-flow-up 7.5s linear infinite',
+          animationDelay: '4.5s'
         }}
       />
       
