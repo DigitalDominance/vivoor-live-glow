@@ -14,9 +14,11 @@ const SiteFooter = () => {
               alt="Vivoor logo" 
               className="h-8 w-auto"
             />
-            <span className={isHalloweenMode ? 'text-gradient-halloween' : 'text-gradient'}>
-              vivoor
-            </span>
+            {!isHalloweenMode ? (
+              <span className="text-gradient">vivoor</span>
+            ) : (
+              <span className="text-gradient-halloween">vivoor</span>
+            )}
           </a>
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <a className="story-link" href="/docs">Documentation</a>

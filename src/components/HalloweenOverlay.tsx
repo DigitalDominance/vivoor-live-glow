@@ -1,5 +1,5 @@
 import { useState } from "react";
-import kasperGhost from "@/assets/kasper-ghost.png";
+import vivoorGhost from "@/assets/vivoor-ghost.png";
 import { useHalloween } from "@/context/HalloweenContext";
 
 export const HalloweenOverlay = () => {
@@ -14,8 +14,8 @@ export const HalloweenOverlay = () => {
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
-        delay: `${Math.random() * 2}s`,
-        duration: `${6 + Math.random() * 4}s`,
+        delay: `${Math.random() * 2.4}s`,
+        duration: `${7.2 + Math.random() * 4.8}s`,
         character: characters[Math.floor(Math.random() * characters.length)]
       };
     })
@@ -27,8 +27,8 @@ export const HalloweenOverlay = () => {
       return {
         id: i,
         left: `${Math.random() * 100}%`,
-        delay: `${Math.random() * 3}s`,
-        duration: `${8 + Math.random() * 4}s`,
+        delay: `${Math.random() * 3.6}s`,
+        duration: `${9.6 + Math.random() * 4.8}s`,
         size: `${Math.random() * 20 + 35}px`
       };
     })
@@ -38,93 +38,93 @@ export const HalloweenOverlay = () => {
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
       {/* Flowing Smoke Particles - Left Side */}
       <div 
-        className="absolute top-0 left-[3%] w-3 h-full opacity-70"
+        className="absolute top-[-20%] left-[3%] w-6 h-full opacity-70"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
           filter: 'blur(20px)',
-          animation: 'smoke-flow-up 6s linear infinite'
+          animation: 'smoke-flow-up 7.2s linear infinite'
         }}
       />
       <div 
-        className="absolute top-0 left-[8%] w-4 h-full opacity-65"
+        className="absolute top-[-20%] left-[8%] w-8 h-full opacity-65"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(25px)',
-          animation: 'smoke-flow-up 8s linear infinite',
+          animation: 'smoke-flow-up 9.6s linear infinite',
           animationDelay: '2s'
         }}
       />
       <div 
-        className="absolute top-0 left-[13%] w-3 h-full opacity-60"
+        className="absolute top-[-20%] left-[13%] w-6 h-full opacity-60"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
           filter: 'blur(22px)',
-          animation: 'smoke-flow-up 7s linear infinite',
+          animation: 'smoke-flow-up 8.4s linear infinite',
           animationDelay: '4s'
         }}
       />
       <div 
-        className="absolute top-0 left-[5%] w-2 h-full opacity-55"
+        className="absolute top-[-20%] left-[5%] w-5 h-full opacity-55"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(18px)',
-          animation: 'smoke-flow-up 9s linear infinite',
+          animation: 'smoke-flow-up 10.8s linear infinite',
           animationDelay: '1s'
         }}
       />
       <div 
-        className="absolute top-0 left-[11%] w-3 h-full opacity-65"
+        className="absolute top-[-20%] left-[11%] w-6 h-full opacity-65"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
           filter: 'blur(23px)',
-          animation: 'smoke-flow-up 7.5s linear infinite',
+          animation: 'smoke-flow-up 9s linear infinite',
           animationDelay: '3.5s'
         }}
       />
 
       {/* Flowing Smoke Particles - Right Side */}
       <div 
-        className="absolute top-0 right-[3%] w-3 h-full opacity-70"
+        className="absolute top-[-20%] right-[3%] w-6 h-full opacity-70"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
           filter: 'blur(20px)',
-          animation: 'smoke-flow-up 6s linear infinite',
+          animation: 'smoke-flow-up 7.2s linear infinite',
           animationDelay: '1s'
         }}
       />
       <div 
-        className="absolute top-0 right-[8%] w-4 h-full opacity-65"
+        className="absolute top-[-20%] right-[8%] w-8 h-full opacity-65"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(25px)',
-          animation: 'smoke-flow-up 8s linear infinite',
+          animation: 'smoke-flow-up 9.6s linear infinite',
           animationDelay: '3s'
         }}
       />
       <div 
-        className="absolute top-0 right-[13%] w-3 h-full opacity-60"
+        className="absolute top-[-20%] right-[13%] w-6 h-full opacity-60"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
           filter: 'blur(22px)',
-          animation: 'smoke-flow-up 7s linear infinite',
+          animation: 'smoke-flow-up 8.4s linear infinite',
           animationDelay: '5s'
         }}
       />
       <div 
-        className="absolute top-0 right-[5%] w-2 h-full opacity-55"
+        className="absolute top-[-20%] right-[5%] w-5 h-full opacity-55"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
           filter: 'blur(18px)',
-          animation: 'smoke-flow-up 9s linear infinite',
+          animation: 'smoke-flow-up 10.8s linear infinite',
           animationDelay: '2.5s'
         }}
       />
       <div 
-        className="absolute top-0 right-[11%] w-3 h-full opacity-65"
+        className="absolute top-[-20%] right-[11%] w-6 h-full opacity-65"
         style={{
           background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
           filter: 'blur(23px)',
-          animation: 'smoke-flow-up 7.5s linear infinite',
+          animation: 'smoke-flow-up 9s linear infinite',
           animationDelay: '4.5s'
         }}
       />
@@ -144,7 +144,7 @@ export const HalloweenOverlay = () => {
           }}
         >
           {ghost.character === 'ghost' ? (
-            <img src={kasperGhost} alt="ghost" className="w-full h-auto" />
+            <img src={vivoorGhost} alt="ghost" className="w-full h-auto" />
           ) : (
             ghost.character
           )}
