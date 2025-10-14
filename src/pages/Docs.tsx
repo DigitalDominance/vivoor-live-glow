@@ -1000,7 +1000,7 @@ const DocsPage = () => {
                 </div>
 
                 {/* Call to Action */}
-                <div className="mt-6 p-6 border-2 border-brand-pink/30 rounded-lg bg-gradient-to-r from-brand-pink/10 to-brand-iris/10">
+                <div className="mt-6 p-6 border-2 border-brand-pink/30 rounded-lg bg-gradient-to-r from-brand-pink/10 to-brand-iris/10 text-center">
                   <h4 className="text-lg font-bold mb-2">Don't have a KASPERS NFT yet?</h4>
                   <p className="text-sm text-muted-foreground mb-4">
                     Purchase or mint your KASPERS NFT easily! All you need is KAS in your Kaspa wallet (Kasware or Kastle), 
