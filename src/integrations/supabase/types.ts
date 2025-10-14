@@ -162,6 +162,7 @@ export type Database = {
           created_at: string
           first_claimed_at: string
           id: string
+          is_selected: boolean | null
           is_verified: boolean
           last_verified_at: string
           owner_address: string
@@ -175,6 +176,7 @@ export type Database = {
           created_at?: string
           first_claimed_at?: string
           id?: string
+          is_selected?: boolean | null
           is_verified?: boolean
           last_verified_at?: string
           owner_address: string
@@ -188,6 +190,7 @@ export type Database = {
           created_at?: string
           first_claimed_at?: string
           id?: string
+          is_selected?: boolean | null
           is_verified?: boolean
           last_verified_at?: string
           owner_address?: string
@@ -1126,9 +1129,20 @@ export type Database = {
         Args: { stream_id: string }
         Returns: string
       }
+      get_user_all_kaspers_nfts: {
+        Args: { user_id_param: string }
+        Returns: {
+          is_selected: boolean
+          is_verified: boolean
+          last_verified_at: string
+          tick: string
+          token_id: string
+        }[]
+      }
       get_user_kaspers_nft: {
         Args: { user_id_param: string }
         Returns: {
+          is_selected: boolean
           is_verified: boolean
           last_verified_at: string
           tick: string

@@ -66,13 +66,12 @@ serve(async (req) => {
     const holdingData: KRC721HoldingResponse = await apiResponse.json();
     console.log('📦 API Response:', JSON.stringify(holdingData, null, 2));
 
-    // Check if wallet owns KASPERS NFT
-    const hasNFT = holdingData.result && 
-                   Array.isArray(holdingData.result) && 
-                   holdingData.result.length > 0 && 
-                   holdingData.result[0]?.tokenId;
+    // Check if wallet owns any KASPERS NFTs
+    const hasNFTs = holdingData.result && 
+                    Array.isArray(holdingData.result) && 
+                    holdingData.result.length > 0;
 
-    if (!hasNFT) {
+    if (!hasNFTs) {
       // No KASPERS NFT found - disable badge and remove records
       console.log(`❌ No KASPERS NFT found for ${walletAddress}, removing records`);
       
@@ -96,8 +95,10 @@ serve(async (req) => {
       );
     }
 
-    const tokenId = holdingData.result[0].tokenId;
-    console.log(`✅ Found KASPERS NFT #${tokenId}`);
+    console.log(`✅ Found ${holdingData.result.length} KASPERS NFT(s)`);
+    
+    // Get all token IDs
+    const tokenIds = holdingData.result.map(nft => nft.tokenId);
 
     // Check if user has EVER received the KASPERS verification bonus
     const { data: allUserBadges } = await supabaseAdmin
@@ -108,34 +109,59 @@ serve(async (req) => {
     const hasEverClaimedBonus = allUserBadges && allUserBadges.length > 0 && 
                                  allUserBadges.some(b => b.verification_bonus_granted === true);
     
-    const { data: existingBadge } = await supabaseAdmin
+    // Get existing badges to see which ones user already has
+    const { data: existingBadges } = await supabaseAdmin
       .from('kaspers_nft_badges')
       .select('*')
       .eq('user_id', userId)
-      .eq('tick', 'KASPERS')
-      .single();
+      .eq('tick', 'KASPERS');
 
-    const isFirstClaim = !existingBadge;
+    const isFirstClaim = !existingBadges || existingBadges.length === 0;
     const shouldGrantBonus = !hasEverClaimedBonus; // Only grant once EVER per user
 
-    // Upsert badge record
-    const { error: upsertError } = await supabaseAdmin
-      .from('kaspers_nft_badges')
-      .upsert({
-        user_id: userId,
-        tick: 'KASPERS',
-        token_id: tokenId,
-        owner_address: walletAddress,
-        is_verified: true,
-        last_verified_at: new Date().toISOString(),
-        verification_bonus_granted: shouldGrantBonus ? true : existingBadge?.verification_bonus_granted,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,tick'
-      });
+    // Determine which NFT should be selected
+    const currentSelected = existingBadges?.find(b => b.is_selected);
+    
+    // Upsert all NFT badges
+    for (const nft of holdingData.result) {
+      const tokenId = nft.tokenId;
+      const isSelected = currentSelected 
+        ? currentSelected.token_id === tokenId  // Keep current selection
+        : tokenId === tokenIds[0];  // First claim: select first NFT
 
-    if (upsertError) {
-      throw upsertError;
+      const { error: upsertError } = await supabaseAdmin
+        .from('kaspers_nft_badges')
+        .upsert({
+          user_id: userId,
+          tick: 'KASPERS',
+          token_id: tokenId,
+          owner_address: walletAddress,
+          is_verified: true,
+          is_selected: isSelected,
+          last_verified_at: new Date().toISOString(),
+          verification_bonus_granted: shouldGrantBonus && isSelected ? true : false,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,tick,token_id'
+        });
+
+      if (upsertError) {
+        console.error(`❌ Failed to upsert NFT #${tokenId}:`, upsertError);
+      } else {
+        console.log(`✅ Synced KASPERS NFT #${tokenId} ${isSelected ? '(selected)' : ''}`);
+      }
+    }
+
+    // Remove any NFTs the user no longer owns
+    const { error: deleteError } = await supabaseAdmin
+      .from('kaspers_nft_badges')
+      .delete()
+      .eq('user_id', userId)
+      .eq('tick', 'KASPERS')
+      .not('token_id', 'in', `(${tokenIds.join(',')})`);
+
+    if (deleteError) {
+      console.error('❌ Failed to remove old NFTs:', deleteError);
     }
 
     // Enable badge in profile
@@ -177,13 +203,15 @@ serve(async (req) => {
       console.log('ℹ️ User has already claimed KASPERS verification bonus previously');
     }
 
-    console.log(`✅ Successfully synced KASPERS NFT #${tokenId} for user ${userId}`);
+    console.log(`✅ Successfully synced ${tokenIds.length} KASPERS NFT(s) for user ${userId}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         hasNFT: true,
-        tokenId,
+        tokenIds,
+        selectedTokenId: currentSelected?.token_id || tokenIds[0],
+        count: tokenIds.length,
         firstClaim: isFirstClaim,
         bonusGranted: shouldGrantBonus
       }),
