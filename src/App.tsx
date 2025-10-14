@@ -30,6 +30,7 @@ import Admin from "@/pages/Admin";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 import { BrowserStreamingProvider } from "@/context/BrowserStreamingContext";
+import { HalloweenOverlay } from "@/components/HalloweenOverlay";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
               <BackgroundV2 />
               <Toaster />
               <Sonner />
+              <HalloweenOverlay />
               <BrowserRouter>
                 <SiteHeader />
               <Routes>
