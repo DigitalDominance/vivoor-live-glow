@@ -19,7 +19,7 @@ export const HalloweenOverlay = () => {
 
   // Position pumpkins spread out across entire width
   const [pumpkins] = useState(() =>
-    Array.from({ length: 10 }, (_, i) => {
+    Array.from({ length: 6 }, (_, i) => {
       return {
         id: i,
         left: `${Math.random() * 100}%`,
@@ -101,10 +101,10 @@ export const HalloweenOverlay = () => {
       {ghosts.map((ghost) => (
         <div
           key={ghost.id}
-          className="absolute opacity-50 hover:opacity-70 transition-opacity"
+          className="absolute opacity-30 hover:opacity-50 transition-opacity"
           style={{
             left: ghost.left,
-            animation: `float-ghost ${ghost.duration} ease-in-out infinite`,
+            animation: `float-ghost ${ghost.duration} linear infinite`,
             animationDelay: ghost.delay,
             top: "-100px",
             width: ghost.character === 'ghost' ? '40px' : 'auto',
@@ -123,7 +123,7 @@ export const HalloweenOverlay = () => {
       {pumpkins.map((pumpkin, i) => (
         <div
           key={pumpkin.id}
-          className="absolute opacity-60 hover:opacity-90 transition-opacity"
+          className="absolute opacity-35 hover:opacity-55 transition-opacity"
           style={{
             left: pumpkin.left,
             fontSize: pumpkin.size,
