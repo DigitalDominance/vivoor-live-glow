@@ -10,6 +10,8 @@ interface KaspersBadgeProps {
 const KaspersBadge: React.FC<KaspersBadgeProps> = ({ tokenId, size = 'sm', className = '' }) => {
   if (!tokenId) return null;
 
+  const imageUrl = `https://cache.krc721.stream/krc721/mainnet/optimized/KASPERS/${tokenId}`;
+
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-5 h-5',
@@ -18,13 +20,18 @@ const KaspersBadge: React.FC<KaspersBadgeProps> = ({ tokenId, size = 'sm', class
 
   return (
     <MobileTooltip
-      content={<p className="font-medium">KASPERS NFT #{tokenId}</p>}
+      content={<p className="font-medium">Owner of KASPERS #{tokenId}</p>}
       side="top"
     >
       <div className={`relative inline-flex ${className}`}>
-        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 flex items-center justify-center text-white text-[8px] font-bold shadow-lg`}>
-          K
-        </div>
+        <img 
+          src={imageUrl} 
+          alt={`KASPERS #${tokenId}`}
+          className={`${sizeClasses[size]} rounded-full object-cover`}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
       </div>
     </MobileTooltip>
   );
