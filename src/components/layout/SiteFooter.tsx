@@ -14,9 +14,7 @@ const SiteFooter = () => {
               alt="Vivoor logo" 
               className="h-8 w-auto"
             />
-            {!isHalloweenMode ? (
-              <span className="text-gradient">vivoor</span>
-            ) : (
+            {isHalloweenMode && (
               <span className="text-gradient-halloween">vivoor</span>
             )}
           </a>

@@ -18,7 +18,7 @@ export const VolumetricFog = () => {
     resize();
     window.addEventListener('resize', resize);
 
-    // Light shaft particles
+    // Light shaft particles - increased count
     const lightShafts: Array<{
       x: number;
       y: number;
@@ -30,20 +30,20 @@ export const VolumetricFog = () => {
     }> = [];
 
     // Create light shafts on sides
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const isLeft = Math.random() > 0.5;
       lightShafts.push({
-        x: isLeft ? Math.random() * 150 : window.innerWidth - Math.random() * 150,
-        y: -Math.random() * 200,
-        width: 60 + Math.random() * 80,
-        height: window.innerHeight + 200,
-        opacity: 0.08 + Math.random() * 0.07,
-        speed: 0.2 + Math.random() * 0.3,
-        angle: (Math.random() - 0.5) * 10,
+        x: isLeft ? Math.random() * 200 : window.innerWidth - Math.random() * 200,
+        y: -Math.random() * 300,
+        width: 80 + Math.random() * 120,
+        height: window.innerHeight + 300,
+        opacity: 0.12 + Math.random() * 0.10,
+        speed: 0.3 + Math.random() * 0.4,
+        angle: (Math.random() - 0.5) * 15,
       });
     }
 
-    // Fog particles
+    // Fog particles - increased count and opacity
     const fogParticles: Array<{
       x: number;
       y: number;
@@ -53,14 +53,14 @@ export const VolumetricFog = () => {
       speedY: number;
     }> = [];
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 80; i++) {
       fogParticles.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
-        size: 100 + Math.random() * 200,
-        opacity: 0.03 + Math.random() * 0.05,
-        speedX: (Math.random() - 0.5) * 0.2,
-        speedY: 0.3 + Math.random() * 0.5,
+        size: 150 + Math.random() * 250,
+        opacity: 0.06 + Math.random() * 0.08,
+        speedX: (Math.random() - 0.5) * 0.3,
+        speedY: 0.4 + Math.random() * 0.6,
       });
     }
 
@@ -93,7 +93,7 @@ export const VolumetricFog = () => {
         }
 
         // Pulse opacity
-        shaft.opacity = 0.08 + Math.sin(Date.now() * 0.001 + shaft.x) * 0.03;
+        shaft.opacity = 0.12 + Math.sin(Date.now() * 0.001 + shaft.x) * 0.05;
       });
 
       // Draw fog particles
@@ -146,7 +146,7 @@ export const VolumetricFog = () => {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-50"
-      style={{ opacity: 0.15 }}
+      style={{ opacity: 0.35 }}
     />
   );
 };
