@@ -13,6 +13,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { WalletConnectModal } from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
@@ -41,7 +47,7 @@ const SiteHeader = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
-  const { toggleHalloweenMode } = useHalloween();
+  const { toggleHalloweenMode, isHalloweenMode } = useHalloween();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -109,15 +115,24 @@ const SiteHeader = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleHalloweenMode}
-            aria-label="Toggle Halloween Mode"
-            className="text-2xl hover:scale-110 transition-transform"
-          >
-            🎃
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleHalloweenMode}
+                  aria-label="Toggle Halloween Mode"
+                  className="text-2xl hover:scale-110 transition-transform"
+                >
+                  🎃
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isHalloweenMode ? 'Deactivate Halloween Mode' : 'Activate Halloween Mode'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <ThemeToggle />
           {!identity ? (
             <Button

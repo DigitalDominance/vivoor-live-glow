@@ -1,6 +1,7 @@
 import { useState } from "react";
 import vivoorGhost from "@/assets/vivoor-ghost.png";
 import { useHalloween } from "@/context/HalloweenContext";
+import { VolumetricFog } from "./VolumetricFog";
 
 export const HalloweenOverlay = () => {
   const { isHalloweenMode } = useHalloween();
@@ -21,12 +22,13 @@ export const HalloweenOverlay = () => {
     })
   );
 
-  // Position pumpkins falling from top
+  // Position pumpkins falling from top - only on sides
   const [pumpkins] = useState(() =>
     Array.from({ length: 6 }, (_, i) => {
+      const isLeft = Math.random() > 0.5;
       return {
         id: i,
-        left: `${Math.random() * 100}%`,
+        left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
         delay: `${Math.random() * 3.6}s`,
         duration: `${9.6 + Math.random() * 4.8}s`,
         size: `${Math.random() * 20 + 35}px`
@@ -36,98 +38,8 @@ export const HalloweenOverlay = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {/* Flowing Smoke Particles - Left Side */}
-      <div 
-        className="absolute top-[-20%] left-[3%] w-6 h-full opacity-70"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
-          filter: 'blur(20px)',
-          animation: 'smoke-flow-up 7.2s linear infinite'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] left-[8%] w-8 h-full opacity-65"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
-          filter: 'blur(25px)',
-          animation: 'smoke-flow-up 9.6s linear infinite',
-          animationDelay: '2s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] left-[13%] w-6 h-full opacity-60"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
-          filter: 'blur(22px)',
-          animation: 'smoke-flow-up 8.4s linear infinite',
-          animationDelay: '4s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] left-[5%] w-5 h-full opacity-55"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
-          filter: 'blur(18px)',
-          animation: 'smoke-flow-up 10.8s linear infinite',
-          animationDelay: '1s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] left-[11%] w-6 h-full opacity-65"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
-          filter: 'blur(23px)',
-          animation: 'smoke-flow-up 9s linear infinite',
-          animationDelay: '3.5s'
-        }}
-      />
-
-      {/* Flowing Smoke Particles - Right Side */}
-      <div 
-        className="absolute top-[-20%] right-[3%] w-6 h-full opacity-70"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%)',
-          filter: 'blur(20px)',
-          animation: 'smoke-flow-up 7.2s linear infinite',
-          animationDelay: '1s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] right-[8%] w-8 h-full opacity-65"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
-          filter: 'blur(25px)',
-          animation: 'smoke-flow-up 9.6s linear infinite',
-          animationDelay: '3s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] right-[13%] w-6 h-full opacity-60"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
-          filter: 'blur(22px)',
-          animation: 'smoke-flow-up 8.4s linear infinite',
-          animationDelay: '5s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] right-[5%] w-5 h-full opacity-55"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%)',
-          filter: 'blur(18px)',
-          animation: 'smoke-flow-up 10.8s linear infinite',
-          animationDelay: '2.5s'
-        }}
-      />
-      <div 
-        className="absolute top-[-20%] right-[11%] w-6 h-full opacity-65"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%)',
-          filter: 'blur(23px)',
-          animation: 'smoke-flow-up 9s linear infinite',
-          animationDelay: '4.5s'
-        }}
-      />
+      {/* Volumetric Fog with Light Shafts */}
+      <VolumetricFog />
       
       {/* Floating Ghosts, Zombies, and Cobwebs */}
       {ghosts.map((ghost) => (
