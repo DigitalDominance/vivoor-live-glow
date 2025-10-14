@@ -30,13 +30,28 @@ export const HalloweenOverlay = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {/* Fog/Smoke at bottom - left side */}
-      <div className="absolute bottom-0 left-0 w-1/4 h-48 bg-gradient-to-t from-purple-700/40 via-purple-600/20 to-transparent animate-pulse" style={{ animationDuration: "4s" }} />
+      {/* White Smoke at bottom - left side */}
+      <div 
+        className="absolute bottom-0 left-0 w-1/3 h-64 opacity-60"
+        style={{
+          background: 'radial-gradient(ellipse at center bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 70%)',
+          filter: 'blur(30px)',
+          animation: 'smoke-drift 8s ease-in-out infinite'
+        }}
+      />
       
-      {/* Fog/Smoke at bottom - right side */}
-      <div className="absolute bottom-0 right-0 w-1/4 h-48 bg-gradient-to-t from-purple-700/40 via-purple-600/20 to-transparent animate-pulse" style={{ animationDuration: "4s", animationDelay: "2s" }} />
+      {/* White Smoke at bottom - right side */}
+      <div 
+        className="absolute bottom-0 right-0 w-1/3 h-64 opacity-60"
+        style={{
+          background: 'radial-gradient(ellipse at center bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 70%)',
+          filter: 'blur(30px)',
+          animation: 'smoke-drift 8s ease-in-out infinite',
+          animationDelay: '4s'
+        }}
+      />
       
-      {/* Floating Ghosts */}
+      {/* Floating Scary Ghosts */}
       {ghosts.map((ghost) => (
         <div
           key={ghost.id}
@@ -48,7 +63,7 @@ export const HalloweenOverlay = () => {
             top: "-100px"
           }}
         >
-          👻
+          {ghost.id % 3 === 0 ? '💀' : ghost.id % 3 === 1 ? '🧟' : '☠️'}
         </div>
       ))}
 
@@ -85,6 +100,17 @@ export const HalloweenOverlay = () => {
           }
           100% {
             transform: translateY(110vh) translateX(0);
+          }
+        }
+        
+        @keyframes smoke-drift {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+            opacity: 0.6;
+          }
+          50% {
+            transform: translateY(-20px) translateX(10px);
+            opacity: 0.4;
           }
         }
       `}</style>
