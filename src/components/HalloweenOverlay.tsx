@@ -1,29 +1,40 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const HalloweenOverlay = () => {
+  // Position ghosts on left and right sides only
   const [ghosts] = useState(() => 
-    Array.from({ length: 5 }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 90 + 5}%`,
-      delay: `${Math.random() * 5}s`,
-      duration: `${15 + Math.random() * 10}s`
-    }))
+    Array.from({ length: 6 }, (_, i) => {
+      const isLeft = i % 2 === 0;
+      return {
+        id: i,
+        left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
+        delay: `${Math.random() * 5}s`,
+        duration: `${15 + Math.random() * 10}s`
+      };
+    })
   );
 
+  // Position pumpkins on left and right sides only
   const [pumpkins] = useState(() =>
-    Array.from({ length: 6 }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 90 + 5}%`,
-      top: `${Math.random() * 80 + 10}%`,
-      size: `${Math.random() * 30 + 30}px`,
-      rotation: `${Math.random() * 30 - 15}deg`
-    }))
+    Array.from({ length: 8 }, (_, i) => {
+      const isLeft = i % 2 === 0;
+      return {
+        id: i,
+        left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
+        top: `${Math.random() * 80 + 10}%`,
+        size: `${Math.random() * 30 + 30}px`,
+        rotation: `${Math.random() * 30 - 15}deg`
+      };
+    })
   );
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {/* Fog/Smoke at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-purple-900/20 via-purple-800/10 to-transparent animate-pulse" style={{ animationDuration: "3s" }} />
+      {/* Fog/Smoke at bottom - left side */}
+      <div className="absolute bottom-0 left-0 w-1/4 h-48 bg-gradient-to-t from-purple-700/40 via-purple-600/20 to-transparent animate-pulse" style={{ animationDuration: "4s" }} />
+      
+      {/* Fog/Smoke at bottom - right side */}
+      <div className="absolute bottom-0 right-0 w-1/4 h-48 bg-gradient-to-t from-purple-700/40 via-purple-600/20 to-transparent animate-pulse" style={{ animationDuration: "4s", animationDelay: "2s" }} />
       
       {/* Floating Ghosts */}
       {ghosts.map((ghost) => (
