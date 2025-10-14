@@ -23,6 +23,7 @@ import { useOnChainChat } from "@/hooks/useOnChainChat";
 import { useStreamReadiness } from "@/hooks/useStreamReadiness";
 import LivepeerClipCreator from "@/components/modals/LivepeerClipCreator";
 import ClipVerifiedBadge from "@/components/ClipVerifiedBadge";
+import UserKaspersBadge from "@/components/UserKaspersBadge";
 import UserKnsBadge from "@/components/UserKnsBadge";
 import { toast } from "sonner";
 import { Heart, Volume2, VolumeX, Flag, Smile } from "lucide-react";
@@ -866,6 +867,7 @@ const Watch = () => {
                       @{streamerProfile?.handle || 'streamer'}
                     </button>
                     {streamerProfile?.id && <ClipVerifiedBadge userId={streamerProfile.id} size="sm" />}
+                    {streamerProfile?.id && <UserKaspersBadge userId={streamerProfile.id} size="sm" />}
                     {streamerProfile?.id && <UserKnsBadge userId={streamerProfile.id} size="sm" />}
                   </div>
                   <div className="flex items-center gap-2 mt-2">
