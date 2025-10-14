@@ -166,30 +166,26 @@ const MyProfileModal: React.FC<{
     setShowKaspersBadge(checked);
 
     if (checked) {
-      // First, enable the badge in the database
+      // Call sync function to verify and enable badge
       setSyncingKaspers(true);
       try {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ show_kaspers_badge: true })
-          .eq('id', identity.id);
+        const walletAddress = sessionStorage.getItem('kaspa_wallet_address');
+        const sessionToken = sessionStorage.getItem('wallet_session_token');
+        
+        if (!walletAddress || !sessionToken) {
+          throw new Error('Wallet not connected');
+        }
 
-        if (updateError) throw updateError;
-
-        // Now verify ownership
-        const { data, error } = await supabase.functions.invoke('verify-kaspers-nft-on-view', {
-          body: { userId: identity.id }
+        const { data, error } = await supabase.functions.invoke('sync-kaspers-nft', {
+          body: { 
+            sessionToken,
+            walletAddress 
+          }
         });
 
         if (error) throw error;
 
         if (!data?.hasNFT) {
-          // Revert the database change
-          await supabase
-            .from('profiles')
-            .update({ show_kaspers_badge: false })
-            .eq('id', identity.id);
-            
           toast({
             title: "No KASPERS NFT Found",
             description: "Your wallet does not own a KASPERS NFT.",
@@ -219,13 +215,6 @@ const MyProfileModal: React.FC<{
           description: err.message || "Failed to verify KASPERS NFT ownership",
           variant: "destructive"
         });
-        
-        // Revert the database change on error
-        await supabase
-          .from('profiles')
-          .update({ show_kaspers_badge: false })
-          .eq('id', identity.id);
-          
         setShowKaspersBadge(false);
       } finally {
         setSyncingKaspers(false);
@@ -239,6 +228,11 @@ const MyProfileModal: React.FC<{
           .eq('id', identity.id);
 
         if (error) throw error;
+        
+        toast({
+          title: "KASPERS NFT Badge Disabled",
+          description: "Your badge has been hidden from your profile",
+        });
       } catch (err: any) {
         console.error('Error updating KASPERS badge setting:', err);
         toast({
