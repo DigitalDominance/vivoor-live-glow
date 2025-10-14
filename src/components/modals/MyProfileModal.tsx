@@ -193,11 +193,16 @@ const MyProfileModal: React.FC<{
         }
 
         // Show bonus message if granted
-        if (data.firstClaim || data.bonusGranted) {
+        if (data.bonusGranted) {
           toast({
             title: "🎉 KASPERS NFT Badge Claimed!",
-            description: "You've received 6 months of free verification (worth 600 KAS)!",
+            description: "You've received 6 months of free verification (worth 600 KAS)! This is a one-time bonus.",
             duration: 7000,
+          });
+        } else if (data.firstClaim) {
+          toast({
+            title: "KASPERS NFT Badge Enabled",
+            description: `Connected KASPERS #${data.tokenId} (Bonus already claimed previously)`,
           });
         } else {
           toast({

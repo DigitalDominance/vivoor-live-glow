@@ -99,15 +99,24 @@ serve(async (req) => {
     const tokenId = holdingData.result[0].tokenId;
     console.log(`✅ Found KASPERS NFT #${tokenId}`);
 
-    // Check if this is first time claiming
+    // Check if user has EVER received the KASPERS verification bonus
+    const { data: allUserBadges } = await supabaseAdmin
+      .from('kaspers_nft_badges')
+      .select('verification_bonus_granted')
+      .eq('user_id', userId);
+
+    const hasEverClaimedBonus = allUserBadges && allUserBadges.length > 0 && 
+                                 allUserBadges.some(b => b.verification_bonus_granted === true);
+    
     const { data: existingBadge } = await supabaseAdmin
       .from('kaspers_nft_badges')
       .select('*')
       .eq('user_id', userId)
+      .eq('tick', 'KASPERS')
       .single();
 
     const isFirstClaim = !existingBadge;
-    const shouldGrantBonus = isFirstClaim || !existingBadge?.verification_bonus_granted;
+    const shouldGrantBonus = !hasEverClaimedBonus; // Only grant once EVER per user
 
     // Upsert badge record
     const { error: upsertError } = await supabaseAdmin
@@ -138,41 +147,34 @@ serve(async (req) => {
       })
       .eq('id', userId);
 
-    // Grant 6 month verification bonus if first claim
+    // Grant 6 month verification bonus if never claimed before
     if (shouldGrantBonus) {
-      console.log('🎉 First KASPERS NFT claim - granting 6 month verification bonus');
+      console.log('🎉 First time EVER claiming KASPERS bonus - granting 6 month verification');
 
-      // Get current verification if exists
-      const { data: currentVerification } = await supabaseAdmin
-        .from('verifications')
-        .select('expires_at')
-        .eq('user_id', userId)
-        .order('expires_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Calculate new expiry (6 months from now or 6 months added to existing)
-      const baseDate = currentVerification && new Date(currentVerification.expires_at) > new Date()
-        ? new Date(currentVerification.expires_at)
-        : new Date();
-      
-      const newExpiry = new Date(baseDate);
+      // Calculate expiry 6 months from now
+      const newExpiry = new Date();
       newExpiry.setMonth(newExpiry.getMonth() + 6);
 
-      // Insert verification bonus
-      await supabaseAdmin
+      // Insert verification bonus using valid duration_type
+      const { error: verificationError } = await supabaseAdmin
         .from('verifications')
         .insert({
           user_id: userId,
           txid: `kaspers_nft_bonus_${Date.now()}`,
           amount_sompi: 60000000000, // 600 KAS in sompi
-          duration_type: 'kaspers_nft_bonus',
+          duration_type: 'monthly_verification', // Use valid duration type
           block_time: Math.floor(Date.now() / 1000),
           verified_at: new Date().toISOString(),
           expires_at: newExpiry.toISOString()
         });
 
-      console.log('✅ Verification bonus granted successfully');
+      if (verificationError) {
+        console.error('❌ Failed to grant verification bonus:', verificationError);
+      } else {
+        console.log('✅ 6 month verification bonus granted successfully');
+      }
+    } else {
+      console.log('ℹ️ User has already claimed KASPERS verification bonus previously');
     }
 
     console.log(`✅ Successfully synced KASPERS NFT #${tokenId} for user ${userId}`);
