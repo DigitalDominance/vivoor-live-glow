@@ -1,23 +1,25 @@
 import { useState } from "react";
 
 export const HalloweenOverlay = () => {
-  // Position ghosts on left and right sides only
+  // Position ghosts, zombies, and cobwebs on left and right sides - randomly mixed
   const [ghosts] = useState(() => 
     Array.from({ length: 6 }, (_, i) => {
-      const isLeft = i % 2 === 0;
+      const isLeft = Math.random() > 0.5;
+      const characters = ['👻', '🧟', '🕸️'];
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
         delay: `${Math.random() * 5}s`,
-        duration: `${15 + Math.random() * 10}s`
+        duration: `${15 + Math.random() * 10}s`,
+        character: characters[Math.floor(Math.random() * characters.length)]
       };
     })
   );
 
-  // Position pumpkins on left and right sides only
+  // Position pumpkins on left and right sides - randomly mixed
   const [pumpkins] = useState(() =>
     Array.from({ length: 8 }, (_, i) => {
-      const isLeft = i % 2 === 0;
+      const isLeft = Math.random() > 0.5;
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
@@ -51,7 +53,7 @@ export const HalloweenOverlay = () => {
         }}
       />
       
-      {/* Floating Ghosts and Zombies */}
+      {/* Floating Ghosts, Zombies, and Cobwebs */}
       {ghosts.map((ghost) => (
         <div
           key={ghost.id}
@@ -63,7 +65,7 @@ export const HalloweenOverlay = () => {
             top: "-100px"
           }}
         >
-          {ghost.id % 2 === 0 ? '👻' : '🧟'}
+          {ghost.character}
         </div>
       ))}
 
@@ -119,13 +121,25 @@ export const HalloweenOverlay = () => {
         }
         
         @keyframes smoke-drift {
-          0%, 100% {
+          0% {
             transform: translateY(0) translateX(0);
             opacity: 0.6;
           }
+          25% {
+            transform: translateY(-40px) translateX(5px);
+            opacity: 0.7;
+          }
           50% {
-            transform: translateY(-20px) translateX(10px);
-            opacity: 0.4;
+            transform: translateY(-60px) translateX(10px);
+            opacity: 0.5;
+          }
+          75% {
+            transform: translateY(-40px) translateX(5px);
+            opacity: 0.6;
+          }
+          100% {
+            transform: translateY(0) translateX(0);
+            opacity: 0.6;
           }
         }
       `}</style>
