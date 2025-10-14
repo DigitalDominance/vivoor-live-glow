@@ -66,6 +66,7 @@ const DocsPage = () => {
             <a href="#clips" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('clips'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Creating Clips</a>
             <a href="#verification" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('verification'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Getting Verified</a>
             <a href="#kns" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('kns'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Enabling KNS</a>
+            <a href="#kaspers" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('kaspers'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>KASPERS NFT Badge</a>
             <a href="#profile" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('profile'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Profile Management</a>
             <a href="#following" className="block text-sm hover:text-primary transition-colors py-1" onClick={(e) => { e.preventDefault(); const element = document.getElementById('following'); if (element) { const top = element.getBoundingClientRect().top + window.pageYOffset - 80; window.scrollTo({ top, behavior: 'smooth' }); } }}>Following Users</a>
           </nav>
@@ -873,6 +874,140 @@ const DocsPage = () => {
                     <h4 className="font-medium mb-2">Professional Branding</h4>
                     <p className="text-sm text-muted-foreground">Your KNS badge appears on all your content, enhancing your brand identity across the platform</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.section>
+
+          {/* KASPERS NFT Badge */}
+          <motion.section id="kaspers" variants={fadeInUp}>
+            <Card className="border-brand-iris/20 relative overflow-hidden">
+              {/* Glowing background effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-cyan/5 via-brand-iris/5 to-brand-pink/5 pointer-events-none" />
+              
+              <CardHeader className="relative">
+                <CardTitle className="text-2xl flex items-center gap-3">
+                  <div 
+                    className="w-8 h-8 rounded-full flex-shrink-0 relative p-[2px] bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris shadow-[0_0_15px_rgba(139,92,246,0.5)]"
+                  >
+                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center text-xs font-bold">
+                      K
+                    </div>
+                  </div>
+                  KASPERS NFT Badge
+                </CardTitle>
+                <CardDescription>Unlock 6 months of FREE verification by claiming your KASPERS NFT badge!</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 relative">
+                {/* Highlight Box */}
+                <div className="p-6 border-2 border-brand-cyan/30 rounded-lg bg-gradient-to-br from-brand-cyan/10 via-brand-iris/10 to-brand-pink/10 shadow-lg">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.6)]">
+                      <Star className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl text-brand-cyan mb-2">🎉 Exclusive KASPERS NFT Holder Benefit!</h3>
+                      <p className="text-lg font-semibold mb-2">
+                        Own a KASPERS NFT? Get <span className="text-brand-pink font-bold text-xl">6 MONTHS of FREE VERIFICATION</span>!
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        That's a <span className="font-semibold text-brand-iris">600 KAS value</span> - absolutely free for KASPERS NFT holders!
+                      </p>
+                      <div className="mt-3 p-3 bg-background/50 rounded border border-brand-pink/20">
+                        <p className="text-xs font-medium text-brand-pink">⚠️ IMPORTANT: This bonus can only be claimed ONCE per account</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border border-brand-iris/20 rounded-lg bg-brand-iris/5">
+                  <h3 className="font-semibold text-brand-iris mb-2">✨ What is the KASPERS NFT Badge?</h3>
+                  <p className="text-sm">
+                    The KASPERS NFT Badge displays your unique KASPERS NFT on your profile, streams, clips, and throughout the platform. 
+                    It's a beautiful way to showcase your KASPERS collection while earning amazing benefits!
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">How to Claim Your KASPERS Badge & Free Verification</h3>
+                  <div className="space-y-4">
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                      <div>
+                        <p className="font-medium">Own a KASPERS NFT</p>
+                        <p className="text-sm text-muted-foreground">Make sure you have at least one KASPERS NFT in your connected Kaspa wallet</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-iris text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                      <div>
+                        <p className="font-medium">Go to Edit Profile</p>
+                        <p className="text-sm text-muted-foreground">Click on your profile icon and select "Edit Profile"</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-pink text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                      <div>
+                        <p className="font-medium">Enable Show KASPERS Badge</p>
+                        <p className="text-sm text-muted-foreground">Toggle the "Show KASPERS Badge" option to automatically verify and sync your KASPERS NFTs</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-cyan text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                      <div>
+                        <p className="font-medium">Select Your NFT (if you own multiple)</p>
+                        <p className="text-sm text-muted-foreground">If you own multiple KASPERS NFTs, you can choose which one to display using the dropdown selector</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="w-6 h-6 rounded-full bg-brand-iris text-white text-sm flex items-center justify-center flex-shrink-0 mt-0.5">5</span>
+                      <div>
+                        <p className="font-medium">Instant Badge + 6 Months FREE Verification!</p>
+                        <p className="text-sm text-muted-foreground">Your KASPERS badge appears immediately across the platform, and you'll automatically receive 6 months of verification - completely free!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 border border-border rounded-lg">
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      Show Your NFT
+                    </h4>
+                    <p className="text-sm text-muted-foreground">Your unique KASPERS NFT image appears as a beautiful glowing badge next to your name everywhere on Vivoor</p>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg">
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      600 KAS Value
+                    </h4>
+                    <p className="text-sm text-muted-foreground">Get 6 months of platform verification worth 600 KAS - absolutely FREE when you claim your KASPERS badge</p>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg">
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      One-Time Bonus
+                    </h4>
+                    <p className="text-sm text-muted-foreground">Remember: This verification bonus can only be claimed once per account, so claim it when you're ready!</p>
+                  </div>
+                </div>
+
+                {/* Call to Action */}
+                <div className="mt-6 p-6 border-2 border-brand-pink/30 rounded-lg bg-gradient-to-r from-brand-pink/10 to-brand-iris/10 text-center">
+                  <h4 className="text-lg font-bold mb-2">Ready to claim your rewards?</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Connect your wallet with KASPERS NFTs and head to Edit Profile to get started!
+                  </p>
+                  <Button 
+                    variant="hero" 
+                    size="lg"
+                    onClick={() => navigate('/profile')}
+                    className="shadow-lg shadow-brand-iris/20"
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Go to Profile
+                  </Button>
                 </div>
               </CardContent>
             </Card>
