@@ -1,11 +1,12 @@
 import { useState } from "react";
+import kasperGhost from "@/assets/kasper-ghost.png";
 
 export const HalloweenOverlay = () => {
   // Position ghosts, zombies, and cobwebs on left and right sides - randomly mixed
   const [ghosts] = useState(() => 
     Array.from({ length: 6 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
-      const characters = ['👻', '🧟', '🕸️'];
+      const characters = ['ghost', '🧟', '🕸️'];
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
@@ -16,14 +17,14 @@ export const HalloweenOverlay = () => {
     })
   );
 
-  // Position pumpkins on left and right sides - randomly mixed
+  // Position pumpkins spread out from top to bottom
   const [pumpkins] = useState(() =>
     Array.from({ length: 8 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
-        top: `${Math.random() * 80 + 10}%`,
+        top: `${Math.random() * 90 + 5}%`,
         size: `${Math.random() * 30 + 30}px`,
         rotation: `${Math.random() * 30 - 15}deg`
       };
@@ -52,20 +53,70 @@ export const HalloweenOverlay = () => {
           animationDelay: '4s'
         }}
       />
+
+      {/* White Smoke at middle - left side */}
+      <div 
+        className="absolute top-1/2 left-0 w-1/4 h-48 opacity-50"
+        style={{
+          background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'smoke-drift 10s ease-in-out infinite',
+          animationDelay: '2s'
+        }}
+      />
+
+      {/* White Smoke at middle - right side */}
+      <div 
+        className="absolute top-1/2 right-0 w-1/4 h-48 opacity-50"
+        style={{
+          background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'smoke-drift 10s ease-in-out infinite',
+          animationDelay: '6s'
+        }}
+      />
+
+      {/* White Smoke at top - left side */}
+      <div 
+        className="absolute top-0 left-0 w-1/4 h-56 opacity-45"
+        style={{
+          background: 'radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
+          filter: 'blur(35px)',
+          animation: 'smoke-drift 12s ease-in-out infinite',
+          animationDelay: '1s'
+        }}
+      />
+
+      {/* White Smoke at top - right side */}
+      <div 
+        className="absolute top-0 right-0 w-1/4 h-56 opacity-45"
+        style={{
+          background: 'radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
+          filter: 'blur(35px)',
+          animation: 'smoke-drift 12s ease-in-out infinite',
+          animationDelay: '5s'
+        }}
+      />
       
       {/* Floating Ghosts, Zombies, and Cobwebs */}
       {ghosts.map((ghost) => (
         <div
           key={ghost.id}
-          className="absolute text-4xl opacity-70 hover:opacity-100 transition-opacity"
+          className="absolute opacity-50 hover:opacity-70 transition-opacity"
           style={{
             left: ghost.left,
             animation: `float-ghost ${ghost.duration} ease-in-out infinite`,
             animationDelay: ghost.delay,
-            top: "-100px"
+            top: "-100px",
+            width: ghost.character === 'ghost' ? '60px' : 'auto',
+            fontSize: ghost.character !== 'ghost' ? '2.5rem' : undefined
           }}
         >
-          {ghost.character}
+          {ghost.character === 'ghost' ? (
+            <img src={kasperGhost} alt="ghost" className="w-full h-auto" />
+          ) : (
+            ghost.character
+          )}
         </div>
       ))}
 
