@@ -1,11 +1,16 @@
+import { useHalloween } from "@/context/HalloweenContext";
+import halloweenLogo from "@/assets/vivoor-halloween-logo.png";
+
 const SiteFooter = () => {
+  const { isHalloweenMode } = useHalloween();
+  
   return (
     <footer className="mt-16 border-t border-border/60">
       <div className="container mx-auto px-4 py-10">
         <div className="grid gap-6 md:flex md:items-center md:justify-between mb-4">
           <a href="#top" className="flex items-center gap-1 font-display text-lg font-bold">
             <img 
-              src="/lovable-uploads/vivoorlogo2.png" 
+              src={isHalloweenMode ? halloweenLogo : "/lovable-uploads/vivoorlogo2.png"} 
               alt="Vivoor logo" 
               className="h-8 w-auto"
             />

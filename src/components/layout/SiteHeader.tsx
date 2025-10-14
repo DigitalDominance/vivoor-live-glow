@@ -17,18 +17,29 @@ import { WalletConnectModal } from "@/components/modals/WalletConnectModal";
 import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
+import { useHalloween } from "@/context/HalloweenContext";
+import halloweenLogo from "@/assets/vivoor-halloween-logo.png";
 
-const Wordmark = () => (
-  <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
-    <img src="/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png" alt="Vivoor logo" className="h-8 w-auto" />
-    <span className="text-xl font-extrabold font-display tracking-tight text-gradient">vivoor</span>
-  </Link>
-);
+const Wordmark = () => {
+  const { isHalloweenMode } = useHalloween();
+  
+  return (
+    <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
+      <img 
+        src={isHalloweenMode ? halloweenLogo : "/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png"} 
+        alt="Vivoor logo" 
+        className="h-8 w-auto" 
+      />
+      {!isHalloweenMode && <span className="text-xl font-extrabold font-display tracking-tight text-gradient">vivoor</span>}
+    </Link>
+  );
+};
 
 const SiteHeader = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const { toggleHalloweenMode } = useHalloween();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -96,6 +107,15 @@ const SiteHeader = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleHalloweenMode}
+            aria-label="Toggle Halloween Mode"
+            className="text-2xl hover:scale-110 transition-transform"
+          >
+            🎃
+          </Button>
           <ThemeToggle />
           {!identity ? (
             <Button

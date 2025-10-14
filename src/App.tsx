@@ -30,6 +30,7 @@ import Admin from "@/pages/Admin";
 import "@/styles/global-extras.css";
 import { WalletProvider } from "@/context/WalletContext";
 import { BrowserStreamingProvider } from "@/context/BrowserStreamingContext";
+import { HalloweenProvider } from "@/context/HalloweenContext";
 import { HalloweenOverlay } from "@/components/HalloweenOverlay";
 
 const queryClient = new QueryClient();
@@ -37,16 +38,17 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <WalletProvider>
-        <BrowserStreamingProvider>
-          <HelmetProvider>
-            <TooltipProvider>
-              <BackgroundV2 />
-              <Toaster />
-              <Sonner />
-              <HalloweenOverlay />
-              <BrowserRouter>
-                <SiteHeader />
+      <HalloweenProvider>
+        <WalletProvider>
+          <BrowserStreamingProvider>
+            <HelmetProvider>
+              <TooltipProvider>
+                <BackgroundV2 />
+                <Toaster />
+                <Sonner />
+                <HalloweenOverlay />
+                <BrowserRouter>
+                  <SiteHeader />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/app" element={<AppDirectory />} />
@@ -75,7 +77,8 @@ const App = () => (
         </HelmetProvider>
       </BrowserStreamingProvider>
     </WalletProvider>
-  </ThemeProvider>
+  </HalloweenProvider>
+</ThemeProvider>
 </QueryClientProvider>
 );
 
