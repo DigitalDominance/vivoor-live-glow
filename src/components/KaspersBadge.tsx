@@ -24,14 +24,16 @@ const KaspersBadge: React.FC<KaspersBadgeProps> = ({ tokenId, size = 'sm', class
       side="top"
     >
       <div className={`relative inline-flex ${className}`}>
-        <img 
-          src={imageUrl} 
-          alt={`KASPERS #${tokenId}`}
-          className={`${sizeClasses[size]} rounded-full object-cover`}
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-          }}
-        />
+        <div className="relative p-[2px] rounded-full bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris shadow-[0_0_15px_rgba(139,92,246,0.5)]">
+          <img 
+            src={imageUrl} 
+            alt={`KASPERS #${tokenId}`}
+            className={`${sizeClasses[size]} rounded-full object-cover bg-background`}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
       </div>
     </MobileTooltip>
   );
