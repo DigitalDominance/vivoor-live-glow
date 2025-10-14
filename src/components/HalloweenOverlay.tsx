@@ -17,15 +17,15 @@ export const HalloweenOverlay = () => {
     })
   );
 
-  // Position pumpkins spread out across entire width
+  // Position pumpkins falling from top
   const [pumpkins] = useState(() =>
     Array.from({ length: 6 }, (_, i) => {
       return {
         id: i,
         left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 90 + 5}%`,
-        size: `${Math.random() * 30 + 30}px`,
-        rotation: `${Math.random() * 30 - 15}deg`
+        delay: `${Math.random() * 3}s`,
+        duration: `${8 + Math.random() * 4}s`,
+        size: `${Math.random() * 20 + 35}px`
       };
     })
   );
@@ -120,16 +120,16 @@ export const HalloweenOverlay = () => {
       ))}
 
       {/* Floating Pumpkins */}
-      {pumpkins.map((pumpkin, i) => (
+      {pumpkins.map((pumpkin) => (
         <div
           key={pumpkin.id}
           className="absolute opacity-35 hover:opacity-55 transition-opacity"
           style={{
             left: pumpkin.left,
             fontSize: pumpkin.size,
-            animation: `float-pumpkin ${12 + i * 2}s ease-in-out infinite`,
-            animationDelay: `${i * 0.5}s`,
-            top: pumpkin.top
+            animation: `float-ghost ${pumpkin.duration} linear infinite`,
+            animationDelay: pumpkin.delay,
+            top: "-100px"
           }}
         >
           🎃
