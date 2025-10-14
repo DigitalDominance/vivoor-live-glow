@@ -30,7 +30,9 @@ const Wordmark = () => {
         alt="Vivoor logo" 
         className="h-8 w-auto" 
       />
-      {!isHalloweenMode && <span className="text-xl font-extrabold font-display tracking-tight text-gradient">vivoor</span>}
+      <span className={`text-xl font-extrabold font-display tracking-tight ${isHalloweenMode ? 'text-gradient-halloween' : 'text-gradient'}`}>
+        vivoor
+      </span>
     </Link>
   );
 };

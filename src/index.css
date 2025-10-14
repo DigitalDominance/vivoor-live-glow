@@ -58,6 +58,9 @@
     --grad-soft: radial-gradient(1200px 800px at 20% 10%, hsl(var(--brand-cyan) / 0.13) 0%, transparent 60%),
                  radial-gradient(1000px 700px at 80% 30%, hsl(var(--brand-iris) / 0.12) 0%, transparent 60%),
                  radial-gradient(900px 600px at 50% 80%, hsl(var(--brand-pink) / 0.10) 0%, transparent 60%);
+    
+    /* Halloween gradients */
+    --grad-halloween: linear-gradient(135deg, #000000 0%, #ff6b00 50%, #ff8c00 100%);
 
     /* On-gradient readable foreground */
     --on-gradient: 0 0% 100%;
@@ -92,6 +95,9 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: var(--brand-cyan);
+    
+    /* Halloween gradient for dark mode */
+    --grad-halloween: linear-gradient(135deg, #ffffff 0%, #ff6b00 50%, #ff8c00 100%);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -113,6 +119,7 @@
 @layer utilities {
   .bg-grad-primary { background-image: var(--grad-primary); }
   .text-gradient { background-image: var(--grad-primary); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .text-gradient-halloween { background-image: var(--grad-halloween); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .gradient-border { background: linear-gradient(#0000, #0000) padding-box, var(--grad-primary) border-box; border: 1px solid transparent; }
   .glass { background: hsl(var(--background) / 0.6); backdrop-filter: blur(10px); border: 1px solid hsl(var(--border) / 0.5); }
   .hairline-gradient { border-image: var(--grad-primary) 1; border-bottom: 1px solid transparent; }
