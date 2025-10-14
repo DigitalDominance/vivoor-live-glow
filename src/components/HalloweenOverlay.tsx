@@ -7,30 +7,30 @@ export const HalloweenOverlay = () => {
   const { isHalloweenMode } = useHalloween();
 
   if (!isHalloweenMode) return null;
-  // Position ghosts, zombies, and cobwebs on left and right sides - randomly mixed
+  // Position ghosts, zombies, and cobwebs on left and right sides - more continuous
   const [ghosts] = useState(() => 
-    Array.from({ length: 12 }, (_, i) => {
+    Array.from({ length: 8 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
       const characters = ['ghost', '🧟', '🕸️'];
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
-        delay: `${Math.random() * 2.4}s`,
-        duration: `${7.2 + Math.random() * 4.8}s`,
+        delay: `${i * 1.5}s`,
+        duration: `${8 + Math.random() * 4}s`,
         character: characters[Math.floor(Math.random() * characters.length)]
       };
     })
   );
 
-  // Position pumpkins falling from top - only on sides
+  // Position pumpkins falling from top - only on sides, more continuous
   const [pumpkins] = useState(() =>
-    Array.from({ length: 6 }, (_, i) => {
+    Array.from({ length: 4 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
-        delay: `${Math.random() * 3.6}s`,
-        duration: `${9.6 + Math.random() * 4.8}s`,
+        delay: `${i * 3}s`,
+        duration: `${10 + Math.random() * 4}s`,
         size: `${Math.random() * 20 + 35}px`
       };
     })

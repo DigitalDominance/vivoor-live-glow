@@ -18,7 +18,7 @@ export const VolumetricFog = () => {
     resize();
     window.addEventListener('resize', resize);
 
-    // Light shaft particles - increased count
+    // Light shaft particles - reduced and more diffuse on sides
     const lightShafts: Array<{
       x: number;
       y: number;
@@ -29,21 +29,21 @@ export const VolumetricFog = () => {
       angle: number;
     }> = [];
 
-    // Create light shafts on sides
-    for (let i = 0; i < 12; i++) {
+    // Create light shafts on sides - fewer and wider for softer effect
+    for (let i = 0; i < 6; i++) {
       const isLeft = Math.random() > 0.5;
       lightShafts.push({
-        x: isLeft ? Math.random() * 200 : window.innerWidth - Math.random() * 200,
+        x: isLeft ? Math.random() * 180 : window.innerWidth - Math.random() * 180,
         y: -Math.random() * 300,
-        width: 80 + Math.random() * 120,
+        width: 150 + Math.random() * 100,
         height: window.innerHeight + 300,
-        opacity: 0.12 + Math.random() * 0.10,
+        opacity: 0.04 + Math.random() * 0.04,
         speed: 0.3 + Math.random() * 0.4,
-        angle: (Math.random() - 0.5) * 15,
+        angle: (Math.random() - 0.5) * 20,
       });
     }
 
-    // Fog particles - increased count and opacity
+    // Fog particles - focused more on center
     const fogParticles: Array<{
       x: number;
       y: number;
@@ -53,12 +53,12 @@ export const VolumetricFog = () => {
       speedY: number;
     }> = [];
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 60; i++) {
       fogParticles.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
         size: 150 + Math.random() * 250,
-        opacity: 0.06 + Math.random() * 0.08,
+        opacity: 0.05 + Math.random() * 0.06,
         speedX: (Math.random() - 0.5) * 0.3,
         speedY: 0.4 + Math.random() * 0.6,
       });
@@ -69,19 +69,30 @@ export const VolumetricFog = () => {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw light shafts
+      // Draw light shafts with more blur
       lightShafts.forEach((shaft) => {
         ctx.save();
         ctx.translate(shaft.x, shaft.y);
         ctx.rotate((shaft.angle * Math.PI) / 180);
 
-        // Create gradient for light shaft
+        // Create gradient for light shaft with softer edges
         const gradient = ctx.createLinearGradient(0, 0, 0, shaft.height);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${shaft.opacity})`);
-        gradient.addColorStop(0.3, `rgba(255, 255, 255, ${shaft.opacity * 0.6})`);
-        gradient.addColorStop(0.7, `rgba(255, 255, 255, ${shaft.opacity * 0.4})`);
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${shaft.opacity * 0.3})`);
+        gradient.addColorStop(0.2, `rgba(255, 255, 255, ${shaft.opacity * 0.6})`);
+        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${shaft.opacity * 0.4})`);
+        gradient.addColorStop(0.8, `rgba(255, 255, 255, ${shaft.opacity * 0.2})`);
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
+        // Add radial gradient for softer horizontal edges
+        const radialGradient = ctx.createRadialGradient(
+          0, shaft.height / 2, 0,
+          0, shaft.height / 2, shaft.width / 2
+        );
+        radialGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        radialGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.5)');
+        radialGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.globalAlpha = shaft.opacity;
         ctx.fillStyle = gradient;
         ctx.fillRect(-shaft.width / 2, 0, shaft.width, shaft.height);
         ctx.restore();
@@ -89,11 +100,11 @@ export const VolumetricFog = () => {
         // Animate light shaft
         shaft.y += shaft.speed;
         if (shaft.y > window.innerHeight + 100) {
-          shaft.y = -200;
+          shaft.y = -300;
         }
 
         // Pulse opacity
-        shaft.opacity = 0.12 + Math.sin(Date.now() * 0.001 + shaft.x) * 0.05;
+        shaft.opacity = 0.04 + Math.sin(Date.now() * 0.001 + shaft.x) * 0.02;
       });
 
       // Draw fog particles
@@ -146,7 +157,7 @@ export const VolumetricFog = () => {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-50"
-      style={{ opacity: 0.35 }}
+      style={{ opacity: 0.25, filter: 'blur(1px)' }}
     />
   );
 };
