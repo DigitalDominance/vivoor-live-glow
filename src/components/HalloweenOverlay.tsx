@@ -51,7 +51,7 @@ export const HalloweenOverlay = () => {
         }}
       />
       
-      {/* Floating Scary Ghosts */}
+      {/* Floating Ghosts and Zombies */}
       {ghosts.map((ghost) => (
         <div
           key={ghost.id}
@@ -63,21 +63,21 @@ export const HalloweenOverlay = () => {
             top: "-100px"
           }}
         >
-          {ghost.id % 3 === 0 ? '💀' : ghost.id % 3 === 1 ? '🧟' : '☠️'}
+          {ghost.id % 2 === 0 ? '👻' : '🧟'}
         </div>
       ))}
 
-      {/* Scattered Pumpkins */}
-      {pumpkins.map((pumpkin) => (
+      {/* Floating Pumpkins */}
+      {pumpkins.map((pumpkin, i) => (
         <div
           key={pumpkin.id}
-          className="absolute animate-pulse opacity-40 hover:opacity-80 transition-opacity"
+          className="absolute opacity-60 hover:opacity-90 transition-opacity"
           style={{
             left: pumpkin.left,
-            top: pumpkin.top,
             fontSize: pumpkin.size,
-            transform: `rotate(${pumpkin.rotation})`,
-            animationDuration: "4s"
+            animation: `float-pumpkin ${12 + i * 2}s ease-in-out infinite`,
+            animationDelay: `${i * 0.5}s`,
+            top: pumpkin.top
           }}
         >
           🎃
@@ -100,6 +100,21 @@ export const HalloweenOverlay = () => {
           }
           100% {
             transform: translateY(110vh) translateX(0);
+          }
+        }
+        
+        @keyframes float-pumpkin {
+          0%, 100% {
+            transform: translateY(0) rotate(0deg);
+          }
+          25% {
+            transform: translateY(-30px) rotate(5deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(-5deg);
+          }
+          75% {
+            transform: translateY(-40px) rotate(3deg);
           }
         }
         
