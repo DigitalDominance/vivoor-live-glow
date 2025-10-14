@@ -181,23 +181,24 @@ serve(async (req) => {
       const newExpiry = new Date();
       newExpiry.setMonth(newExpiry.getMonth() + 6);
 
-      // Insert verification bonus using valid duration_type
-      const { error: verificationError } = await supabaseAdmin
-        .from('verifications')
+      // Insert into payment_verifications table (same structure as verify-payment edge function)
+      const { error: paymentError } = await supabaseAdmin
+        .from('payment_verifications')
         .insert({
           user_id: userId,
-          txid: `kaspers_nft_bonus_${Date.now()}`,
-          amount_sompi: 60000000000, // 600 KAS in sompi
-          duration_type: 'monthly_verification', // Use valid duration type
-          block_time: Math.floor(Date.now() / 1000),
-          verified_at: new Date().toISOString(),
+          payment_type: 'monthly_verification',
+          amount_sompi: 60000000000, // 600 KAS in sompi (6 months * 100 KAS)
+          amount_kas: 600,
+          txid: `kaspers_nft_bonus_${userId}_${Date.now()}`,
+          block_time: Date.now(),
+          treasury_address: 'kaspa:qzs7mlxwqtuyvv47yhx0xzhmphpazxzw99patpkh3ezfghejhq8wv6jsc7f80',
           expires_at: newExpiry.toISOString()
         });
 
-      if (verificationError) {
-        console.error('❌ Failed to grant verification bonus:', verificationError);
+      if (paymentError) {
+        console.error('❌ Failed to grant verification bonus:', paymentError);
       } else {
-        console.log('✅ 6 month verification bonus granted successfully');
+        console.log('✅ 6 month verification bonus granted successfully until:', newExpiry.toISOString());
       }
     } else {
       console.log('ℹ️ User has already claimed KASPERS verification bonus previously');
