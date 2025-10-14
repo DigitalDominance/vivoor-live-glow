@@ -994,19 +994,20 @@ const DocsPage = () => {
                 </div>
 
                 {/* Call to Action */}
-                <div className="mt-6 p-6 border-2 border-brand-pink/30 rounded-lg bg-gradient-to-r from-brand-pink/10 to-brand-iris/10 text-center">
-                  <h4 className="text-lg font-bold mb-2">Ready to claim your rewards?</h4>
+                <div className="mt-6 p-6 border-2 border-brand-pink/30 rounded-lg bg-gradient-to-r from-brand-pink/10 to-brand-iris/10">
+                  <h4 className="text-lg font-bold mb-2">Don't have a KASPERS NFT yet?</h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Connect your wallet with KASPERS NFTs and head to Edit Profile to get started!
+                    Purchase or mint your KASPERS NFT easily! All you need is KAS in your Kaspa wallet (Kasware or Kastle), 
+                    then head to the official KASPERS collection page to browse and acquire your NFT.
                   </p>
                   <Button 
                     variant="hero" 
                     size="lg"
-                    onClick={() => navigate('/profile')}
+                    onClick={() => window.open('https://kaspa.com/nft/collections/KASPERS', '_blank', 'noopener,noreferrer')}
                     className="shadow-lg shadow-brand-iris/20"
                   >
                     <Star className="w-4 h-4 mr-2" />
-                    Go to Profile
+                    Buy Now
                   </Button>
                 </div>
               </CardContent>
