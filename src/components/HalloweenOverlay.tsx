@@ -32,67 +32,59 @@ export const HalloweenOverlay = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      {/* White Smoke at bottom - left side */}
+      {/* Flowing Smoke Particles - Left Side */}
       <div 
-        className="absolute bottom-0 left-0 w-1/3 h-64 opacity-60"
+        className="absolute bottom-0 left-[5%] w-2 h-full opacity-40"
         style={{
-          background: 'radial-gradient(ellipse at center bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 70%)',
-          filter: 'blur(30px)',
-          animation: 'smoke-drift 8s ease-in-out infinite'
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
+          filter: 'blur(20px)',
+          animation: 'smoke-flow-up 6s linear infinite'
         }}
       />
-      
-      {/* White Smoke at bottom - right side */}
       <div 
-        className="absolute bottom-0 right-0 w-1/3 h-64 opacity-60"
+        className="absolute bottom-0 left-[12%] w-3 h-full opacity-35"
         style={{
-          background: 'radial-gradient(ellipse at center bottom, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 70%)',
-          filter: 'blur(30px)',
-          animation: 'smoke-drift 8s ease-in-out infinite',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          filter: 'blur(25px)',
+          animation: 'smoke-flow-up 8s linear infinite',
+          animationDelay: '2s'
+        }}
+      />
+      <div 
+        className="absolute bottom-0 left-[8%] w-2 h-full opacity-30"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          filter: 'blur(22px)',
+          animation: 'smoke-flow-up 7s linear infinite',
           animationDelay: '4s'
         }}
       />
 
-      {/* White Smoke at middle - left side */}
+      {/* Flowing Smoke Particles - Right Side */}
       <div 
-        className="absolute top-1/2 left-0 w-1/4 h-48 opacity-50"
+        className="absolute bottom-0 right-[5%] w-2 h-full opacity-40"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
-          filter: 'blur(40px)',
-          animation: 'smoke-drift 10s ease-in-out infinite',
-          animationDelay: '2s'
-        }}
-      />
-
-      {/* White Smoke at middle - right side */}
-      <div 
-        className="absolute top-1/2 right-0 w-1/4 h-48 opacity-50"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
-          filter: 'blur(40px)',
-          animation: 'smoke-drift 10s ease-in-out infinite',
-          animationDelay: '6s'
-        }}
-      />
-
-      {/* White Smoke at top - left side */}
-      <div 
-        className="absolute top-0 left-0 w-1/4 h-56 opacity-45"
-        style={{
-          background: 'radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
-          filter: 'blur(35px)',
-          animation: 'smoke-drift 12s ease-in-out infinite',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%)',
+          filter: 'blur(20px)',
+          animation: 'smoke-flow-up 6s linear infinite',
           animationDelay: '1s'
         }}
       />
-
-      {/* White Smoke at top - right side */}
       <div 
-        className="absolute top-0 right-0 w-1/4 h-56 opacity-45"
+        className="absolute bottom-0 right-[12%] w-3 h-full opacity-35"
         style={{
-          background: 'radial-gradient(ellipse at center top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 40%, transparent 70%)',
-          filter: 'blur(35px)',
-          animation: 'smoke-drift 12s ease-in-out infinite',
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          filter: 'blur(25px)',
+          animation: 'smoke-flow-up 8s linear infinite',
+          animationDelay: '3s'
+        }}
+      />
+      <div 
+        className="absolute bottom-0 right-[8%] w-2 h-full opacity-30"
+        style={{
+          background: 'linear-gradient(to top, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+          filter: 'blur(22px)',
+          animation: 'smoke-flow-up 7s linear infinite',
           animationDelay: '5s'
         }}
       />
@@ -170,26 +162,20 @@ export const HalloweenOverlay = () => {
           }
         }
         
-        @keyframes smoke-drift {
+        @keyframes smoke-flow-up {
           0% {
             transform: translateY(0) translateX(0);
-            opacity: 0.6;
+            opacity: 0;
           }
-          25% {
-            transform: translateY(-40px) translateX(5px);
-            opacity: 0.7;
+          10% {
+            opacity: 0.4;
           }
-          50% {
-            transform: translateY(-60px) translateX(10px);
-            opacity: 0.5;
-          }
-          75% {
-            transform: translateY(-40px) translateX(5px);
-            opacity: 0.6;
+          90% {
+            opacity: 0.4;
           }
           100% {
-            transform: translateY(0) translateX(0);
-            opacity: 0.6;
+            transform: translateY(-100vh) translateX(30px);
+            opacity: 0;
           }
         }
       `}</style>
