@@ -890,9 +890,11 @@ const DocsPage = () => {
                   <div 
                     className="w-8 h-8 rounded-full flex-shrink-0 relative p-[2px] bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris shadow-[0_0_15px_rgba(139,92,246,0.5)]"
                   >
-                    <div className="w-full h-full rounded-full bg-background flex items-center justify-center text-xs font-bold">
-                      K
-                    </div>
+                    <img 
+                      src="https://cache.krc721.stream/krc721/mainnet/optimized/KASPERS/777" 
+                      alt="KASPERS NFT" 
+                      className="w-full h-full rounded-full object-cover"
+                    />
                   </div>
                   KASPERS NFT Badge
                 </CardTitle>
@@ -902,8 +904,12 @@ const DocsPage = () => {
                 {/* Highlight Box */}
                 <div className="p-6 border-2 border-brand-cyan/30 rounded-lg bg-gradient-to-br from-brand-cyan/10 via-brand-iris/10 to-brand-pink/10 shadow-lg">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.6)]">
-                      <Star className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-cyan via-brand-pink to-brand-iris p-[2px] flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(139,92,246,0.6)]">
+                      <img 
+                        src="https://cache.krc721.stream/krc721/mainnet/optimized/KASPERS/333" 
+                        alt="KASPERS NFT" 
+                        className="w-full h-full rounded-full object-cover"
+                      />
                     </div>
                     <div>
                       <h3 className="font-bold text-xl text-brand-cyan mb-2">🎉 Exclusive KASPERS NFT Holder Benefit!</h3>
