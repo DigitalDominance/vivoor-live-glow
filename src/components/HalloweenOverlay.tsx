@@ -7,11 +7,11 @@ export const HalloweenOverlay = () => {
   const { isHalloweenMode } = useHalloween();
 
   if (!isHalloweenMode) return null;
-  // Position ghosts, zombies, and cobwebs on left and right sides - more continuous
-  const [ghosts] = useState(() => 
+  // Position turkeys, leaves, and corn on left and right sides - more continuous
+  const [fallingSides] = useState(() => 
     Array.from({ length: 8 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
-      const characters = ['ghost', '🧟', '🕸️'];
+      const characters = ['🦃', '🍂', '🌽'];
       return {
         id: i,
         left: isLeft ? `${Math.random() * 20}%` : `${80 + Math.random() * 20}%`,
@@ -22,8 +22,8 @@ export const HalloweenOverlay = () => {
     })
   );
 
-  // Position pumpkins falling from top - only on sides, more continuous
-  const [pumpkins] = useState(() =>
+  // Position pumpkin pies falling from top - only on sides, more continuous
+  const [pies] = useState(() =>
     Array.from({ length: 4 }, (_, i) => {
       const isLeft = Math.random() > 0.5;
       return {
@@ -41,42 +41,37 @@ export const HalloweenOverlay = () => {
       {/* Volumetric Fog with Light Shafts */}
       <VolumetricFog />
       
-      {/* Floating Ghosts, Zombies, and Cobwebs */}
-      {ghosts.map((ghost) => (
+      {/* Floating Turkeys, Leaves, and Corn */}
+      {fallingSides.map((item) => (
         <div
-          key={ghost.id}
+          key={item.id}
           className="absolute opacity-30 hover:opacity-50 transition-opacity"
           style={{
-            left: ghost.left,
-            animation: `float-ghost ${ghost.duration} linear infinite`,
-            animationDelay: ghost.delay,
+            left: item.left,
+            animation: `float-ghost ${item.duration} linear infinite`,
+            animationDelay: item.delay,
             top: "-100px",
-            width: ghost.character === 'ghost' ? '40px' : 'auto',
-            fontSize: ghost.character !== 'ghost' ? '2rem' : undefined
+            fontSize: '2rem'
           }}
         >
-          {ghost.character === 'ghost' ? (
-            <img src={vivoorGhost} alt="ghost" className="w-full h-auto" />
-          ) : (
-            ghost.character
-          )}
+          {item.character}
         </div>
       ))}
 
-      {/* Floating Pumpkins */}
-      {pumpkins.map((pumpkin) => (
+      {/* Floating Pumpkin Pies */}
+      {pies.map((pie) => (
         <div
-          key={pumpkin.id}
+          key={pie.id}
           className="absolute opacity-35 hover:opacity-55 transition-opacity"
           style={{
-            left: pumpkin.left,
-            fontSize: pumpkin.size,
-            animation: `float-ghost ${pumpkin.duration} linear infinite`,
-            animationDelay: pumpkin.delay,
+            left: pie.left,
+            fontSize: pie.size,
+            animation: `float-ghost ${pie.duration} linear infinite`,
+            animationDelay: pie.delay,
             top: "-100px"
           }}
         >
-          🎃
+          🥧
         </div>
       ))}
 
