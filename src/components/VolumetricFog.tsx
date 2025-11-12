@@ -75,22 +75,22 @@ export const VolumetricFog = () => {
         ctx.translate(shaft.x, shaft.y);
         ctx.rotate((shaft.angle * Math.PI) / 180);
 
-        // Create gradient for light shaft with softer edges
+        // Create gradient for light shaft with softer edges - orange gradient
         const gradient = ctx.createLinearGradient(0, 0, 0, shaft.height);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${shaft.opacity * 0.3})`);
-        gradient.addColorStop(0.2, `rgba(255, 255, 255, ${shaft.opacity * 0.6})`);
-        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${shaft.opacity * 0.4})`);
-        gradient.addColorStop(0.8, `rgba(255, 255, 255, ${shaft.opacity * 0.2})`);
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        gradient.addColorStop(0, `rgba(255, 140, 50, ${shaft.opacity * 0.3})`);
+        gradient.addColorStop(0.2, `rgba(255, 120, 40, ${shaft.opacity * 0.6})`);
+        gradient.addColorStop(0.5, `rgba(255, 100, 30, ${shaft.opacity * 0.4})`);
+        gradient.addColorStop(0.8, `rgba(255, 80, 20, ${shaft.opacity * 0.2})`);
+        gradient.addColorStop(1, 'rgba(255, 70, 10, 0)');
 
-        // Add radial gradient for softer horizontal edges
+        // Add radial gradient for softer horizontal edges - orange
         const radialGradient = ctx.createRadialGradient(
           0, shaft.height / 2, 0,
           0, shaft.height / 2, shaft.width / 2
         );
-        radialGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        radialGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.5)');
-        radialGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        radialGradient.addColorStop(0, 'rgba(255, 130, 50, 1)');
+        radialGradient.addColorStop(0.7, 'rgba(255, 110, 40, 0.5)');
+        radialGradient.addColorStop(1, 'rgba(255, 90, 30, 0)');
 
         ctx.globalAlpha = shaft.opacity;
         ctx.fillStyle = gradient;
@@ -107,7 +107,7 @@ export const VolumetricFog = () => {
         shaft.opacity = 0.04 + Math.sin(Date.now() * 0.001 + shaft.x) * 0.02;
       });
 
-      // Draw fog particles
+      // Draw fog particles - orange gradient
       fogParticles.forEach((particle) => {
         const gradient = ctx.createRadialGradient(
           particle.x,
@@ -117,9 +117,9 @@ export const VolumetricFog = () => {
           particle.y,
           particle.size
         );
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${particle.opacity})`);
-        gradient.addColorStop(0.5, `rgba(255, 255, 255, ${particle.opacity * 0.5})`);
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        gradient.addColorStop(0, `rgba(255, 140, 50, ${particle.opacity})`);
+        gradient.addColorStop(0.5, `rgba(255, 110, 40, ${particle.opacity * 0.5})`);
+        gradient.addColorStop(1, 'rgba(255, 90, 30, 0)');
 
         ctx.fillStyle = gradient;
         ctx.fillRect(

@@ -1,5 +1,5 @@
 import { useHalloween } from "@/context/HalloweenContext";
-import halloweenLogo from "@/assets/vivoor-halloween-logo.png";
+import thanksgivingLogo from "@/assets/vivoor-thanksgiving-logo.png";
 
 const SiteFooter = () => {
   const { isHalloweenMode } = useHalloween();
@@ -10,7 +10,7 @@ const SiteFooter = () => {
         <div className="grid gap-6 md:flex md:items-center md:justify-between mb-4">
           <a href="#top" className="flex items-center gap-1 font-display text-lg font-bold">
             <img 
-              src={isHalloweenMode ? halloweenLogo : "/lovable-uploads/vivoorlogo2.png"} 
+              src={isHalloweenMode ? thanksgivingLogo : "/lovable-uploads/vivoorlogo2.png"} 
               alt="Vivoor logo" 
               className="h-8 w-auto"
             />

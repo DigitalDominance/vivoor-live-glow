@@ -24,7 +24,7 @@ import UsernameModal from "@/components/modals/UsernameModal";
 import { useWallet } from "@/context/WalletContext";
 import MyProfileModal from "@/components/modals/MyProfileModal";
 import { useHalloween } from "@/context/HalloweenContext";
-import halloweenLogo from "@/assets/vivoor-halloween-logo.png";
+import thanksgivingLogo from "@/assets/vivoor-thanksgiving-logo.png";
 
 const Wordmark = () => {
   const { isHalloweenMode } = useHalloween();
@@ -32,7 +32,7 @@ const Wordmark = () => {
   return (
     <Link to="/" aria-label="Vivoor home" className="flex items-center gap-1">
       <img 
-        src={isHalloweenMode ? halloweenLogo : "/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png"} 
+        src={isHalloweenMode ? thanksgivingLogo : "/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png"} 
         alt="Vivoor logo" 
         className="h-8 w-auto" 
       />
@@ -122,14 +122,14 @@ const SiteHeader = () => {
                   variant="ghost"
                   size="icon"
                   onClick={toggleHalloweenMode}
-                  aria-label="Toggle Halloween Mode"
+                  aria-label="Toggle Thanksgiving Mode"
                   className="text-2xl hover:scale-110 transition-transform"
                 >
-                  🎃
+                  🦃
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isHalloweenMode ? 'Deactivate Halloween Mode' : 'Activate Halloween Mode'}</p>
+                <p>{isHalloweenMode ? 'Turn off Thanksgiving mode' : 'Turn on Thanksgiving mode'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
