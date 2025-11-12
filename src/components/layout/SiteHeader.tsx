@@ -34,11 +34,13 @@ const Wordmark = () => {
       <img 
         src={isHalloweenMode ? thanksgivingLogo : "/lovable-uploads/a04a5600-e88d-4460-a120-6b5636a3dfdb.png"} 
         alt="Vivoor logo" 
-        className="h-8 w-auto" 
+        className={isHalloweenMode ? "h-12 w-auto" : "h-8 w-auto"}
       />
-      <span className={`text-xl font-extrabold font-display tracking-tight ${isHalloweenMode ? 'text-gradient-halloween' : 'text-gradient'}`}>
-        vivoor
-      </span>
+      {!isHalloweenMode && (
+        <span className="text-xl font-extrabold font-display tracking-tight text-gradient">
+          vivoor
+        </span>
+      )}
     </Link>
   );
 };

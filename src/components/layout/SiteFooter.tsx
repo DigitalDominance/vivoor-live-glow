@@ -12,11 +12,8 @@ const SiteFooter = () => {
             <img 
               src={isHalloweenMode ? thanksgivingLogo : "/lovable-uploads/vivoorlogo2.png"} 
               alt="Vivoor logo" 
-              className="h-8 w-auto"
+              className={isHalloweenMode ? "h-12 w-auto" : "h-8 w-auto"}
             />
-            {isHalloweenMode && (
-              <span className="text-gradient-halloween">vivoor</span>
-            )}
           </a>
           <nav className="flex gap-4 text-sm text-muted-foreground">
             <a className="story-link" href="/docs">Documentation</a>
